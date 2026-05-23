@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>VRGIN_KKCS</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <TargetFramework>net35</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>11.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Reference Include="System.Core" />
+    <Reference Include="UnityEngine" />
+    <Reference Include="LeapCSharp.NET3.5">
+      <HintPath>..\..\Koikatu3\BepInEx\LeapCSharp.NET3.5.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI" />
+    <Reference Include="WindowsInput">
+      <HintPath>..\..\Koikatu3\BepInEx\WindowsInput.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="SpeechTransport">
+      <HintPath>..\..\Koikatu3\BepInEx\SpeechTransport.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

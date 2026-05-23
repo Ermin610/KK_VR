@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>KKCharaStudioVRPlugin</AssemblyName>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <TargetFramework>net35</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>11.0</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace />
+  </PropertyGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Reference Include="UnityEngine" />
+    <Reference Include="VRGIN_KKCS">
+      <HintPath>..\..\Koikatu3\BepInEx\VRGIN_KKCS.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core" />
+    <Reference Include="BepInEx4" />
+    <Reference Include="0Harmony_BepInEx4" />
+    <Reference Include="UnityEngine.UI" />
+    <Reference Include="WindowsInput">
+      <HintPath>..\..\Koikatu3\BepInEx\WindowsInput.dll</HintPath>
+    </Reference>
+    <Reference Include="0Harmony" />
+    <Reference Include="BepInEx" />
+  </ItemGroup>
+</Project>
