@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "PowerShell($content = Get-Content \"C:\\\\Users\\\\35729\\\\AppData\\\\Local\\\\Programs\\\\Antigravity\\\\resources\\\\app\\\\extensions\\\\antigravity\\\\dist\\\\extension.js\" -Raw; $matches = [regex]::Matches\\($content, '.{0,200}auto.?run.{0,200}', 'IgnoreCase'\\); $matches | Select-Object -First 10 | ForEach-Object { $_.Value; \"`n---`n\" })",
+      "WebSearch",
+      "WebFetch(domain:www.arvindgaba.com)",
+      "WebFetch(domain:discuss.ai.google.dev)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

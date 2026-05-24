@@ -185,6 +185,8 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private LineRenderer Laser;
 
+	private GameObject dotCursor;
+
 	private Vector2? mouseDownPosition;
 
 	private GUIQuad _Target;
@@ -192,6 +194,10 @@ public class GripMenuHandler : ProtectedBehaviour
 	private ResizeHandler _ResizeHandler;
 
 	private Vector3 _ScaleVector;
+
+	private Vector3 _cachedLaserPos;
+
+	private Vector3 _cachedLaserFwd;
 
 	protected SteamVR_Controller.Device Device => SteamVR_Controller.Input((int)_Controller.Tracking.index);
 
@@ -222,6 +228,7 @@ public class GripMenuHandler : ProtectedBehaviour
 			//IL_0026: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0042: Unknown result type (might be due to invalid IL or missing references)
 			((Component)Laser).gameObject.SetActive(value);
+			if (dotCursor != null) dotCursor.SetActive(value);
 			if (value)
 			{
 				Laser.SetPosition(0, ((Component)Laser).transform.position);
@@ -269,6 +276,16 @@ public class GripMenuHandler : ProtectedBehaviour
 		Laser.SetVertexCount(2);
 		Laser.useWorldSpace = true;
 		Laser.SetWidth(0.002f, 0.002f);
+
+		dotCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+		dotCursor.transform.SetParent(((Component)this).transform, false);
+		dotCursor.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+		Object.DestroyImmediate(dotCursor.GetComponent<Collider>());
+		Renderer dotRenderer = dotCursor.GetComponent<Renderer>();
+		dotRenderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+		dotRenderer.material.renderQueue += 5000;
+		dotRenderer.material.color = Color.cyan;
+		dotCursor.SetActive(false);
 	}
 
 	protected override void OnUpdate()
@@ -280,12 +297,15 @@ public class GripMenuHandler : ProtectedBehaviour
 		{
 			return;
 		}
+
+		GetLaserOrigin(out _cachedLaserPos, out _cachedLaserFwd);
+
 		if (LaserVisible)
 		{
 			if (IsResizing)
 			{
-				Laser.SetPosition(0, ((Component)Laser).transform.position);
-				Laser.SetPosition(1, ((Component)Laser).transform.position);
+				Laser.SetPosition(0, _cachedLaserPos);
+				Laser.SetPosition(1, _cachedLaserPos);
 			}
 			else
 			{
@@ -297,6 +317,27 @@ public class GripMenuHandler : ProtectedBehaviour
 			CheckForNearMenu();
 		}
 		CheckInput();
+	}
+
+	private void GetLaserOrigin(out Vector3 originPos, out Vector3 originFwd)
+	{
+		originPos = ((Component)Laser).transform.position;
+		originFwd = ((Component)Laser).transform.forward;
+
+		if (VRHandModelManager.Instance != null && VR.Manager != null && VR.Manager.Context != null)
+		{
+			var settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+			if (settings != null && settings.HandModelEnabled)
+			{
+				bool isLeft = ((Component)this).GetComponent<LeftController>() != null;
+				Transform fingerTip = VRHandModelManager.Instance.GetFingerTipTransform(isLeft, 1);
+				if (fingerTip != null)
+				{
+					originPos = fingerTip.position;
+					originFwd = fingerTip.forward;
+				}
+			}
+		}
 	}
 
 	private void OnDisable()
@@ -403,8 +444,8 @@ public class GripMenuHandler : ProtectedBehaviour
 		}
 		Vector3 val = -((Component)quad).transform.forward;
 		_ = ((Component)quad).transform.position;
-		Vector3 position = ((Component)Laser).transform.position;
-		Vector3 forward = ((Component)Laser).transform.forward;
+		Vector3 position = _cachedLaserPos;
+		Vector3 forward = _cachedLaserFwd;
 		float num = 0f - ((Component)quad).transform.InverseTransformPoint(position).z;
 		Vector3 localScale = ((Component)quad).transform.localScale;
 		float num2 = num * ((Vector3)(ref localScale)).magnitude;
@@ -425,8 +466,8 @@ public class GripMenuHandler : ProtectedBehaviour
 		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
 		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
-		Vector3 position = ((Component)Laser).transform.position;
-		Vector3 forward = ((Component)Laser).transform.forward;
+		Vector3 position = _cachedLaserPos;
+		Vector3 forward = _cachedLaserFwd;
 		Collider component = ((Component)quad).GetComponent<Collider>();
 		if (Object.op_Implicit((Object)(object)component))
 		{
@@ -440,24 +481,18 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private void UpdateLaser()
 	{
-		//IL_0012: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0043: Unknown result type (might be due to invalid IL or missing references)
-		//IL_009f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0112: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0119: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0100: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0105: Unknown result type (might be due to invalid IL or missing references)
-		Laser.SetPosition(0, ((Component)Laser).transform.position);
-		Laser.SetPosition(1, ((Component)Laser).transform.position + ((Component)Laser).transform.forward);
+		Laser.SetPosition(0, _cachedLaserPos);
+		Vector3 endPos = _cachedLaserPos + _cachedLaserFwd;
+		Laser.SetPosition(1, endPos);
+		bool hitUI = false;
+
 		if (Object.op_Implicit((Object)(object)_Target) && ((Component)_Target).gameObject.activeInHierarchy)
 		{
 			if (IsWithinRange(_Target) && Raycast(_Target, out var hit))
 			{
-				Laser.SetPosition(1, ((RaycastHit)(ref hit)).point);
+				hitUI = true;
+				endPos = ((RaycastHit)(ref hit)).point;
+				Laser.SetPosition(1, endPos);
 				if (!IsOtherWorkingOn(_Target))
 				{
 					Vector2 val = default(Vector2);
@@ -477,6 +512,39 @@ public class GripMenuHandler : ProtectedBehaviour
 		else
 		{
 			LaserVisible = false;
+		}
+
+		if (LaserVisible && dotCursor != null)
+		{
+			if (hitUI)
+			{
+				dotCursor.SetActive(true);
+				dotCursor.transform.position = endPos;
+				if (IsPressing)
+				{
+					Laser.SetColors(Color.red, Color.red);
+					dotCursor.GetComponent<Renderer>().material.color = Color.red;
+					Vector3 dir = endPos - _cachedLaserPos;
+					if (dir.magnitude > 0.02f)
+					{
+						Laser.SetPosition(1, endPos - dir.normalized * 0.02f);
+					}
+				}
+				else
+				{
+					Laser.SetColors(Color.green, Color.green);
+					dotCursor.GetComponent<Renderer>().material.color = Color.green;
+				}
+			}
+			else
+			{
+				dotCursor.SetActive(false);
+				Laser.SetColors(Color.cyan, Color.cyan);
+			}
+		}
+		else if (dotCursor != null)
+		{
+			dotCursor.SetActive(false);
 		}
 	}
 

@@ -35,6 +35,15 @@ internal class GripMoveKKCharaStudioTool : Tool
 	public GameObject target;
 	private bool lockRotXZ = true;
 	private float lastSnapTurnTime;
+	private bool _isLeftHand;
+	private bool _lastHandModelEnabled;
+	private MoveableGUIObject _proximityTarget;
+	private GameObject _proximityHighlight;
+	private int _proximityCheckCounter;
+	private LineRenderer _grabLine;
+	private Vector3 _smoothGrabPos;
+	private Quaternion _smoothGrabRot;
+	private bool _smoothGrabInitialized;
 
 	public override Texture2D Image => UnityHelper.LoadImage("icon_gripmove.png");
 
@@ -91,6 +100,10 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	protected override void OnDestroy()
 	{
+		if ((Object)(object)_proximityHighlight != (Object)null)
+			Object.Destroy((Object)(object)_proximityHighlight);
+		if (_grabLine != null)
+			Object.Destroy(((Component)_grabLine).gameObject);
 		if ((Object)(object)marker != (Object)null)
 			Object.Destroy((Object)(object)marker);
 		if ((Object)(object)mirror1 != (Object)null)
@@ -131,17 +144,196 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 		menuHandlder = ((Component)this).GetComponent<MenuHandler>();
 		ikTool = IKTool.instance;
+		_isLeftHand = ((Component)this).GetComponent<VRGIN.Controls.LeftController>() != null;
+		_lastHandModelEnabled = _settings != null && _settings.HandModelEnabled;
 	}
 
 	protected override void OnDisable()
 	{
 		base.OnDisable();
+		ClearProximityHighlight();
+		if (_grabLine != null) ((Component)_grabLine).gameObject.SetActive(false);
 		if ((Object)(object)gripMenuHandler != (Object)null)
 			((Behaviour)gripMenuHandler).enabled = false;
 		if ((Object)(object)menuHandlder != (Object)null)
 			((Behaviour)menuHandlder).enabled = true;
 		if (Object.op_Implicit((Object)(object)internalGui))
 			((Component)internalGui).gameObject.SetActive(false);
+
+		// 恢复此手的状态：显示指针，隐藏手部模型，显示 SteamVR 渲染模型
+		if ((Object)(object)pointer != (Object)null)
+			pointer.SetActive(true);
+		if (VRHandModelManager.Instance != null)
+			VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
+		if ((Object)(object)Owner != (Object)null)
+			Owner.SetRenderModelVisible(true);
+	}
+
+	private void ApplyHandModelState(bool handEnabled)
+	{
+		if (handEnabled)
+		{
+			if ((Object)(object)pointer != (Object)null)
+				pointer.SetActive(false);
+			if (VRHandModelManager.Instance != null)
+				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, true);
+			if ((Object)(object)Owner != (Object)null)
+				Owner.SetRenderModelVisible(false);
+		}
+		else
+		{
+			if ((Object)(object)pointer != (Object)null)
+				pointer.SetActive(true);
+			if (VRHandModelManager.Instance != null)
+				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
+			if ((Object)(object)Owner != (Object)null)
+				Owner.SetRenderModelVisible(true);
+		}
+	}
+
+	private void UpdateProximityDetection()
+	{
+		// Only when hand model is active and not currently grabbing
+		if (_settings == null || !_settings.HandModelEnabled || !_settings.ProximityGrabEnabled || grabbingObject != null)
+		{
+			ClearProximityHighlight();
+			return;
+		}
+
+		// Throttle: check every 3 frames to save performance
+		_proximityCheckCounter++;
+		if (_proximityCheckCounter < 3) 
+		{
+			// Still update highlight position even on skip frames
+			if (_proximityTarget != null && _proximityHighlight != null && _proximityHighlight.activeSelf)
+			{
+				_proximityHighlight.transform.position = _proximityTarget.transform.position;
+			}
+			return;
+		}
+		_proximityCheckCounter = 0;
+
+		Vector3 handPos = ((Component)this).transform.position;
+		// Move detection center slightly forward (toward fingers)
+		handPos += ((Component)this).transform.forward * 0.05f;
+
+		float grabRadius = _settings != null ? _settings.ProximityGrabRadius : 0.12f;
+		Collider[] nearby = Physics.OverlapSphere(handPos, grabRadius);
+
+		float nearestDist = float.MaxValue;
+		MoveableGUIObject nearest = null;
+
+		foreach (var col in nearby)
+		{
+			if (col == null) continue;
+			MoveableGUIObject mgo = ((Component)col).GetComponent<MoveableGUIObject>();
+			// Only consider character IK targets, not GUI elements
+			if (mgo == null || (Object)(object)mgo.guideObject == (Object)null) continue;
+
+			float dist = Vector3.Distance(((Component)col).transform.position, handPos);
+			if (dist < nearestDist)
+			{
+				nearestDist = dist;
+				nearest = mgo;
+			}
+		}
+
+		if (nearest != _proximityTarget)
+		{
+			ClearProximityHighlight();
+			_proximityTarget = nearest;
+			if (_proximityTarget != null)
+			{
+				ShowProximityHighlight(_proximityTarget);
+			}
+		}
+		else if (_proximityTarget != null && _proximityHighlight != null && _proximityHighlight.activeSelf)
+		{
+			// Update position for existing highlight
+			_proximityHighlight.transform.position = _proximityTarget.transform.position;
+		}
+
+		// 高亮脉冲动画（缓慢呼吸效果）
+		if (_proximityHighlight != null && _proximityHighlight.activeSelf)
+		{
+			float pulse = 0.035f * (1f + 0.2f * Mathf.Sin(Time.time * 5f));
+			_proximityHighlight.transform.localScale = Vector3.one * pulse;
+		}
+	}
+
+	private void ShowProximityHighlight(MoveableGUIObject target)
+	{
+		if ((Object)(object)_proximityHighlight == (Object)null)
+		{
+			_proximityHighlight = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+			((Object)_proximityHighlight).name = "_VRProximityHighlight";
+			Object.Destroy(_proximityHighlight.GetComponent<Collider>());
+			Renderer r = _proximityHighlight.GetComponent<Renderer>();
+			r.material = new Material(MaterialHelper.GetColorZOrderShader());
+			r.material.color = new Color(0f, 1f, 0.5f, 0.35f);
+			r.material.renderQueue = 3500;
+		}
+		_proximityHighlight.SetActive(true);
+		_proximityHighlight.transform.position = ((Component)target).transform.position;
+		_proximityHighlight.transform.localScale = Vector3.one * 0.035f;
+	}
+
+	private void ClearProximityHighlight()
+	{
+		_proximityTarget = null;
+		if (_proximityHighlight != null)
+			_proximityHighlight.SetActive(false);
+	}
+
+	private void UpdateGrabLine()
+	{
+		if (grabbingObject == null)
+		{
+			if (_grabLine != null)
+				((Component)_grabLine).gameObject.SetActive(false);
+			return;
+		}
+
+		// 只对有 guideObject 的 IK 目标显示连线
+		MoveableGUIObject mgo = grabbingObject.GetComponent<MoveableGUIObject>();
+		if (mgo == null || (Object)(object)mgo.guideObject == (Object)null)
+		{
+			if (_grabLine != null)
+				((Component)_grabLine).gameObject.SetActive(false);
+			return;
+		}
+
+		// 延迟创建 LineRenderer
+		if (_grabLine == null)
+		{
+			GameObject lineObj = new GameObject("_VRGrabLine");
+			Object.DontDestroyOnLoad(lineObj);
+			_grabLine = lineObj.AddComponent<LineRenderer>();
+			_grabLine.material = new Material(MaterialHelper.GetColorZOrderShader());
+			_grabLine.material.renderQueue = 3600;
+			_grabLine.SetVertexCount(2);
+			_grabLine.useWorldSpace = true;
+			_grabLine.SetWidth(0.005f, 0.002f);
+		}
+
+		((Component)_grabLine).gameObject.SetActive(true);
+
+		Vector3 handPos = ((Component)this).transform.position;
+		Vector3 targetPos = mgo.guideObject.transformTarget.position;
+		float dist = Vector3.Distance(handPos, targetPos);
+
+		// 颜色根据距离变化：近=绿色，中=黄色，远=橙色
+		Color lineColor;
+		if (dist < 0.1f)
+			lineColor = new Color(0f, 1f, 0.5f, 0.4f);
+		else if (dist < 0.3f)
+			lineColor = new Color(1f, 1f, 0f, 0.5f);
+		else
+			lineColor = new Color(1f, 0.5f, 0f, 0.7f);
+
+		_grabLine.material.color = lineColor;
+		_grabLine.SetPosition(0, handPos);
+		_grabLine.SetPosition(1, targetPos);
 	}
 
 	protected override void OnEnable()
@@ -153,12 +345,17 @@ internal class GripMoveKKCharaStudioTool : Tool
 			((Behaviour)menuHandlder).enabled = false;
 		if (Object.op_Implicit((Object)(object)internalGui))
 			((Component)internalGui).gameObject.SetActive(true);
+
+		bool handEnabled = _settings != null && _settings.HandModelEnabled;
+		_lastHandModelEnabled = handEnabled;
+		ApplyHandModelState(handEnabled);
 	}
 
 	protected override void OnLevel(int level)
 	{
 		base.OnLevel(level);
 		((MonoBehaviour)this).StopAllCoroutines();
+		ClearProximityHighlight();
 	}
 
 	protected override void OnUpdate()
@@ -169,9 +366,19 @@ internal class GripMoveKKCharaStudioTool : Tool
 			return;
 		}
 
+		// 运行时检测设置变化
+		bool currentHandEnabled = _settings != null && _settings.HandModelEnabled;
+		if (currentHandEnabled != _lastHandModelEnabled)
+		{
+			_lastHandModelEnabled = currentHandEnabled;
+			ApplyHandModelState(currentHandEnabled);
+		}
+
+		UpdateProximityDetection();
 		HandleThumbstickLocomotion();
 		HandleButtonEvents();
 		HandleObjectGrab();
+		UpdateGrabLine();
 		HandleGripWorldMove();
 
 		lastGrabbedObject = null;
@@ -183,7 +390,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 	private void HandleThumbstickLocomotion()
 	{
 		Vector2 axis = controller.GetAxis(EVRButtonId.k_EButton_SteamVR_Touchpad);
-		bool isLeft = ((Component)this).GetComponent<VRGIN.Controls.LeftController>() != null;
+		bool isLeft = _isLeftHand;
 
 		if (Mathf.Abs(axis.y) > 0.1f || Mathf.Abs(axis.x) > 0.1f)
 		{
@@ -223,7 +430,17 @@ internal class GripMoveKKCharaStudioTool : Tool
 						}
 					}
 				}
+
+				// 通知舒适暗角：正在移动
+				if (VRComfortVignette.Instance != null)
+					VRComfortVignette.Instance.SetMoving(true);
 			}
+		}
+		else
+		{
+			// 通知舒适暗角：停止移动
+			if (VRComfortVignette.Instance != null)
+				VRComfortVignette.Instance.SetMoving(false);
 		}
 	}
 
@@ -251,7 +468,26 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 
 		bool flag = false;
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
+
+		// 近距离高亮目标：Trigger 点击自动在工作区树中选中
+		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && _proximityTarget != null
+		    && (Object)(object)_proximityTarget.guideObject != (Object)null)
+		{
+			GuideObject pg = _proximityTarget.guideObject;
+			if ((Object)(object)pg.guideSelect != (Object)null
+			    && (Object)(object)pg.guideSelect.treeNodeObject != (Object)null)
+			{
+				pg.guideSelect.treeNodeObject.OnClickSelect();
+			}
+			else
+			{
+				Singleton<GuideObjectManager>.Instance.selectObject = pg;
+			}
+			flag = true;
+		}
+
+		// 直接接触目标：Trigger 点击选中（与上面互斥）
+		if (!flag && controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
 		{
 			GuideObject guideObject = lastGrabbedObject.GetComponent<MoveableGUIObject>().guideObject;
 			if ((Object)(object)guideObject != (Object)null)
@@ -288,6 +524,14 @@ internal class GripMoveKKCharaStudioTool : Tool
 			grabHandle.transform.rotation = ((Component)this).transform.rotation;
 		}
 
+		// Proximity grab: when grip pressed near character IK target but not directly touching
+		if (controller.GetPressDown(EVRButtonId.k_EButton_Grip) && !screenGrabbed && _proximityTarget != null)
+		{
+			screenGrabbed = true;
+			lastGrabbedObject = ((Component)_proximityTarget).gameObject;
+			ClearProximityHighlight();
+		}
+
 		bool pressDown = controller.GetPressDown(EVRButtonId.k_EButton_Grip);
 		bool press = controller.GetPress(EVRButtonId.k_EButton_Grip);
 		bool pressUp = controller.GetPressUp(EVRButtonId.k_EButton_Grip);
@@ -308,15 +552,48 @@ internal class GripMoveKKCharaStudioTool : Tool
 					component.OnMoveStart();
 				}
 			}
+			// 抓取开始触觉反馈
+			if (controller != null)
+				controller.TriggerHapticPulse(1500, EVRButtonId.k_EButton_Axis0);
+			_smoothGrabInitialized = false;
 		}
 
 		if (press && (Object)(object)grabbingObject != (Object)null)
 		{
-			grabbingObject.transform.position = grabHandle.transform.position;
-			grabbingObject.transform.rotation = grabHandle.transform.rotation;
-			if ((Object)(object)grabbingObject.GetComponent<MoveableGUIObject>() != (Object)null)
+			Vector3 targetPos = grabHandle.transform.position;
+			Quaternion targetRot = grabHandle.transform.rotation;
+
+			// 检测是否为 IK 目标，决定是否使用平滑插值
+			MoveableGUIObject mgo = grabbingObject.GetComponent<MoveableGUIObject>();
+			bool isIKTarget = mgo != null && (Object)(object)mgo.guideObject != (Object)null;
+
+			if (isIKTarget)
 			{
-				grabbingObject.GetComponent<MoveableGUIObject>().OnMoved();
+				// IK 目标使用弹簧阻尼跟随，让操控有物理感
+				if (!_smoothGrabInitialized)
+				{
+					_smoothGrabPos = targetPos;
+					_smoothGrabRot = targetRot;
+					_smoothGrabInitialized = true;
+				}
+
+				float smoothness = 15f; // 约 0.07 秒达到 63%，轻微弹簧感
+				_smoothGrabPos = Vector3.Lerp(_smoothGrabPos, targetPos, Time.deltaTime * smoothness);
+				_smoothGrabRot = Quaternion.Slerp(_smoothGrabRot, targetRot, Time.deltaTime * smoothness);
+
+				grabbingObject.transform.position = _smoothGrabPos;
+				grabbingObject.transform.rotation = _smoothGrabRot;
+			}
+			else
+			{
+				// 非 IK 目标（GUI 面板等）直接跟随
+				grabbingObject.transform.position = targetPos;
+				grabbingObject.transform.rotation = targetRot;
+			}
+
+			if (mgo != null)
+			{
+				mgo.OnMoved();
 			}
 		}
 
@@ -326,12 +603,20 @@ internal class GripMoveKKCharaStudioTool : Tool
 			{
 				grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
 			}
+			// 释放触觉反馈
+			if (controller != null)
+				controller.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
+			_smoothGrabInitialized = false;
 			grabbingObject = null;
 		}
 	}
 
 	private void HandleGripWorldMove()
 	{
+		// 双手缩放时跳过世界移动，避免冲突
+		if (VRTwoHandScale.Instance != null && VRTwoHandScale.Instance.IsScaling)
+			return;
+
 		if (controller.GetPress(EVRButtonId.k_EButton_Grip) && (Object)(object)grabbingObject == (Object)null)
 		{
 			target = ((Component)VR.Camera.SteamCam.origin).gameObject;

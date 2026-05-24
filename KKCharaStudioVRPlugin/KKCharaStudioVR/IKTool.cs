@@ -49,6 +49,8 @@ public class IKTool : MonoBehaviour
 		StartWatch();
 	}
 
+	private HashSet<int> processedObjectKeys = new HashSet<int>();
+
 	private IEnumerator InstallMoveableObjectCo()
 	{
 		Studio studio = Singleton<Studio>.Instance;
@@ -58,28 +60,52 @@ public class IKTool : MonoBehaviour
 			yield return (object)new WaitForSeconds(1f);
 			try
 			{
-				foreach (KeyValuePair<int, ObjectCtrlInfo> item in studio.dicObjectCtrl)
+				var enumerator = studio.dicObjectCtrl.GetEnumerator();
+				while (enumerator.MoveNext())
 				{
-					if (!((Object)(object)((Component)item.Value.guideObject).gameObject != (Object)null))
-					{
-						continue;
-					}
+					var item = enumerator.Current;
+					int key = item.Key;
 					ObjectCtrlInfo value = item.Value;
-					MakeObjectMoveable(value.guideObject, replaceMaterial: true, installToCenter: true);
-					if (!(value is OCIChar))
+
+					if (processedObjectKeys.Contains(key))
 					{
 						continue;
 					}
-					OCIChar val = (OCIChar)(object)((value is OCIChar) ? value : null);
-					foreach (IKInfo item2 in val.listIKTarget)
+
+					if ((Object)(object)value == (Object)null || (Object)(object)value.guideObject == (Object)null || (Object)(object)((Component)value.guideObject).gameObject == (Object)null)
 					{
-						MakeObjectMoveable(item2.guideObject, replaceMaterial: true);
+						continue;
 					}
-					foreach (BoneInfo listBone in val.listBones)
+
+					MakeObjectMoveable(value.guideObject, replaceMaterial: true, installToCenter: true);
+					processedObjectKeys.Add(key);
+
+					if (value is OCIChar val)
 					{
-						MakeObjectMoveable(listBone.guideObject, replaceMaterial: true);
+						if (val.listIKTarget != null)
+						{
+							foreach (IKInfo item2 in val.listIKTarget)
+							{
+								if (item2 != null && item2.guideObject != null)
+								{
+									MakeObjectMoveable(item2.guideObject, replaceMaterial: true);
+								}
+							}
+						}
+						
+						if (val.listBones != null)
+						{
+							foreach (BoneInfo listBone in val.listBones)
+							{
+								if (listBone != null && listBone.guideObject != null)
+								{
+									MakeObjectMoveable(listBone.guideObject, replaceMaterial: true);
+								}
+							}
+						}
 					}
 				}
+				enumerator.Dispose();
 			}
 			catch (Exception value2)
 			{
@@ -98,6 +124,7 @@ public class IKTool : MonoBehaviour
 		//IL_0027: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0031: Expected O, but got Unknown
 		((MonoBehaviour)this).StopAllCoroutines();
+		processedObjectKeys.Clear();
 		((MonoBehaviour)this).StartCoroutine(InstallMoveableObjectCo());
 		if ((Object)(object)handle == (Object)null)
 		{

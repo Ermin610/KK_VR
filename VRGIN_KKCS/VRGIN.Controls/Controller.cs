@@ -433,4 +433,16 @@ public abstract class Controller : ProtectedBehaviour
 		}
 		return val.Find("attach");
 	}
+
+	public void SetRenderModelVisible(bool visible)
+	{
+		if ((Object)(object)Model != (Object)null)
+		{
+			Renderer[] componentsInChildren = ((Component)Model).GetComponentsInChildren<Renderer>(true);
+			foreach (Renderer val in componentsInChildren)
+			{
+				val.enabled = visible;
+			}
+		}
+	}
 }

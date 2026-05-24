@@ -10,7 +10,7 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 {
 	private int windowID = 8731;
 
-	private Rect windowRect = new Rect((float)(Screen.width - 250), (float)(Screen.height - 300), 250f, 300f);
+	private Rect windowRect = new Rect((float)(Screen.width - 250), (float)(Screen.height - 400), 250f, 10f);
 
 	private string windowTitle = "KKCharaStudioVR Settings";
 
@@ -52,9 +52,14 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 
 			GUILayout.BeginVertical(new GUILayoutOption[0]);
 
+			GUIStyle headerStyle = new GUIStyle(style2);
+			headerStyle.fontStyle = FontStyle.Bold;
+			headerStyle.alignment = TextAnchor.MiddleCenter;
+
 			KKCharaStudioVRSettings settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
 			if (settings != null)
 			{
+				GUILayout.Label("--- 移动设置 ---", headerStyle);
 				GUILayout.Label($"Locomotion Speed: {settings.LocomotionSpeed:F1}");
 				settings.LocomotionSpeed = GUILayout.HorizontalSlider(settings.LocomotionSpeed, 0.5f, 10f);
 
@@ -68,19 +73,104 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					GUILayout.Label($"Smooth Turn Speed: {settings.SmoothTurnSpeed:F0}");
 					settings.SmoothTurnSpeed = GUILayout.HorizontalSlider(settings.SmoothTurnSpeed, 30f, 180f);
 				}
-			}
 
-			GUILayout.Space(10);
-
-			if (GUILayout.Button("Reset Camera Position"))
-			{
-				if (VRCameraMoveHelper.Instance != null)
+				GUILayout.Space(5);
+				GUILayout.Label("--- UI 设置 ---", headerStyle);
+				if (GUILayout.Button("Reset Camera Position"))
 				{
-					VRCameraMoveHelper.Instance.MoveToCurrent();
+					if (VRCameraMoveHelper.Instance != null)
+					{
+						VRCameraMoveHelper.Instance.MoveToCurrent();
+					}
 				}
+
+				if (GUILayout.Button("Hide/Show All UI"))
+				{
+					VRQuickActions actions = ((Component)this).gameObject.GetComponent<VRQuickActions>();
+					if (actions != null)
+					{
+						actions.ForceHideUI();
+					}
+				}
+
+				GUILayout.Space(5);
+				GUILayout.Label("--- 手部设置 ---", headerStyle);
+				settings.HandModelEnabled = GUILayout.Toggle(settings.HandModelEnabled, "Hand Model Enabled");
+				if (settings.HandModelEnabled)
+				{
+					GUILayout.Label($"Hand Alpha: {settings.HandModelAlpha:F2}");
+					settings.HandModelAlpha = GUILayout.HorizontalSlider(settings.HandModelAlpha, 0.05f, 1f);
+					GUILayout.Label($"Hand Scale: {settings.HandModelScale:F2}");
+					settings.HandModelScale = GUILayout.HorizontalSlider(settings.HandModelScale, 0.5f, 2f);
+				}
+				
+				GUILayout.Space(5);
+				GUILayout.Label("--- 物理设置 ---", headerStyle);
+				settings.DynamicBoneCollisionEnabled = GUILayout.Toggle(settings.DynamicBoneCollisionEnabled, "DynamicBone Collision");
+				if (settings.DynamicBoneCollisionEnabled)
+				{
+					GUILayout.Label($"Collider Radius: {settings.ColliderRadius:F3}");
+					settings.ColliderRadius = GUILayout.HorizontalSlider(settings.ColliderRadius, 0.005f, 0.1f);
+				}
+
+				settings.HapticFeedbackEnabled = GUILayout.Toggle(settings.HapticFeedbackEnabled, "Haptic Feedback");
+				if (settings.HapticFeedbackEnabled)
+				{
+					GUILayout.Label($"Haptic Intensity: {settings.HapticFeedbackIntensity:F2}");
+					settings.HapticFeedbackIntensity = GUILayout.HorizontalSlider(settings.HapticFeedbackIntensity, 0.1f, 1f);
+				}
+
+				settings.ProximityGrabEnabled = GUILayout.Toggle(settings.ProximityGrabEnabled, "Proximity Grab");
+				if (settings.ProximityGrabEnabled)
+				{
+					GUILayout.Label($"Grab Radius: {settings.ProximityGrabRadius:F2}m");
+					settings.ProximityGrabRadius = GUILayout.HorizontalSlider(settings.ProximityGrabRadius, 0.05f, 0.25f);
+				}
+
+				GUILayout.Space(5);
+				GUILayout.Label("--- 舒适设置 ---", headerStyle);
+				settings.ComfortVignetteEnabled = GUILayout.Toggle(settings.ComfortVignetteEnabled, "Movement Vignette");
+				if (settings.ComfortVignetteEnabled)
+				{
+					GUILayout.Label($"Vignette Radius: {settings.ComfortVignetteRadius:F2}");
+					settings.ComfortVignetteRadius = GUILayout.HorizontalSlider(settings.ComfortVignetteRadius, 0.3f, 0.8f);
+				}
+
+				GUILayout.Space(5);
+				GUILayout.Label("--- 高级设置 ---", headerStyle);
+				settings.TwoHandScaleEnabled = GUILayout.Toggle(settings.TwoHandScaleEnabled, "Two-Hand World Scale");
+
+				GUILayout.Space(10);
+				GUILayout.BeginHorizontal();
+				if (GUILayout.Button("Save Settings"))
+				{
+					settings.Save();
+				}
+				if (GUILayout.Button("Reset to Default"))
+				{
+					settings.LocomotionSpeed = 2.0f;
+					settings.SnapTurnAngle = 45f;
+					settings.SnapTurnCooldown = 0.3f;
+					settings.SmoothTurnEnabled = false;
+					settings.SmoothTurnSpeed = 90f;
+					settings.HandModelEnabled = true;
+					settings.HandModelAlpha = 0.3f;
+					settings.HandModelScale = 1.0f;
+					settings.DynamicBoneCollisionEnabled = true;
+					settings.ColliderRadius = 0.02f;
+					settings.HapticFeedbackEnabled = true;
+					settings.HapticFeedbackIntensity = 0.5f;
+					settings.ProximityGrabEnabled = true;
+					settings.ProximityGrabRadius = 0.12f;
+					settings.ComfortVignetteEnabled = true;
+					settings.ComfortVignetteRadius = 0.5f;
+					settings.TwoHandScaleEnabled = true;
+					settings.Save();
+				}
+				GUILayout.EndHorizontal();
 			}
 
-			if (GUILayout.Button("Hide/Show All UI"))
+			if (GUILayout.Button("Close"))
 			{
 				VRQuickActions actions = ((Component)this).gameObject.GetComponent<VRQuickActions>();
 				if (actions != null)
