@@ -17,60 +17,24 @@ namespace KKCharaStudioVR;
 internal class GripMoveKKCharaStudioTool : Tool
 {
 	private GUIQuad internalGui;
-
-	private float pressDownTime;
-
-	private Vector2 touchDownPosition;
-
 	private float menuDownTime;
-
-	private float touchpadDownTime;
-
-	private double _DeltaX;
-
-	private double _DeltaY;
-
-	private EVRButtonId moveSelfButton = EVRButtonId.k_EButton_Grip;
-
-	private EVRButtonId grabScreenButton = EVRButtonId.k_EButton_Axis1;
-
-	private string moveSelfButtonName = "rgrip";
-
 	private KKCharaStudioVRSettings _settings;
-
-	private float triggerDownTime;
-
-	private float gripDownTime;
-
 	private GameObject mirror1;
-
 	private GameObject grabHandle;
-
 	private GameObject pointer;
-
 	private bool screenGrabbed;
-
 	private GameObject lastGrabbedObject;
-
 	private GameObject grabbingObject;
-
 	private MenuHandler menuHandlder;
-
 	private GripMenuHandler gripMenuHandler;
-
 	private IKTool ikTool;
-
 	private float nearestGrabable = float.MaxValue;
-
 	private string[] FINGER_KEYS = new string[5] { "j_thumb", "j_index", "j_middle", "j_ring", "j_little" };
-
 	private static FieldInfo f_dicGuideObject = typeof(GuideObjectManager).GetField("dicGuideObject", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
 	private GameObject marker;
-
 	public GameObject target;
-
 	private bool lockRotXZ = true;
+	private float lastSnapTurnTime;
 
 	public override Texture2D Image => UnityHelper.LoadImage("icon_gripmove.png");
 
@@ -91,15 +55,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void resetGUIPosition()
 	{
-		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0036: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00be: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00e2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0069: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0098: Unknown result type (might be due to invalid IL or missing references)
 		Transform head = VR.Camera.Head;
 		((Component)internalGui).transform.parent = ((Component)this).transform;
 		((Component)internalGui).transform.localScale = Vector3.one * 0.4f;
@@ -119,13 +74,9 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void CreatePointer()
 	{
-		//IL_0053: Unknown result type (might be due to invalid IL or missing references)
-		//IL_008d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ae: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b4: Expected O, but got Unknown
 		if ((Object)(object)pointer == (Object)null)
 		{
-			pointer = GameObject.CreatePrimitive((PrimitiveType)0);
+			pointer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 			((Object)pointer).name = "pointer";
 			pointer.GetComponent<SphereCollider>();
 			pointer.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
@@ -141,29 +92,17 @@ internal class GripMoveKKCharaStudioTool : Tool
 	protected override void OnDestroy()
 	{
 		if ((Object)(object)marker != (Object)null)
-		{
 			Object.Destroy((Object)(object)marker);
-		}
 		if ((Object)(object)mirror1 != (Object)null)
-		{
 			Object.Destroy((Object)(object)mirror1);
-		}
 		if ((Object)(object)grabHandle != (Object)null)
-		{
 			Object.Destroy((Object)(object)grabHandle);
-		}
 		if ((Object)(object)internalGui != (Object)null)
-		{
 			Object.DestroyImmediate((Object)(object)((Component)internalGui).gameObject);
-		}
 	}
 
 	protected override void OnStart()
 	{
-		//IL_00c0: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ca: Expected O, but got Unknown
-		//IL_00f6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0111: Unknown result type (might be due to invalid IL or missing references)
 		base.OnStart();
 		try
 		{
@@ -190,12 +129,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 			marker.transform.position = ((Component)this).transform.position;
 			marker.transform.rotation = ((Component)this).transform.rotation;
 		}
-		if (_settings != null)
-		{
-			moveSelfButton = EVRButtonId.k_EButton_Grip;
-			moveSelfButtonName = "rgrip";
-			grabScreenButton = EVRButtonId.k_EButton_Axis1;
-		}
 		menuHandlder = ((Component)this).GetComponent<MenuHandler>();
 		ikTool = IKTool.instance;
 	}
@@ -204,34 +137,22 @@ internal class GripMoveKKCharaStudioTool : Tool
 	{
 		base.OnDisable();
 		if ((Object)(object)gripMenuHandler != (Object)null)
-		{
 			((Behaviour)gripMenuHandler).enabled = false;
-		}
 		if ((Object)(object)menuHandlder != (Object)null)
-		{
 			((Behaviour)menuHandlder).enabled = true;
-		}
 		if (Object.op_Implicit((Object)(object)internalGui))
-		{
 			((Component)internalGui).gameObject.SetActive(false);
-		}
 	}
 
 	protected override void OnEnable()
 	{
 		base.OnEnable();
 		if ((Object)(object)gripMenuHandler != (Object)null)
-		{
 			((Behaviour)gripMenuHandler).enabled = true;
-		}
 		if ((Object)(object)menuHandlder != (Object)null)
-		{
 			((Behaviour)menuHandlder).enabled = false;
-		}
 		if (Object.op_Implicit((Object)(object)internalGui))
-		{
 			((Component)internalGui).gameObject.SetActive(true);
-		}
 	}
 
 	protected override void OnLevel(int level)
@@ -242,63 +163,83 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	protected override void OnUpdate()
 	{
-		//IL_0185: Unknown result type (might be due to invalid IL or missing references)
-		//IL_018f: Expected O, but got Unknown
-		//IL_01b6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01d1: Unknown result type (might be due to invalid IL or missing references)
-		//IL_022f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_024f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_02b9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_02d9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0407: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0427: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0678: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0693: Unknown result type (might be due to invalid IL or missing references)
-		//IL_054a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0555: Unknown result type (might be due to invalid IL or missing references)
-		//IL_055a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_055f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_056c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0577: Unknown result type (might be due to invalid IL or missing references)
-		//IL_057c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0581: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0586: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0589: Unknown result type (might be due to invalid IL or missing references)
-		//IL_058b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0590: Unknown result type (might be due to invalid IL or missing references)
-		//IL_05b5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_05d0: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0600: Unknown result type (might be due to invalid IL or missing references)
-		//IL_060d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0612: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0632: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0637: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0639: Unknown result type (might be due to invalid IL or missing references)
-		//IL_04ff: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0509: Expected O, but got Unknown
-		//IL_051a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0535: Unknown result type (might be due to invalid IL or missing references)
 		base.OnUpdate();
 		if (controller == null)
 		{
 			return;
 		}
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1))
+
+		HandleThumbstickLocomotion();
+		HandleButtonEvents();
+		HandleObjectGrab();
+		HandleGripWorldMove();
+
+		lastGrabbedObject = null;
+		nearestGrabable = float.MaxValue;
+		marker.transform.position = ((Component)this).transform.position;
+		marker.transform.rotation = ((Component)this).transform.rotation;
+	}
+
+	private void HandleThumbstickLocomotion()
+	{
+		Vector2 axis = controller.GetAxis(EVRButtonId.k_EButton_SteamVR_Touchpad);
+		bool isLeft = ((Component)this).GetComponent<VRGIN.Controls.LeftController>() != null;
+
+		if (Mathf.Abs(axis.y) > 0.1f || Mathf.Abs(axis.x) > 0.1f)
 		{
-			triggerDownTime = Time.time;
+			Transform head = VR.Camera.Head;
+			Transform origin = VR.Camera.SteamCam.origin;
+
+			if ((Object)(object)origin != (Object)null && (Object)(object)head != (Object)null)
+			{
+				if (isLeft)
+				{
+					Vector3 forward = head.forward;
+					forward.y = 0f;
+					((Vector3)(ref forward)).Normalize();
+					Vector3 right = head.right;
+					right.y = 0f;
+					((Vector3)(ref right)).Normalize();
+					
+					float speed = _settings != null ? _settings.LocomotionSpeed : 2.0f;
+					origin.position += (forward * axis.y + right * axis.x) * speed * Time.deltaTime;
+				}
+				else
+				{
+					bool smoothTurn = _settings != null && _settings.SmoothTurnEnabled;
+					if (smoothTurn)
+					{
+						float turnSpeed = _settings != null ? _settings.SmoothTurnSpeed : 90f;
+						origin.RotateAround(head.position, Vector3.up, axis.x * turnSpeed * Time.deltaTime);
+					}
+					else if (Mathf.Abs(axis.x) > 0.5f)
+					{
+						float cooldown = _settings != null ? _settings.SnapTurnCooldown : 0.3f;
+						if (Time.time - lastSnapTurnTime > cooldown)
+						{
+							float angle = _settings != null ? _settings.SnapTurnAngle : 45f;
+							origin.RotateAround(head.position, Vector3.up, Mathf.Sign(axis.x) * angle);
+							lastSnapTurnTime = Time.time;
+						}
+					}
+				}
+			}
 		}
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Grip))
-		{
-			gripDownTime = Time.time;
-		}
+	}
+
+	private void HandleButtonEvents()
+	{
 		if (controller.GetPressDown(EVRButtonId.k_EButton_ApplicationMenu))
 		{
 			menuDownTime = Time.time;
 		}
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis0) || controller.GetPressDown(EVRButtonId.k_EButton_A))
+
+		if (controller.GetPress(EVRButtonId.k_EButton_ApplicationMenu) && Time.time - menuDownTime > 1.5f)
 		{
-			touchpadDownTime = Time.time;
+			resetGUIPosition();
+			menuDownTime = Time.time;
 		}
+
 		if (controller.GetPress(EVRButtonId.k_EButton_Axis1) && controller.GetPress(EVRButtonId.k_EButton_Grip) && controller.GetPress(EVRButtonId.k_EButton_ApplicationMenu) && Time.time - menuDownTime > 0.5f)
 		{
 			lockRotXZ = !lockRotXZ;
@@ -306,46 +247,11 @@ internal class GripMoveKKCharaStudioTool : Tool
 			{
 				ResetRotation();
 			}
-		}
-		if (controller.GetPress(EVRButtonId.k_EButton_ApplicationMenu) && Time.time - menuDownTime > 1.5f)
-		{
-			resetGUIPosition();
 			menuDownTime = Time.time;
 		}
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis0) || controller.GetPressDown(EVRButtonId.k_EButton_A))
-		{
-			controller.GetPress(EVRButtonId.k_EButton_Grip);
-		}
-		bool pressDown = controller.GetPressDown(grabScreenButton);
-		bool press = controller.GetPress(grabScreenButton);
-		bool pressUp = controller.GetPressUp(grabScreenButton);
-		if ((Object)(object)grabHandle == (Object)null)
-		{
-			grabHandle = new GameObject("__GripMoveGrabHandle__");
-			grabHandle.transform.parent = ((Component)this).transform;
-			grabHandle.transform.position = ((Component)this).transform.position;
-			grabHandle.transform.rotation = ((Component)this).transform.rotation;
-		}
-		if (pressDown && screenGrabbed && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)grabHandle != (Object)null)
-		{
-			grabbingObject = lastGrabbedObject;
-			grabHandle.transform.position = lastGrabbedObject.transform.position;
-			grabHandle.transform.rotation = lastGrabbedObject.transform.rotation;
-			if ((Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
-			{
-				_ = lastGrabbedObject.transform.parent;
-				MoveableGUIObject component = lastGrabbedObject.GetComponent<MoveableGUIObject>();
-				if ((Object)(object)component.guideObject != (Object)null)
-				{
-					ApplyFingerFKIfNeeded(component.guideObject);
-					grabHandle.transform.rotation = component.guideObject.transformTarget.rotation;
-					grabbingObject.transform.rotation = component.guideObject.transformTarget.rotation;
-					component.OnMoveStart();
-				}
-			}
-		}
+
 		bool flag = false;
-		if ((controller.GetPressDown(EVRButtonId.k_EButton_Axis0) || controller.GetPressDown(EVRButtonId.k_EButton_A)) && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
+		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
 		{
 			GuideObject guideObject = lastGrabbedObject.GetComponent<MoveableGUIObject>().guideObject;
 			if ((Object)(object)guideObject != (Object)null)
@@ -361,7 +267,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 				flag = true;
 			}
 		}
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis0) || (controller.GetPressDown(EVRButtonId.k_EButton_A) && !flag))
+
+		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && !flag)
 		{
 			VRLog.Info("Called on Select VRToggle");
 			if (Object.op_Implicit((Object)(object)gripMenuHandler) && gripMenuHandler.LaserVisible)
@@ -369,6 +276,40 @@ internal class GripMoveKKCharaStudioTool : Tool
 				VRItemObjMoveHelper.Instance.VRToggleObjectSelectOnCursor();
 			}
 		}
+	}
+
+	private void HandleObjectGrab()
+	{
+		if ((Object)(object)grabHandle == (Object)null)
+		{
+			grabHandle = new GameObject("__GripMoveGrabHandle__");
+			grabHandle.transform.parent = ((Component)this).transform;
+			grabHandle.transform.position = ((Component)this).transform.position;
+			grabHandle.transform.rotation = ((Component)this).transform.rotation;
+		}
+
+		bool pressDown = controller.GetPressDown(EVRButtonId.k_EButton_Grip);
+		bool press = controller.GetPress(EVRButtonId.k_EButton_Grip);
+		bool pressUp = controller.GetPressUp(EVRButtonId.k_EButton_Grip);
+
+		if (pressDown && screenGrabbed && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)grabHandle != (Object)null)
+		{
+			grabbingObject = lastGrabbedObject;
+			grabHandle.transform.position = lastGrabbedObject.transform.position;
+			grabHandle.transform.rotation = lastGrabbedObject.transform.rotation;
+			if ((Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
+			{
+				MoveableGUIObject component = lastGrabbedObject.GetComponent<MoveableGUIObject>();
+				if ((Object)(object)component.guideObject != (Object)null)
+				{
+					ApplyFingerFKIfNeeded(component.guideObject);
+					grabHandle.transform.rotation = component.guideObject.transformTarget.rotation;
+					grabbingObject.transform.rotation = component.guideObject.transformTarget.rotation;
+					component.OnMoveStart();
+				}
+			}
+		}
+
 		if (press && (Object)(object)grabbingObject != (Object)null)
 		{
 			grabbingObject.transform.position = grabHandle.transform.position;
@@ -378,6 +319,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 				grabbingObject.GetComponent<MoveableGUIObject>().OnMoved();
 			}
 		}
+
 		if (screenGrabbed && (Object)(object)grabbingObject != (Object)null && pressUp)
 		{
 			if ((Object)(object)grabbingObject.GetComponent<MoveableGUIObject>() != (Object)null)
@@ -386,7 +328,11 @@ internal class GripMoveKKCharaStudioTool : Tool
 			}
 			grabbingObject = null;
 		}
-		if (controller.GetPress(moveSelfButton) && (Object)(object)grabbingObject == (Object)null)
+	}
+
+	private void HandleGripWorldMove()
+	{
+		if (controller.GetPress(EVRButtonId.k_EButton_Grip) && (Object)(object)grabbingObject == (Object)null)
 		{
 			target = ((Component)VR.Camera.SteamCam.origin).gameObject;
 			if ((Object)(object)target != (Object)null)
@@ -409,16 +355,10 @@ internal class GripMoveKKCharaStudioTool : Tool
 				target.transform.parent = parent;
 			}
 		}
-		lastGrabbedObject = null;
-		nearestGrabable = float.MaxValue;
-		marker.transform.position = ((Component)this).transform.position;
-		marker.transform.rotation = ((Component)this).transform.rotation;
 	}
 
 	private void ApplyFingerFKIfNeeded(GuideObject guideObject)
 	{
-		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
-		new List<Transform>();
 		List<GuideObject> list = new List<GuideObject>();
 		if (IsFinger(guideObject.transformTarget))
 		{
@@ -445,25 +385,16 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	public override List<HelpText> GetHelpTexts()
 	{
-		//IL_0030: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ac: Unknown result type (might be due to invalid IL or missing references)
 		return new List<HelpText>(new HelpText[3]
 		{
-			HelpText.Create("Swipe as wheel.", FindAttachPosition("touchpad"), new Vector3(0.06f, 0.04f, 0f)),
-			HelpText.Create("Grip and move controller to move yourself", FindAttachPosition("rgrip"), new Vector3(0.06f, 0.04f, 0f)),
-			HelpText.Create("Trigger to grab objects / IK markers and move them along with controller.", FindAttachPosition("trigger"), new Vector3(-0.06f, -0.04f, 0f))
+			HelpText.Create("Thumbstick to Move/Turn", FindAttachPosition("touchpad"), new Vector3(0.06f, 0.04f, 0f)),
+			HelpText.Create("Grip to grab world or UI panels", FindAttachPosition("rgrip"), new Vector3(0.06f, 0.04f, 0f)),
+			HelpText.Create("Trigger to click UI or select objects", FindAttachPosition("trigger"), new Vector3(-0.06f, -0.04f, 0f))
 		});
 	}
 
 	private void ResetRotation()
 	{
-		//IL_0019: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0021: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0026: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
 		if ((Object)(object)target != (Object)null)
 		{
 			Quaternion rotation = target.transform.rotation;
@@ -483,9 +414,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private Quaternion RemoveLockedAxisRot(Quaternion q)
 	{
-		//IL_000f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0008: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0009: Unknown result type (might be due to invalid IL or missing references)
 		if (lockRotXZ)
 		{
 			return RemoveXZRot(q);
@@ -495,10 +423,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	public static Quaternion RemoveXZRot(Quaternion q)
 	{
-		//IL_0002: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0007: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0020: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0021: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 eulerAngles = ((Quaternion)(ref q)).eulerAngles;
 		eulerAngles.x = 0f;
 		eulerAngles.z = 0f;
@@ -507,11 +431,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void OnTriggerStay(Collider collider)
 	{
-		//IL_0051: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0061: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0066: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
 		if ((Object)(object)((Component)collider).GetComponent<GUIQuad>() != (Object)null)
 		{
 			screenGrabbed = true;
@@ -547,7 +466,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void OnTriggerExit(Collider collider)
 	{
-		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
 		GameObject gameObject = ((Component)collider).gameObject;
 		if (screenGrabbed && (Object)(object)((Component)collider).GetComponent<MoveableGUIObject>() != (Object)null && (Object)(object)gameObject == (Object)(object)lastGrabbedObject)
 		{
