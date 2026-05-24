@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using VRUtil;
+using VRGIN.Core;
 
 namespace KKCharaStudioVR;
 
@@ -8,25 +10,23 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 {
 	private int windowID = 8731;
 
-	private Rect windowRect = new Rect((float)(Screen.width - 150), (float)(Screen.height - 100), 150f, 100f);
+	private Rect windowRect = new Rect((float)(Screen.width - 250), (float)(Screen.height - 300), 250f, 300f);
 
-	private string windowTitle = "KKCharaStudioVR";
-
-	private Texture2D windowBG = new Texture2D(1, 1, (TextureFormat)5, false);
+	private string windowTitle = "KKCharaStudioVR Settings";
 
 	private Dictionary<string, GUIStyle> styleBackup = new Dictionary<string, GUIStyle>();
 
 	private void OnGUI()
 	{
+		if (VRIMGUIUtil.VRGUISkin != null)
+		{
+			GUI.skin = VRIMGUIUtil.VRGUISkin;
+		}
+		windowRect = GUI.Window(windowID, windowRect, FuncWindowGUI, windowTitle);
 	}
 
 	private void FuncWindowGUI(int winID)
 	{
-		//IL_0031: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0063: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0088: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b4: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00c3: Unknown result type (might be due to invalid IL or missing references)
 		styleBackup = new Dictionary<string, GUIStyle>();
 		BackupGUIStyle("Button");
 		BackupGUIStyle("Label");
@@ -49,7 +49,46 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 			GUIStyle style3 = GUI.skin.GetStyle("Toggle");
 			style3.normal.textColor = Color.white;
 			style3.onNormal.textColor = Color.white;
-			GUILayout.BeginVertical((GUILayoutOption[])(object)new GUILayoutOption[0]);
+
+			GUILayout.BeginVertical(new GUILayoutOption[0]);
+
+			KKCharaStudioVRSettings settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+			if (settings != null)
+			{
+				GUILayout.Label($"Locomotion Speed: {settings.LocomotionSpeed:F1}");
+				settings.LocomotionSpeed = GUILayout.HorizontalSlider(settings.LocomotionSpeed, 0.5f, 10f);
+
+				GUILayout.Label($"Snap Turn Angle: {settings.SnapTurnAngle:F0}");
+				settings.SnapTurnAngle = GUILayout.HorizontalSlider(settings.SnapTurnAngle, 15f, 180f);
+
+				settings.SmoothTurnEnabled = GUILayout.Toggle(settings.SmoothTurnEnabled, "Smooth Turn Enabled");
+				
+				if (settings.SmoothTurnEnabled)
+				{
+					GUILayout.Label($"Smooth Turn Speed: {settings.SmoothTurnSpeed:F0}");
+					settings.SmoothTurnSpeed = GUILayout.HorizontalSlider(settings.SmoothTurnSpeed, 30f, 180f);
+				}
+			}
+
+			GUILayout.Space(10);
+
+			if (GUILayout.Button("Reset Camera Position"))
+			{
+				if (VRCameraMoveHelper.Instance != null)
+				{
+					VRCameraMoveHelper.Instance.MoveToCurrent();
+				}
+			}
+
+			if (GUILayout.Button("Hide/Show All UI"))
+			{
+				VRQuickActions actions = ((Component)this).gameObject.GetComponent<VRQuickActions>();
+				if (actions != null)
+				{
+					actions.ForceHideUI();
+				}
+			}
+
 			GUILayout.EndVertical();
 			GUI.DragWindow();
 		}
@@ -67,23 +106,25 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 
 	private void BackupGUIStyle(string name)
 	{
-		//IL_000b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0011: Expected O, but got Unknown
-		GUIStyle value = new GUIStyle(GUI.skin.GetStyle(name));
+		if (GUI.skin == null) return;
+		GUIStyle style = GUI.skin.GetStyle(name);
+		if (style == null) return;
+		GUIStyle value = new GUIStyle(style);
 		styleBackup.Add(name, value);
 	}
 
 	private void RestoreGUIStyle(string name)
 	{
-		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
-		if (styleBackup.ContainsKey(name))
+		if (styleBackup.ContainsKey(name) && GUI.skin != null)
 		{
 			GUIStyle val = styleBackup[name];
 			GUIStyle style = GUI.skin.GetStyle(name);
-			style.normal.textColor = val.normal.textColor;
-			style.alignment = val.alignment;
-			style.wordWrap = val.wordWrap;
+			if (style != null)
+			{
+				style.normal.textColor = val.normal.textColor;
+				style.alignment = val.alignment;
+				style.wordWrap = val.wordWrap;
+			}
 		}
 	}
 }

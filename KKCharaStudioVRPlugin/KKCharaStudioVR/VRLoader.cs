@@ -101,6 +101,7 @@ internal class VRLoader : ProtectedBehaviour
 			VRCameraMoveHelper.Install(val);
 			VRItemObjMoveHelper.Install(val);
 			val.AddComponent<KKCharaStudioVRGUI>();
+			val.AddComponent<VRQuickActions>();
 			Object.DontDestroyOnLoad((Object)(object)((Component)VRCamera.Instance).gameObject);
 		}
 	}
