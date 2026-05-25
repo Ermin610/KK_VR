@@ -35,7 +35,10 @@ namespace KKCharaStudioVR
         void Start()
         {
             Instance = this;
-            settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+            if (VR.Manager != null && VR.Manager.Context != null)
+            {
+                settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+            }
             StartCoroutine(InitHandsCo());
         }
 

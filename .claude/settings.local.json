@@ -6,7 +6,12 @@
       "WebSearch",
       "WebFetch(domain:www.arvindgaba.com)",
       "WebFetch(domain:discuss.ai.google.dev)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(xargs grep -l \"new Canvas\\\\|Instantiate.*Canvas\\\\|FindObjectOfType.*Canvas\")",
+      "Bash(Get-ChildItem -Path \"E:\\\\KK_VR\" -Filter \"*.cs\" -Recurse)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(dotnet build *)",
+      "PowerShell($msbuild = Get-ChildItem \"C:\\\\Program Files\\\\Microsoft Visual Studio\" -Recurse -Filter \"MSBuild.exe\" -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName; if \\($msbuild\\) { $msbuild } else { \"No MSBuild found in VS dir\" }; $dotnetPaths = @\\(\"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\", \"C:\\\\Program Files \\(x86\\)\\\\dotnet\\\\dotnet.exe\", \"$env:LOCALAPPDATA\\\\Microsoft\\\\dotnet\\\\dotnet.exe\"\\); foreach \\($p in $dotnetPaths\\) { if \\(Test-Path $p\\) { Write-Output \"Found: $p\" } }; try { \\(Get-Command dotnet -ErrorAction Stop\\).Source } catch { \"dotnet not in PATH\" })"
     ]
   }
 }

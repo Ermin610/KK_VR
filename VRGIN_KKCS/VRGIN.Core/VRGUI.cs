@@ -153,16 +153,16 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 		WindowsInterop.RECT clientRect = WindowManager.GetClientRect();
 		Width = clientRect.Right - clientRect.Left;
 		Height = clientRect.Bottom - clientRect.Top;
-		uGuiTexture = new RenderTexture(Screen.width, Screen.height, 24, (RenderTextureFormat)7);
+		uGuiTexture = new RenderTexture(Width, Height, 24, (RenderTextureFormat)7);
 		uGuiTexture.Create();
-		IMGuiTexture = new RenderTexture(Screen.width, Screen.height, 0, (RenderTextureFormat)7);
+		IMGuiTexture = new RenderTexture(Width, Height, 0, (RenderTextureFormat)7);
 		IMGuiTexture.Create();
 		((Component)this).transform.localPosition = Vector3.zero;
 		((Component)this).transform.localRotation = Quaternion.identity;
 		((Component)((Component)this).transform).gameObject.AddComponent<FastGUI>();
 		((Component)((Component)this).transform).gameObject.AddComponent<SlowGUI>();
-		float num = (float)Screen.height * 0.5f;
-		float num2 = (float)Screen.width * 0.5f;
+		float num = (float)Height * 0.5f;
+		float num2 = (float)Width * 0.5f;
 		_VRGUICamera = new GameObject("VRGIN_GUICamera").AddComponent<Camera>();
 		((Component)_VRGUICamera).transform.SetParent(((Component)this).transform, false);
 		if (VR.Context.PreferredGUI == GUIType.IMGUI)

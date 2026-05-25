@@ -199,6 +199,14 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private Vector3 _cachedLaserFwd;
 
+	private float _lastScrollTime;
+
+	private Renderer _dotRenderer;
+
+	private Color _currentLaserColor = Color.cyan;
+
+	private Color _currentDotColor = Color.cyan;
+
 	protected SteamVR_Controller.Device Device => SteamVR_Controller.Input((int)_Controller.Tracking.index);
 
 	private bool IsResizing
@@ -250,7 +258,7 @@ public class GripMenuHandler : ProtectedBehaviour
 		//IL_0037: Unknown result type (might be due to invalid IL or missing references)
 		base.OnStart();
 		_Controller = ((Component)this).GetComponent<Controller>();
-		_ScaleVector = Vector2.op_Implicit(new Vector2((float)VRGUI.Width / (float)Screen.width, (float)VRGUI.Height / (float)Screen.height));
+		_ScaleVector = Vector2.op_Implicit(new Vector2(1f, 1f));
 		InitLaser();
 	}
 
@@ -281,10 +289,10 @@ public class GripMenuHandler : ProtectedBehaviour
 		dotCursor.transform.SetParent(((Component)this).transform, false);
 		dotCursor.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
 		Object.DestroyImmediate(dotCursor.GetComponent<Collider>());
-		Renderer dotRenderer = dotCursor.GetComponent<Renderer>();
-		dotRenderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-		dotRenderer.material.renderQueue += 5000;
-		dotRenderer.material.color = Color.cyan;
+		_dotRenderer = dotCursor.GetComponent<Renderer>();
+		_dotRenderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+		_dotRenderer.material.renderQueue += 5000;
+		_dotRenderer.material.color = Color.cyan;
 		dotCursor.SetActive(false);
 	}
 
@@ -365,6 +373,15 @@ public class GripMenuHandler : ProtectedBehaviour
 		_ResizeHandler = null;
 	}
 
+	private void PulseHaptic(ushort durationMicroseconds)
+	{
+		if (_Controller != null && _Controller.Tracking != null)
+		{
+			var device = SteamVR_Controller.Input((int)_Controller.Tracking.index);
+			device.TriggerHapticPulse(durationMicroseconds, EVRButtonId.k_EButton_Axis0);
+		}
+	}
+
 	protected void CheckInput()
 	{
 		//IL_0054: Unknown result type (might be due to invalid IL or missing references)
@@ -380,7 +397,8 @@ public class GripMenuHandler : ProtectedBehaviour
 			{
 				IsPressing = true;
 				VR.Input.Mouse.LeftButtonDown();
-				mouseDownPosition = Vector2.Scale(new Vector2(Input.mousePosition.x, (float)Screen.height - Input.mousePosition.y), Vector2.op_Implicit(_ScaleVector));
+				mouseDownPosition = new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
+				PulseHaptic(800);
 			}
 			if (Device.GetPress(EVRButtonId.k_EButton_Axis1))
 			{
@@ -391,6 +409,14 @@ public class GripMenuHandler : ProtectedBehaviour
 				IsPressing = true;
 				VR.Input.Mouse.LeftButtonUp();
 				mouseDownPosition = null;
+			}
+
+			float thumbstickY = Device.GetAxis(EVRButtonId.k_EButton_Axis0).y;
+			if (Mathf.Abs(thumbstickY) > 0.3f && Time.time - _lastScrollTime > 0.05f)
+			{
+				WindowsInterop.mouse_event(0x0800, 0, 0, (int)(thumbstickY * 120f), 0);
+				_lastScrollTime = Time.time;
+				PulseHaptic(200);
 			}
 		}
 	}
@@ -514,6 +540,8 @@ public class GripMenuHandler : ProtectedBehaviour
 			LaserVisible = false;
 		}
 
+		Color targetColor = Color.cyan;
+
 		if (LaserVisible && dotCursor != null)
 		{
 			if (hitUI)
@@ -522,8 +550,7 @@ public class GripMenuHandler : ProtectedBehaviour
 				dotCursor.transform.position = endPos;
 				if (IsPressing)
 				{
-					Laser.SetColors(Color.red, Color.red);
-					dotCursor.GetComponent<Renderer>().material.color = Color.red;
+					targetColor = Color.red;
 					Vector3 dir = endPos - _cachedLaserPos;
 					if (dir.magnitude > 0.02f)
 					{
@@ -532,19 +559,33 @@ public class GripMenuHandler : ProtectedBehaviour
 				}
 				else
 				{
-					Laser.SetColors(Color.green, Color.green);
-					dotCursor.GetComponent<Renderer>().material.color = Color.green;
+					targetColor = Color.green;
 				}
 			}
 			else
 			{
 				dotCursor.SetActive(false);
-				Laser.SetColors(Color.cyan, Color.cyan);
 			}
 		}
 		else if (dotCursor != null)
 		{
 			dotCursor.SetActive(false);
+		}
+
+		_currentLaserColor = Color.Lerp(_currentLaserColor, targetColor, Time.deltaTime * 10f);
+		_currentDotColor = _currentLaserColor;
+		Laser.SetColors(_currentLaserColor, _currentLaserColor);
+		if (_dotRenderer != null)
+			_dotRenderer.material.color = _currentDotColor;
+
+		if (hitUI)
+		{
+			float w = 0.002f + 0.001f * Mathf.Sin(Time.time * 3f);
+			Laser.SetWidth(w, w * 0.5f);
+		}
+		else
+		{
+			Laser.SetWidth(0.002f, 0.002f);
 		}
 	}
 

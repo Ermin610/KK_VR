@@ -47,7 +47,7 @@ public class VRQuickActions : MonoBehaviour
         }
     }
 
-    private SteamVR_Controller.Device GetDevice(VRGIN.Controls.IController controller)
+    private SteamVR_Controller.Device GetDevice(VRGIN.Controls.Controller controller)
     {
         if (controller != null && controller.IsTracking)
         {
@@ -66,54 +66,84 @@ public class VRQuickActions : MonoBehaviour
         lastToggleTime = Time.time;
 
         uiVisible = !uiVisible;
-        
-        foreach (var quad in GUIQuadRegistry.Quads)
+
+        if (!uiVisible)
         {
-            if (quad == null || quad.gameObject == null) continue;
-            
-            if (quad.gameObject.GetComponent<MoveableGUIObject>() != null && quad.IsOwned)
+            // HIDE: snapshot registry to avoid modification during iteration
+            // (SetActive(false) in coroutine triggers OnDisable → Unregister)
+            var currentQuads = new List<GUIQuad>(GUIQuadRegistry.Quads);
+            foreach (var quad in currentQuads)
             {
-                continue;
-            }
+                if (quad == null || quad.gameObject == null) continue;
 
-            if (!originalScales.ContainsKey(quad) && quad.transform.localScale != Vector3.zero)
-            {
-                originalScales[quad] = quad.transform.localScale;
-            }
+                if (!originalScales.ContainsKey(quad) && quad.transform.localScale != Vector3.zero)
+                {
+                    originalScales[quad] = quad.transform.localScale;
+                }
 
-            Vector3 targetScale = originalScales.ContainsKey(quad) ? originalScales[quad] : Vector3.one;
+                Vector3 targetScale = originalScales.ContainsKey(quad) ? originalScales[quad] : Vector3.one;
 
-            if (scaleCoroutines.ContainsKey(quad) && scaleCoroutines[quad] != null)
-            {
-                StopCoroutine(scaleCoroutines[quad]);
-            }
+                if (scaleCoroutines.ContainsKey(quad) && scaleCoroutines[quad] != null)
+                {
+                    StopCoroutine(scaleCoroutines[quad]);
+                }
 
-            if (!uiVisible)
-            {
                 previousStates[quad] = quad.gameObject.activeSelf;
                 if (quad.gameObject.activeSelf)
                 {
                     scaleCoroutines[quad] = StartCoroutine(ScaleAnimation(quad, Vector3.zero, true, targetScale));
                 }
             }
-            else
+        }
+        else
+        {
+            // SHOW: iterate previousStates — quads have been unregistered from
+            // GUIQuadRegistry when SetActive(false) triggered OnDisable → Unregister,
+            // so GUIQuadRegistry.Quads is empty. We must use our saved references.
+            Transform head = VR.Camera.Head;
+            KKCharaStudioVRSettings settings = null;
+            if (VR.Manager != null && VR.Manager.Context != null)
             {
-                if (previousStates.TryGetValue(quad, out bool wasActive))
-                {
-                    if (wasActive)
-                    {
-                        quad.gameObject.SetActive(true);
-                        quad.transform.localScale = Vector3.zero;
-                        scaleCoroutines[quad] = StartCoroutine(ScaleAnimation(quad, targetScale, false, targetScale));
-                    }
-                }
-                else
-                {
-                    quad.gameObject.SetActive(true);
-                    quad.transform.localScale = Vector3.zero;
-                    scaleCoroutines[quad] = StartCoroutine(ScaleAnimation(quad, targetScale, false, targetScale));
-                }
+                settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
             }
+            float guiDistance = settings != null ? settings.UISpawnDistance : 0.5f;
+            float guiDrop = 0.05f;
+
+            foreach (var kvp in new Dictionary<GUIQuad, bool>(previousStates))
+            {
+                var quad = kvp.Key;
+                bool wasActive = kvp.Value;
+                if (quad == null || quad.gameObject == null) continue;
+                if (!wasActive) continue;
+
+                if (!originalScales.ContainsKey(quad) && quad.transform.localScale != Vector3.zero)
+                {
+                    originalScales[quad] = quad.transform.localScale;
+                }
+                Vector3 targetScale = originalScales.ContainsKey(quad) ? originalScales[quad] : Vector3.one;
+
+                // Reposition in front of head (VAM-style)
+                if (head != null)
+                {
+                    Vector3 forward = head.forward;
+                    forward.y = 0f;
+                    if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+                    forward.Normalize();
+
+                    quad.transform.position = head.position + forward * guiDistance - Vector3.up * guiDrop;
+                    quad.transform.rotation = Quaternion.LookRotation(forward);
+                }
+
+                if (scaleCoroutines.ContainsKey(quad) && scaleCoroutines[quad] != null)
+                {
+                    StopCoroutine(scaleCoroutines[quad]);
+                }
+
+                quad.gameObject.SetActive(true);
+                quad.transform.localScale = Vector3.zero;
+                scaleCoroutines[quad] = StartCoroutine(ScaleAnimation(quad, targetScale, false, targetScale));
+            }
+            previousStates.Clear();
         }
         VRLog.Info($"Toggled UI Visibility to: {uiVisible}");
     }
@@ -153,19 +183,30 @@ public class VRQuickActions : MonoBehaviour
 
     private void SummonMainGUI()
     {
+        // Search both registry (active quads) and previousStates (hidden quads)
         GUIQuad mainQuad = null;
         float maxSize = -1;
 
         foreach (var quad in GUIQuadRegistry.Quads)
         {
             if (quad == null || quad.gameObject == null) continue;
-            
-            if (quad.gameObject.GetComponent<MoveableGUIObject>() != null && quad.IsOwned)
-            {
-                continue; 
-            }
-
             float size = quad.transform.localScale.x * quad.transform.localScale.y;
+            if (size > maxSize)
+            {
+                maxSize = size;
+                mainQuad = quad;
+            }
+        }
+
+        // Also check hidden quads saved in previousStates
+        foreach (var kvp in previousStates)
+        {
+            var quad = kvp.Key;
+            if (quad == null || quad.gameObject == null) continue;
+            if (!kvp.Value) continue; // was not active
+            // Use originalScales for size since hidden quads have scale=0
+            Vector3 s = originalScales.ContainsKey(quad) ? originalScales[quad] : Vector3.one;
+            float size = s.x * s.y;
             if (size > maxSize)
             {
                 maxSize = size;
@@ -178,10 +219,22 @@ public class VRQuickActions : MonoBehaviour
             Transform head = VR.Camera.Head;
             if (head != null)
             {
-                mainQuad.transform.position = head.TransformPoint(new Vector3(0f, 0f, 0.5f));
-                mainQuad.transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
+                KKCharaStudioVRSettings settings = null;
+                if (VR.Manager != null && VR.Manager.Context != null)
+                {
+                    settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+                }
+                float guiDistance = settings != null ? settings.UISpawnDistance : 0.5f;
+
+                Vector3 forward = head.forward;
+                forward.y = 0f;
+                if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+                forward.Normalize();
+
+                mainQuad.transform.position = head.position + forward * guiDistance - Vector3.up * 0.05f;
+                mainQuad.transform.rotation = Quaternion.LookRotation(forward);
                 VRLog.Info("Summoned main GUI panel to face");
-                
+
                 if (!originalScales.ContainsKey(mainQuad) && mainQuad.transform.localScale != Vector3.zero)
                 {
                     originalScales[mainQuad] = mainQuad.transform.localScale;
@@ -190,12 +243,13 @@ public class VRQuickActions : MonoBehaviour
 
                 if (!uiVisible)
                 {
-                    ToggleAllGUI(); 
+                    // If UI is hidden, toggle all on (which repositions everything)
+                    ToggleAllGUI();
                 }
                 else
                 {
                     mainQuad.gameObject.SetActive(true);
-                    
+
                     if (scaleCoroutines.ContainsKey(mainQuad) && scaleCoroutines[mainQuad] != null)
                     {
                         StopCoroutine(scaleCoroutines[mainQuad]);

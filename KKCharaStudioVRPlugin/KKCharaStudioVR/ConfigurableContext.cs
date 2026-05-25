@@ -60,7 +60,7 @@ public class ConfigurableContext : IVRManagerContext
 		_Settings = KKCharaStudioVRSettings.Load("KKCSVRSettings.xml");
 		ConfineMouse = true;
 		EnforceDefaultGUIMaterials = false;
-		GUIAlternativeSortingMode = false;
+		GUIAlternativeSortingMode = true;
 		GuiLayer = "Default";
 		GuiFarClipPlane = 1000f;
 		GuiNearClipPlane = -1000f;

@@ -78,7 +78,7 @@ public class GUIQuad : ProtectedBehaviour
 		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
 		//IL_002e: Unknown result type (might be due to invalid IL or missing references)
 		float y = ((Component)this).transform.localScale.y;
-		float num = y / (float)Screen.height * (float)Screen.width;
+		float num = y / (float)VRGUI.Height * (float)VRGUI.Width;
 		((Component)this).transform.localScale = new Vector3(num, y, 1f);
 	}
 

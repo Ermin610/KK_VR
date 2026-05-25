@@ -265,7 +265,7 @@ public class MenuHandler : ProtectedBehaviour
 		base.OnStart();
 		VRLog.Info("Menu Handler started");
 		_Controller = ((Component)this).GetComponent<Controller>();
-		_ScaleVector = Vector2.op_Implicit(new Vector2((float)VRGUI.Width / (float)Screen.width, (float)VRGUI.Height / (float)Screen.height));
+		_ScaleVector = Vector2.op_Implicit(new Vector2(1f, 1f));
 		_Other = ((Component)_Controller.Other).GetComponent<MenuHandler>();
 	}
 
@@ -395,7 +395,7 @@ public class MenuHandler : ProtectedBehaviour
 		{
 			IsPressing = true;
 			VR.Input.Mouse.LeftButtonDown();
-			mouseDownPosition = Vector2.Scale(new Vector2(Input.mousePosition.x, (float)Screen.height - Input.mousePosition.y), Vector2.op_Implicit(_ScaleVector));
+			mouseDownPosition = new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
 		}
 		if (Device.GetPress(EVRButtonId.k_EButton_Axis1))
 		{

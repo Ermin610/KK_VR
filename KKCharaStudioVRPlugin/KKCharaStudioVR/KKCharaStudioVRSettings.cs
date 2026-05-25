@@ -129,6 +129,15 @@ public class KKCharaStudioVRSettings : VRSettings
 		set { _ProximityGrabRadius = value; TriggerPropertyChanged("ProximityGrabRadius"); }
 	}
 
+	private float _UISpawnDistance = 0.5f;
+
+	[XmlComment("Distance in front of head when UI respawns (meters)")]
+	public float UISpawnDistance
+	{
+		get { return _UISpawnDistance; }
+		set { _UISpawnDistance = value; TriggerPropertyChanged("UISpawnDistance"); }
+	}
+
 	private bool _ComfortVignetteEnabled = true;
 	private float _ComfortVignetteRadius = 0.5f;
 	private bool _TwoHandScaleEnabled = true;

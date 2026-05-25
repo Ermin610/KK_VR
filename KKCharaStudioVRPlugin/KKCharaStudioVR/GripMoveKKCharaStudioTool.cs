@@ -389,6 +389,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void HandleThumbstickLocomotion()
 	{
+		if (gripMenuHandler != null && gripMenuHandler.LaserVisible) return;
 		Vector2 axis = controller.GetAxis(EVRButtonId.k_EButton_SteamVR_Touchpad);
 		bool isLeft = _isLeftHand;
 
