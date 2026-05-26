@@ -20,10 +20,35 @@ public class KKCharaStudioVRPlugin : BaseUnityPlugin
 			VRLoader.Create(isEnable: true);
 			SaveLoadSceneHook.InstallHook();
 			LoadFixHook.InstallHook();
+			DropdownFixHook.InstallHook();
 		}
 		else
 		{
 			VRLoader.Create(isEnable: false);
+		}
+	}
+
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+	[System.Runtime.InteropServices.DllImport("user32.dll")]
+	private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+	public void Start()
+	{
+		// Force the window to the foreground so VR UI interaction works without alt-tabbing or clicking
+		try
+		{
+			var process = System.Diagnostics.Process.GetCurrentProcess();
+			if (process != null && process.MainWindowHandle != IntPtr.Zero)
+			{
+				ShowWindow(process.MainWindowHandle, 5); // 5 = SW_SHOW
+				SetForegroundWindow(process.MainWindowHandle);
+			}
+		}
+		catch (Exception e)
+		{
+			UnityEngine.Debug.LogWarning("[KKCharaStudioVRPlugin] Failed to set foreground window: " + e.Message);
 		}
 	}
 }

@@ -30,8 +30,8 @@ namespace KKCharaStudioVR
 
         void Update()
         {
-            if (_settings != null && !_settings.TwoHandScaleEnabled) return;
-            if (VR.Mode == null || VR.Mode.Left == null || VR.Mode.Right == null) return;
+            // Fully disabled two-hand scaling as it modifies the world Y-axis
+            return;
 
             var leftTracked = ((Component)VR.Mode.Left).GetComponent<SteamVR_TrackedObject>();
             var rightTracked = ((Component)VR.Mode.Right).GetComponent<SteamVR_TrackedObject>();

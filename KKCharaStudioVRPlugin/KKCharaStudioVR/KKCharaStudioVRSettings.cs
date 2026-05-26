@@ -163,6 +163,56 @@ public class KKCharaStudioVRSettings : VRSettings
 		set { _TwoHandScaleEnabled = value; TriggerPropertyChanged("TwoHandScaleEnabled"); }
 	}
 
+	private float _HandOffsetX = 0f;
+	private float _HandOffsetY = -0.01f;
+	private float _HandOffsetZ = -0.04f;
+
+	[XmlComment("Hand model X offset")]
+	public float HandOffsetX
+	{
+		get { return _HandOffsetX; }
+		set { _HandOffsetX = value; TriggerPropertyChanged("HandOffsetX"); }
+	}
+
+	[XmlComment("Hand model Y offset")]
+	public float HandOffsetY
+	{
+		get { return _HandOffsetY; }
+		set { _HandOffsetY = value; TriggerPropertyChanged("HandOffsetY"); }
+	}
+
+	[XmlComment("Hand model Z offset")]
+	public float HandOffsetZ
+	{
+		get { return _HandOffsetZ; }
+		set { _HandOffsetZ = value; TriggerPropertyChanged("HandOffsetZ"); }
+	}
+
+	private float _HandRotPitch = 40f;
+	private float _HandRotYaw = 0f;
+	private float _HandRotRoll = 0f;
+
+	[XmlComment("Hand model Pitch rotation offset")]
+	public float HandRotPitch
+	{
+		get { return _HandRotPitch; }
+		set { _HandRotPitch = value; TriggerPropertyChanged("HandRotPitch"); }
+	}
+
+	[XmlComment("Hand model Yaw rotation offset")]
+	public float HandRotYaw
+	{
+		get { return _HandRotYaw; }
+		set { _HandRotYaw = value; TriggerPropertyChanged("HandRotYaw"); }
+	}
+
+	[XmlComment("Hand model Roll rotation offset")]
+	public float HandRotRoll
+	{
+		get { return _HandRotRoll; }
+		set { _HandRotRoll = value; TriggerPropertyChanged("HandRotRoll"); }
+	}
+
 	public static KKCharaStudioVRSettings Load(string path)
 	{
 		return VRSettings.Load<KKCharaStudioVRSettings>(path);

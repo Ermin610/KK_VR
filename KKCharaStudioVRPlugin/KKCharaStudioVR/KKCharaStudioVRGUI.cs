@@ -102,6 +102,20 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.HandModelAlpha = GUILayout.HorizontalSlider(settings.HandModelAlpha, 0.05f, 1f);
 					GUILayout.Label($"Hand Scale: {settings.HandModelScale:F2}");
 					settings.HandModelScale = GUILayout.HorizontalSlider(settings.HandModelScale, 0.5f, 2f);
+					
+					GUILayout.Label($"Hand Offset X (L/R): {settings.HandOffsetX:F3}");
+					settings.HandOffsetX = GUILayout.HorizontalSlider(settings.HandOffsetX, -0.2f, 0.2f);
+					GUILayout.Label($"Hand Offset Y (U/D): {settings.HandOffsetY:F3}");
+					settings.HandOffsetY = GUILayout.HorizontalSlider(settings.HandOffsetY, -0.2f, 0.2f);
+					GUILayout.Label($"Hand Offset Z (F/B): {settings.HandOffsetZ:F3}");
+					settings.HandOffsetZ = GUILayout.HorizontalSlider(settings.HandOffsetZ, -0.2f, 0.2f);
+					
+					GUILayout.Label($"Hand Rot Pitch (X): {settings.HandRotPitch:F0}");
+					settings.HandRotPitch = GUILayout.HorizontalSlider(settings.HandRotPitch, -90f, 90f);
+					GUILayout.Label($"Hand Rot Yaw (Y): {settings.HandRotYaw:F0}");
+					settings.HandRotYaw = GUILayout.HorizontalSlider(settings.HandRotYaw, -90f, 90f);
+					GUILayout.Label($"Hand Rot Roll (Z): {settings.HandRotRoll:F0}");
+					settings.HandRotRoll = GUILayout.HorizontalSlider(settings.HandRotRoll, -90f, 90f);
 				}
 				
 				GUILayout.Space(5);
@@ -156,6 +170,12 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.HandModelEnabled = true;
 					settings.HandModelAlpha = 0.3f;
 					settings.HandModelScale = 1.0f;
+					settings.HandOffsetX = 0f;
+					settings.HandOffsetY = -0.01f;
+					settings.HandOffsetZ = -0.04f;
+					settings.HandRotPitch = 40f;
+					settings.HandRotYaw = 0f;
+					settings.HandRotRoll = 0f;
 					settings.DynamicBoneCollisionEnabled = true;
 					settings.ColliderRadius = 0.02f;
 					settings.HapticFeedbackEnabled = true;

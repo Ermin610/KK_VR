@@ -106,9 +106,35 @@ namespace KKCharaStudioVR
         {
             if (h == null || h.root == null) return;
 
+            // Continuously enforce render model visibility to handle asynchronous loading of SteamVR_RenderModel
+            if (h.trackedObj != null)
+            {
+                var controller = h.trackedObj.GetComponent<VRGIN.Controls.Controller>();
+                if (controller != null)
+                {
+                    controller.SetRenderModelVisible(!h.root.activeSelf);
+                }
+            }
+
             // 不在这里控制可见性——由工具的 OnEnable/OnDisable 通过 SetHandVisible 管理
             // 如果手部不可见，跳过动画更新
             if (!h.root.activeSelf) return;
+
+            // Apply custom offset and rotation
+            bool isLeft = (h == leftHand);
+            float xOffset = settings != null ? settings.HandOffsetX : 0f;
+            float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
+            float zOffset = settings != null ? settings.HandOffsetZ : -0.12f;
+            h.root.transform.localPosition = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
+
+            float pitch = settings != null ? settings.HandRotPitch : 0f;
+            float yaw = settings != null ? settings.HandRotYaw : 0f;
+            float roll = settings != null ? settings.HandRotRoll : 0f;
+            float baseRoll = isLeft ? 90f : -90f;
+            float appliedYaw = isLeft ? yaw : -yaw;
+            float appliedRoll = isLeft ? roll : -roll;
+            h.root.transform.localRotation = Quaternion.Euler(pitch, appliedYaw, baseRoll + appliedRoll);
+
             h.root.transform.localScale = Vector3.one * scale;
             // 触摸反馈：接触角色时渐变为暖色
             h.touchFeedback = Mathf.Lerp(h.touchFeedback, 0f, Time.deltaTime * 4f);
@@ -132,11 +158,15 @@ namespace KKCharaStudioVR
             ctx.trackedObj = tracked;
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
             ctx.root.transform.parent = tracked.transform;
-            ctx.root.transform.localPosition = new Vector3(0f, -0.02f, -0.06f);
-            // Apply pitch first (wrist tilt forward), THEN roll (thumb-up orientation).
-            // Euler(-40, 0, zRoll) would apply Z first then X, causing fingers to point up.
-            float zRoll = isLeft ? 90f : -90f;
-            ctx.root.transform.localRotation = Quaternion.Euler(0f, 0f, zRoll) * Quaternion.Euler(-40f, 0f, 0f);
+            // The position and rotation are now continuously updated in UpdateSingleHand
+            // using the user's custom settings offsets.
+
+            // Disable the original GameObject of RenderModel once, just in case.
+            var renderModel = tracked.GetComponentInChildren<SteamVR_RenderModel>();
+            if (renderModel != null)
+            {
+                renderModel.gameObject.SetActive(false);
+            }
 
             ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
@@ -185,7 +215,8 @@ namespace KKCharaStudioVR
                 Quaternion.identity,
                 ctx.material, 3, 0.017f, 0.008f);
             
-            ctx.root.SetActive(false);
+            bool handEnabled = settings != null ? settings.HandModelEnabled : true;
+            ctx.root.SetActive(handEnabled);
             return ctx;
         }
         

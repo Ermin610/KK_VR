@@ -83,7 +83,7 @@ public class GripMenuHandler : ProtectedBehaviour
 			//IL_017c: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0181: Unknown result type (might be due to invalid IL or missing references)
 			base.OnFixedUpdate();
-			IsDragging = GetDevice(VR.Mode.Left).GetPress(EVRButtonId.k_EButton_Axis1) && GetDevice(VR.Mode.Right).GetPress(EVRButtonId.k_EButton_Axis1);
+			IsDragging = false; // Disabled two-handed UI moving/scaling to prevent accidental triggering
 			if (IsDragging)
 			{
 				if (!_StartScale.HasValue)
@@ -177,11 +177,15 @@ public class GripMenuHandler : ProtectedBehaviour
 		}
 	}
 
+	private const float RESIZE_RATE = 0.01f;
+
+	private const int MOUSE_STABILIZER_THRESHOLD = 30;
+
+	public static GripMenuHandler ActiveMouseHandler;
+
 	private Controller _Controller;
 
 	private const float RANGE = 0.25f;
-
-	private const int MOUSE_STABILIZER_THRESHOLD = 30;
 
 	private LineRenderer Laser;
 
@@ -452,8 +456,20 @@ public class GripMenuHandler : ProtectedBehaviour
 				hitUI = true;
 				laserEnd = hit.point;
 				Laser.SetPosition(1, laserEnd);
-				if (!IsOtherWorkingOn(_Target))
+
+				bool stealFocus = false;
+				if (ActiveMouseHandler == null || ActiveMouseHandler == this || !ActiveMouseHandler.LaserVisible)
 				{
+					stealFocus = true;
+				}
+				else if (ActiveMouseHandler.IsPressing == false && Device != null && Device.GetPress(EVRButtonId.k_EButton_Axis1))
+				{
+					stealFocus = true;
+				}
+
+				if (!IsOtherWorkingOn(_Target) && stealFocus)
+				{
+					ActiveMouseHandler = this;
 					Vector2 val = default(Vector2);
 					val = new Vector2(hit.textureCoord.x * (float)VRGUI.Width, (1f - hit.textureCoord.y) * (float)VRGUI.Height);
 					if (!mouseDownPosition.HasValue || Vector2.Distance(mouseDownPosition.Value, val) > 30f)
