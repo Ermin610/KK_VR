@@ -11,13 +11,13 @@ internal class MaterialHelper
 
 	public static Shader GetColorZOrderShader()
 	{
-		if ((Object)(object)_ColorZOrderShader != (Object)null)
+		if (_ColorZOrderShader != null)
 		{
 			return _ColorZOrderShader;
 		}
 		try
 		{
-			if ((Object)(object)_GripMovePluginResources == (Object)null)
+			if (_GripMovePluginResources == null)
 			{
 				_GripMovePluginResources = AssetBundle.LoadFromMemory(Resource.kkcharastudiovrshader);
 			}

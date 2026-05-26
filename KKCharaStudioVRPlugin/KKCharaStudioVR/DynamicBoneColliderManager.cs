@@ -221,7 +221,7 @@ namespace KKCharaStudioVR
                                 {
                                     if (bone.m_Colliders == null)
                                     {
-                                        bone.m_Colliders = new List<DynamicBoneColliderBase>();
+                                        bone.m_Colliders = new List<DynamicBoneCollider>();
                                     }
                                     foreach (var hc in _handColliders)
                                     {

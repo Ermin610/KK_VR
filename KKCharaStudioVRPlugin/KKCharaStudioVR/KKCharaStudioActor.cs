@@ -68,13 +68,13 @@ public class KKCharaStudioActor : DefaultActorBehaviour<ChaControl>
 		EyeLookController eyeLookCtrl = ((ChaInfo)base.Actor).eyeLookCtrl;
 		NeckLookControllerVer2 neckLookCtrl = ((ChaInfo)base.Actor).neckLookCtrl;
 		Transform transform = ((Component)Camera.main).transform;
-		if (Object.op_Implicit((Object)(object)transform))
+		if ((transform != null))
 		{
-			if (Object.op_Implicit((Object)(object)eyeLookCtrl) && (Object)(object)eyeLookCtrl.target == (Object)(object)transform)
+			if ((eyeLookCtrl != null) && eyeLookCtrl.target == transform)
 			{
 				eyeLookCtrl.target = _TargetController.Target;
 			}
-			if (Object.op_Implicit((Object)(object)neckLookCtrl) && (Object)(object)neckLookCtrl.target == (Object)(object)transform)
+			if ((neckLookCtrl != null) && neckLookCtrl.target == transform)
 			{
 				neckLookCtrl.target = _TargetController.Target;
 			}
@@ -83,20 +83,20 @@ public class KKCharaStudioActor : DefaultActorBehaviour<ChaControl>
 
 	internal void OnVRModeChanged(bool newMode)
 	{
-		if (!((Object)(object)_TargetController != (Object)null) || newMode)
+		if (!(_TargetController != null) || newMode)
 		{
 			return;
 		}
 		EyeLookController eyeLookCtrl = ((ChaInfo)base.Actor).eyeLookCtrl;
 		NeckLookControllerVer2 neckLookCtrl = ((ChaInfo)base.Actor).neckLookCtrl;
 		Transform transform = ((Component)Camera.main).transform;
-		if (Object.op_Implicit((Object)(object)transform))
+		if ((transform != null))
 		{
-			if (Object.op_Implicit((Object)(object)eyeLookCtrl) && (Object)(object)eyeLookCtrl.target == (Object)(object)_TargetController.Target)
+			if ((eyeLookCtrl != null) && eyeLookCtrl.target == _TargetController.Target)
 			{
 				eyeLookCtrl.target = transform;
 			}
-			if (Object.op_Implicit((Object)(object)neckLookCtrl) && (Object)(object)neckLookCtrl.target == (Object)(object)_TargetController.Target)
+			if ((neckLookCtrl != null) && neckLookCtrl.target == _TargetController.Target)
 			{
 				neckLookCtrl.target = transform;
 			}

@@ -42,7 +42,7 @@ public class MoveableGUIObject : MonoBehaviour
 		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0046: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)guideObject != (Object)null)
+		if (guideObject != null)
 		{
 			oldPos = guideObject.changeAmount.pos;
 			oldRot = guideObject.changeAmount.rot;
@@ -99,43 +99,43 @@ public class MoveableGUIObject : MonoBehaviour
 		//IL_00ca: Expected O, but got Unknown
 		//IL_00d9: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00e3: Expected O, but got Unknown
-		if ((Object)(object)guideObject != (Object)null)
+		if (guideObject != null)
 		{
-			if ((Object)(object)guideScale == (Object)null)
+			if (guideScale == null)
 			{
 				if (guideObject.enablePos)
 				{
-					EqualsInfo val = new EqualsInfo
+					GuideCommand.EqualsInfo val = new GuideCommand.EqualsInfo
 					{
 						dicKey = guideObject.dicKey,
 						oldValue = oldPos,
 						newValue = guideObject.changeAmount.pos
 					};
-					Singleton<UndoRedoManager>.Instance.Push((ICommand)new MoveEqualsCommand((EqualsInfo[])(object)new EqualsInfo[1] { val }));
+					Singleton<UndoRedoManager>.Instance.Push((ICommand)new GuideCommand.MoveEqualsCommand((GuideCommand.EqualsInfo[])(object)new GuideCommand.EqualsInfo[1] { val }));
 				}
 				if (guideObject.enableRot)
 				{
-					EqualsInfo val2 = new EqualsInfo
+					GuideCommand.EqualsInfo val2 = new GuideCommand.EqualsInfo
 					{
 						dicKey = guideObject.dicKey,
 						oldValue = oldRot,
 						newValue = guideObject.changeAmount.rot
 					};
-					Singleton<UndoRedoManager>.Instance.Push((ICommand)new RotationEqualsCommand((EqualsInfo[])(object)new EqualsInfo[1] { val2 }));
+					Singleton<UndoRedoManager>.Instance.Push((ICommand)new GuideCommand.RotationEqualsCommand((GuideCommand.EqualsInfo[])(object)new GuideCommand.EqualsInfo[1] { val2 }));
 				}
 			}
 			else if (guideObject.enableScale)
 			{
-				EqualsInfo[] array = (EqualsInfo[])(object)new EqualsInfo[1]
+				GuideCommand.EqualsInfo[] array = (GuideCommand.EqualsInfo[])(object)new GuideCommand.EqualsInfo[1]
 				{
-					new EqualsInfo
+					new GuideCommand.EqualsInfo
 					{
 						dicKey = guideObject.dicKey,
 						oldValue = oldScale,
 						newValue = guideObject.changeAmount.scale
 					}
 				};
-				Singleton<UndoRedoManager>.Instance.Push((ICommand)new ScaleEqualsCommand(array));
+				Singleton<UndoRedoManager>.Instance.Push((ICommand)new GuideCommand.ScaleEqualsCommand(array));
 			}
 		}
 		foreach (Action<MonoBehaviour> item in onReleasedLister)
@@ -160,13 +160,13 @@ public class MoveableGUIObject : MonoBehaviour
 		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
 		if (isMoveObj)
 		{
-			((Component)this).transform.localScale = Vector3.one * 0.1f * Studio.optionSystem.manipulateSize;
+			((Component)this).transform.localScale = Vector3.one * 0.1f * Studio.Studio.optionSystem.manipulateSize;
 		}
-		if ((Object)(object)guideScale != (Object)null)
+		if (guideScale != null)
 		{
-			((Component)this).transform.localScale = Vector3.one * 0.05f * Studio.optionSystem.manipulateSize;
+			((Component)this).transform.localScale = Vector3.one * 0.05f * Studio.Studio.optionSystem.manipulateSize;
 		}
-		if ((Object)(object)visibleReference != (Object)null && (Object)(object)renderer != (Object)null)
+		if (visibleReference != null && renderer != null)
 		{
 			((Component)renderer).gameObject.layer = ((Component)visibleReference).gameObject.layer;
 		}

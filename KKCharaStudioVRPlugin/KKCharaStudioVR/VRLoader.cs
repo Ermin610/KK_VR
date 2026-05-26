@@ -5,6 +5,7 @@ using System.Xml.Serialization;
 using UnityEngine;
 using UnityEngine.VR;
 using VRGIN.Core;
+using VRSettings = UnityEngine.VR.VRSettings;
 
 namespace KKCharaStudioVR;
 
@@ -22,7 +23,7 @@ internal class VRLoader : ProtectedBehaviour
 	{
 		get
 		{
-			if ((Object)(object)_Instance == (Object)null)
+			if (_Instance == null)
 			{
 				throw new InvalidOperationException("VR Loader has not been created yet!");
 			}
@@ -95,7 +96,7 @@ internal class VRLoader : ProtectedBehaviour
 			VRManager.Create<KKCharaStudioInterpreter>(CreateContext("KKCSVRContext.xml"));
 			VR.Manager.SetMode<GenericStandingMode>();
 			GameObject val = new GameObject("KKCharaStudioVR");
-			Object.DontDestroyOnLoad((Object)val);
+			UnityEngine.Object.DontDestroyOnLoad(val);
 			IKTool.Create(val);
 			VRControllerMgr.Install(val);
 			VRCameraMoveHelper.Install(val);
@@ -106,7 +107,7 @@ internal class VRLoader : ProtectedBehaviour
 			val.AddComponent<VRQuickActions>();
 			val.AddComponent<VRComfortVignette>();
 			val.AddComponent<VRTwoHandScale>();
-			Object.DontDestroyOnLoad((Object)(object)((Component)VRCamera.Instance).gameObject);
+			UnityEngine.Object.DontDestroyOnLoad(((Component)VRCamera.Instance).gameObject);
 		}
 	}
 }

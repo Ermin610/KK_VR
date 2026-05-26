@@ -24,7 +24,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	public Quaternion moveAlongBaseRot;
 
-	private Studio studio;
+	private Studio.Studio studio;
 
 	private GameObject moveDummy;
 
@@ -46,7 +46,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	public static void Install(GameObject container)
 	{
-		if ((Object)(object)_instance == (Object)null)
+		if (_instance == null)
 		{
 			_instance = container.AddComponent<VRCameraMoveHelper>();
 		}
@@ -58,8 +58,8 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	private void OnLevelWasLoaded(int level)
 	{
-		studio = Singleton<Studio>.Instance;
-		if (!((Object)(object)studio == (Object)null))
+		studio = Singleton<Studio.Studio>.Instance;
+		if (!(studio == null))
 		{
 			Transform cameraMenuRootT = ((Component)studio).transform.Find("Canvas System Menu/02_Camera");
 			_instance.Init(cameraMenuRootT);
@@ -76,7 +76,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_0079: Unknown result type (might be due to invalid IL or missing references)
 		//IL_008e: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
-		if (!showGUI || !((Object)(object)menuRect != (Object)null) || !((Component)menuRect).gameObject.activeInHierarchy)
+		if (!showGUI || !(menuRect != null) || !((Component)menuRect).gameObject.activeInHierarchy)
 		{
 			return;
 		}
@@ -84,11 +84,11 @@ public class VRCameraMoveHelper : MonoBehaviour
 		try
 		{
 			GUI.skin = VRIMGUIUtil.VRGUISkin;
-			if (((Rect)(ref windowRect)).x == -1f && ((Rect)(ref windowRect)).y == -1f)
+			if (windowRect.x == -1f && windowRect.y == -1f)
 			{
 				windowRect = new Rect((float)(Screen.width / 2), 60f * ((Transform)menuRect).lossyScale.y, 400f, 100f);
 			}
-			windowRect = GUI.Window(windowID, windowRect, new WindowFunction(FuncWindowGUI), windowTitle);
+			windowRect = GUI.Window(windowID, windowRect, new GUI.WindowFunction(FuncWindowGUI), windowTitle);
 		}
 		finally
 		{
@@ -142,7 +142,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	public void SaveCamera(int slot)
 	{
-		if (!((Object)(object)VR.Camera.Head == (Object)null))
+		if (!(VR.Camera.Head == null))
 		{
 			CurrentToCameraCtrl();
 			studio.sceneInfo.cameraData[slot] = studio.cameraCtrl.Export();
@@ -161,10 +161,10 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_0065: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0066: Unknown result type (might be due to invalid IL or missing references)
 		GetCurrentLookDirAndRot(out var lookPoint, out var dir, out var rot);
-		CameraData val = new CameraData();
-		VR.Camera.Head.TransformPoint(((Vector3)(ref dir)).normalized * DEFAULT_DISTANCE * DISTANCE_RATIO);
+		var val = new Studio.CameraControl.CameraData();
+		VR.Camera.Head.TransformPoint(dir.normalized * DEFAULT_DISTANCE * DISTANCE_RATIO);
 		Vector3 val2 = default(Vector3);
-		((Vector3)(ref val2))._002Ector(0f, 0f, -1f * DEFAULT_DISTANCE * DISTANCE_RATIO);
+		val2 = new Vector3(0f, 0f, -1f * DEFAULT_DISTANCE * DISTANCE_RATIO);
 		val.Set(lookPoint, rot, val2, studio.cameraCtrl.fieldOfView);
 		studio.cameraCtrl.Import(val);
 	}
@@ -201,12 +201,12 @@ public class VRCameraMoveHelper : MonoBehaviour
 			dir = Vector3.forward;
 		}
 		Quaternion val2 = Quaternion.LookRotation(dir);
-		rot = ((Quaternion)(ref val2)).eulerAngles;
+		rot = val2.eulerAngles;
 	}
 
 	public void MoveToCamera(int slot)
 	{
-		CameraData val = studio.sceneInfo.cameraData[slot];
+		var val = studio.sceneInfo.cameraData[slot];
 		studio.cameraCtrl.Import(val);
 		MoveToCurrent();
 	}
@@ -225,7 +225,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0040: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
-		CameraData val = studio.cameraCtrl.Export();
+		var val = studio.cameraCtrl.Export();
 		Vector3 tobeHeadPos = val.pos + Quaternion.Euler(val.rotate) * val.distance;
 		Quaternion tobeHeadRot = Quaternion.Euler(val.rotate);
 		MoveTo(tobeHeadPos, tobeHeadRot);
@@ -242,7 +242,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_00b7: Unknown result type (might be due to invalid IL or missing references)
 		Transform val = null;
 		GameObject vROrigin = GetVROrigin();
-		if (!((Object)(object)vROrigin == (Object)null))
+		if (!(vROrigin == null))
 		{
 			val = vROrigin.transform.parent;
 			moveDummy.transform.position = VR.Camera.Head.position;
@@ -257,7 +257,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	private GameObject GetVROrigin()
 	{
-		if (Object.op_Implicit((Object)(object)VR.Camera) && Object.op_Implicit((Object)(object)VR.Camera.SteamCam) && Object.op_Implicit((Object)(object)VR.Camera.SteamCam.origin))
+		if ((VR.Camera != null) && (VR.Camera.SteamCam != null) && (VR.Camera.SteamCam.origin != null))
 		{
 			return ((Component)VR.Camera.SteamCam.origin).gameObject;
 		}
@@ -271,7 +271,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0049: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004e: Unknown result type (might be due to invalid IL or missing references)
-		ObjectCtrlInfo[] selectObjectCtrl = Singleton<Studio>.Instance.treeNodeCtrl.selectObjectCtrl;
+		ObjectCtrlInfo[] selectObjectCtrl = Singleton<Studio.Studio>.Instance.treeNodeCtrl.selectObjectCtrl;
 		if (selectObjectCtrl != null && selectObjectCtrl.Length != 0)
 		{
 			ObjectCtrlInfo val = selectObjectCtrl[0];
@@ -299,7 +299,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_006f: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0070: Unknown result type (might be due to invalid IL or missing references)
 		GetCurrentLookDirAndRot(out var lookPoint, out var dir, out var rot);
-		Vector3 val = targetPos - ((Vector3)(ref dir)).normalized * 0.5f;
+		Vector3 val = targetPos - dir.normalized * 0.5f;
 		if (lockY)
 		{
 			val.y = VR.Camera.Head.position.y;
@@ -340,17 +340,17 @@ public class VRCameraMoveHelper : MonoBehaviour
 		try
 		{
 			menuRect = ((Component)cameraMenuRootT).GetComponent<RectTransform>();
-			if ((Object)(object)moveDummy == (Object)null)
+			if (moveDummy == null)
 			{
 				moveDummy = new GameObject("MoveDummy");
-				Object.DontDestroyOnLoad((Object)(object)moveDummy);
+				UnityEngine.Object.DontDestroyOnLoad(moveDummy);
 				moveDummy.transform.parent = ((Component)this).gameObject.transform;
 			}
 			for (int i = 0; i < ((Transform)menuRect).childCount; i++)
 			{
 				Transform child = ((Transform)menuRect).GetChild(i);
 				int idx = -1;
-				if (int.TryParse(((Object)child).name, out idx))
+				if (int.TryParse(((UnityEngine.Object)child).name, out idx))
 				{
 					((UnityEvent)((Component)child.Find("Button Save")).gameObject.GetComponent<Button>().onClick).AddListener((UnityAction)delegate
 					{
@@ -363,7 +363,7 @@ public class VRCameraMoveHelper : MonoBehaviour
 				}
 				else
 				{
-					VRLog.Info("Not Found. {0}", ((Object)child).name);
+					VRLog.Info("Not Found. {0}", ((UnityEngine.Object)child).name);
 				}
 			}
 		}

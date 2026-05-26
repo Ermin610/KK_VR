@@ -11,12 +11,10 @@ namespace KKCharaStudioVR;
 
 internal class GenericStandingMode : StandingMode
 {
-	public override IEnumerable<Type> Tools => base.Tools.Concat(new Type[3]
+	public override IEnumerable<Type> Tools => new Type[1]
 	{
-		typeof(MenuTool),
-		typeof(WarpTool),
 		typeof(GripMoveKKCharaStudioTool)
-	});
+	};
 
 	protected override IEnumerable<IShortcut> CreateShortcuts()
 	{

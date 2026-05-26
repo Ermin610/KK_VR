@@ -33,7 +33,7 @@ public class VRItemObjMoveHelper : MonoBehaviour
 
 	private GameObject steamVRHeadOrigin;
 
-	private Studio studio;
+	private Studio.Studio studio;
 
 	private GameObject moveDummy;
 
@@ -61,7 +61,7 @@ public class VRItemObjMoveHelper : MonoBehaviour
 
 	public static void Install(GameObject container)
 	{
-		if ((Object)(object)_instance == (Object)null)
+		if (_instance == null)
 		{
 			_instance = container.AddComponent<VRItemObjMoveHelper>();
 		}
@@ -72,8 +72,8 @@ public class VRItemObjMoveHelper : MonoBehaviour
 		//IL_0045: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004f: Expected O, but got Unknown
 		//IL_006b: Unknown result type (might be due to invalid IL or missing references)
-		studio = Singleton<Studio>.Instance;
-		if (!((Object)(object)studio == (Object)null))
+		studio = Singleton<Studio.Studio>.Instance;
+		if (!(studio == null))
 		{
 			Transform objectListCanvas = ((Component)studio).gameObject.transform.Find("Canvas Object List");
 			_instance.Init(objectListCanvas);
@@ -113,11 +113,11 @@ public class VRItemObjMoveHelper : MonoBehaviour
 		//IL_0088: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0095: Unknown result type (might be due to invalid IL or missing references)
 		Rect rect = transform.rect;
-		Vector2 val = Vector2.Scale(((Rect)(ref rect)).size, Vector2.op_Implicit(((Transform)transform).lossyScale));
+		Vector2 val = Vector2.Scale(rect.size, (Vector2)(((Transform)transform).lossyScale));
 		Rect result = default(Rect);
-		((Rect)(ref result))._002Ector(((Transform)transform).position.x, (float)Screen.height - ((Transform)transform).position.y, val.x, val.y);
-		((Rect)(ref result)).x = ((Rect)(ref result)).x - transform.pivot.x * val.x;
-		((Rect)(ref result)).y = ((Rect)(ref result)).y - (1f - transform.pivot.y) * val.y;
+		result = new Rect(((Transform)transform).position.x, (float)Screen.height - ((Transform)transform).position.y, val.x, val.y);
+		result.x = result.x - transform.pivot.x * val.x;
+		result.y = result.y - (1f - transform.pivot.y) * val.y;
 		return result;
 	}
 
@@ -156,64 +156,64 @@ public class VRItemObjMoveHelper : MonoBehaviour
 		workspaceCanvas = ((Component)objectListCanvas).gameObject.GetComponent<Canvas>();
 		menuRect = ((Component)objectListCanvas.Find("Image Bar/Scroll View")).gameObject.GetComponent<RectTransform>();
 		steamVRHeadOrigin = ((Component)VR.Camera.SteamCam.origin).gameObject;
-		if ((Object)(object)moveDummy == (Object)null)
+		if (moveDummy == null)
 		{
 			moveDummy = new GameObject("MoveDummy");
-			Object.DontDestroyOnLoad((Object)(object)moveDummy);
+			UnityEngine.Object.DontDestroyOnLoad(moveDummy);
 			moveDummy.transform.parent = ((Component)this).gameObject.transform;
 		}
 		Transform val = objectListCanvas.Find("Image Bar/Button Duplicate");
 		Transform val2 = objectListCanvas.Find("Image Bar/Button Route");
 		Transform val3 = objectListCanvas.Find("Image Bar/Button Camera");
-		if ((Object)(object)val != (Object)null)
+		if (val != null)
 		{
 			float num = val3.localPosition.x - val2.localPosition.x;
 			Sprite val4 = Sprite.Create(UnityHelper.LoadImage("KKCharaStudioVR/icon_call.png"), new Rect(0f, 0f, 32f, 32f), Vector2.zero);
 			Sprite val5 = Sprite.Create(UnityHelper.LoadImage("KKCharaStudioVR/icon_call_xz.png"), new Rect(0f, 0f, 32f, 32f), Vector2.zero);
-			if ((Object)(object)callButton == (Object)null)
+			if (callButton == null)
 			{
-				GameObject obj = Object.Instantiate<GameObject>(((Component)val).gameObject);
-				((Object)obj).name = "Button Call";
+				GameObject obj = UnityEngine.Object.Instantiate<GameObject>(((Component)val).gameObject);
+				((UnityEngine.Object)obj).name = "Button Call";
 				obj.transform.SetParent(((Component)val).transform.parent);
 				obj.transform.localPosition = new Vector3(val2.localPosition.x - num * 2f, val2.localPosition.y, val2.localPosition.z);
 				obj.transform.localScale = Vector3.one;
 				Button component = obj.GetComponent<Button>();
 				SpriteState spriteState = default(SpriteState);
-				((SpriteState)(ref spriteState)).disabledSprite = val4;
-				((SpriteState)(ref spriteState)).highlightedSprite = val4;
-				((SpriteState)(ref spriteState)).pressedSprite = val4;
+				spriteState.disabledSprite = val4;
+				spriteState.highlightedSprite = val4;
+				spriteState.pressedSprite = val4;
 				((Selectable)component).spriteState = spriteState;
-				component.onClick = new ButtonClickedEvent();
+				component.onClick = new Button.ButtonClickedEvent();
 				((UnityEvent)component.onClick).AddListener(new UnityAction(OnCallClick));
 				((Selectable)component).interactable = true;
 				callButton = component;
-				Object.DestroyImmediate((Object)(object)obj.GetComponent<Image>());
+				UnityEngine.Object.DestroyImmediate(obj.GetComponent<Image>());
 				Image obj2 = obj.AddComponent<Image>();
 				obj2.sprite = val4;
-				obj2.type = (Type)0;
+				obj2.type = (Image.Type)0;
 				((Graphic)obj2).SetAllDirty();
 			}
-			if ((Object)(object)callXZButton == (Object)null)
+			if (callXZButton == null)
 			{
-				GameObject obj3 = Object.Instantiate<GameObject>(((Component)val).gameObject);
-				((Object)obj3).name = "Button Call YLock";
+				GameObject obj3 = UnityEngine.Object.Instantiate<GameObject>(((Component)val).gameObject);
+				((UnityEngine.Object)obj3).name = "Button Call YLock";
 				obj3.transform.SetParent(((Component)val).transform.parent);
 				obj3.transform.localPosition = new Vector3(val2.localPosition.x - num, val2.localPosition.y, val2.localPosition.z);
 				obj3.transform.localScale = Vector3.one;
 				Button component2 = obj3.GetComponent<Button>();
 				SpriteState spriteState2 = default(SpriteState);
-				((SpriteState)(ref spriteState2)).disabledSprite = val5;
-				((SpriteState)(ref spriteState2)).highlightedSprite = val5;
-				((SpriteState)(ref spriteState2)).pressedSprite = val5;
+				spriteState2.disabledSprite = val5;
+				spriteState2.highlightedSprite = val5;
+				spriteState2.pressedSprite = val5;
 				((Selectable)component2).spriteState = spriteState2;
-				component2.onClick = new ButtonClickedEvent();
+				component2.onClick = new Button.ButtonClickedEvent();
 				((UnityEvent)component2.onClick).AddListener(new UnityAction(OnCallClickYLock));
 				((Selectable)component2).interactable = true;
 				callXZButton = component2;
-				Object.DestroyImmediate((Object)(object)obj3.GetComponent<Image>());
+				UnityEngine.Object.DestroyImmediate(obj3.GetComponent<Image>());
 				Image obj4 = obj3.AddComponent<Image>();
 				obj4.sprite = val5;
-				obj4.type = (Type)0;
+				obj4.type = (Image.Type)0;
 				((Graphic)obj4).SetAllDirty();
 			}
 		}
@@ -278,22 +278,22 @@ public class VRItemObjMoveHelper : MonoBehaviour
 		//IL_0021: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
-		Studio instance = Singleton<Studio>.Instance;
-		if ((Object)(object)instance == (Object)null)
+		Studio.Studio instance = Singleton<Studio.Studio>.Instance;
+		if (instance == null)
 		{
 			return;
 		}
 		PointerEventData val = new PointerEventData(EventSystem.current);
-		val.position = Vector2.op_Implicit(Input.mousePosition);
+		val.position = (Vector2)(Input.mousePosition);
 		List<RaycastResult> list = new List<RaycastResult>();
 		EventSystem.current.RaycastAll(val, list);
 		foreach (RaycastResult item in list)
 		{
 			RaycastResult current = item;
-			if ((Object)(object)((RaycastResult)(ref current)).gameObject != (Object)null && (Object)(object)((RaycastResult)(ref current)).gameObject.transform.parent != (Object)null)
+			if (current.gameObject != null && current.gameObject.transform.parent != null)
 			{
-				TreeNodeObject component = ((Component)((RaycastResult)(ref current)).gameObject.transform.parent).gameObject.GetComponent<TreeNodeObject>();
-				if ((Object)(object)component != (Object)null && instance.dicInfo.ContainsKey(component))
+				TreeNodeObject component = ((Component)current.gameObject.transform.parent).gameObject.GetComponent<TreeNodeObject>();
+				if (component != null && instance.dicInfo.ContainsKey(component))
 				{
 					m_AddSelectNode.Invoke(instance.treeNodeCtrl, new object[2] { component, true });
 					break;

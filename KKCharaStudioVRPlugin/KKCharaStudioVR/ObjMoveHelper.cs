@@ -19,8 +19,8 @@ internal class ObjMoveHelper
 
 	public ObjectCtrlInfo GetFirstObject()
 	{
-		Studio instance = Singleton<Studio>.Instance;
-		if ((Object)(object)instance != (Object)null)
+		Studio.Studio instance = Singleton<Studio.Studio>.Instance;
+		if (instance != null)
 		{
 			ObjectCtrlInfo[] selectObjectCtrl = instance.treeNodeCtrl.selectObjectCtrl;
 			if (selectObjectCtrl != null && selectObjectCtrl.Length != 0)
@@ -54,8 +54,8 @@ internal class ObjMoveHelper
 		//IL_00d3: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00d8: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00df: Expected O, but got Unknown
-		Studio instance = Singleton<Studio>.Instance;
-		if ((Object)(object)instance == (Object)null)
+		Studio.Studio instance = Singleton<Studio.Studio>.Instance;
+		if (instance == null)
 		{
 			return;
 		}
@@ -65,19 +65,19 @@ internal class ObjMoveHelper
 			val.y = 0f;
 		}
 		new Dictionary<Transform, Transform>();
-		List<EqualsInfo> list = new List<EqualsInfo>();
+		List<GuideCommand.EqualsInfo> list = new List<GuideCommand.EqualsInfo>();
 		ObjectCtrlInfo[] selectObjectCtrl = instance.treeNodeCtrl.selectObjectCtrl;
 		for (int i = 0; i < selectObjectCtrl.Length; i++)
 		{
 			GuideObject guideObject = selectObjectCtrl[i].guideObject;
-			if ((Object)(object)guideObject != (Object)null)
+			if (guideObject != null)
 			{
 				Vector3 localPosition = guideObject.transformTarget.localPosition;
 				guideObject.transformTarget.position = guideObject.transformTarget.position + val;
 				guideObject.changeAmount.pos = guideObject.transformTarget.localPosition;
 				if (guideObject.enablePos)
 				{
-					EqualsInfo item = new EqualsInfo
+					GuideCommand.EqualsInfo item = new GuideCommand.EqualsInfo
 					{
 						dicKey = guideObject.dicKey,
 						oldValue = localPosition,
@@ -86,7 +86,7 @@ internal class ObjMoveHelper
 					list.Add(item);
 				}
 			}
-			Singleton<UndoRedoManager>.Instance.Push((ICommand)new MoveEqualsCommand(list.ToArray()));
+			Singleton<UndoRedoManager>.Instance.Push((ICommand)new GuideCommand.MoveEqualsCommand(list.ToArray()));
 		}
 	}
 
@@ -113,20 +113,20 @@ internal class ObjMoveHelper
 			newPos.y = oci.guideObject.transformTarget.position.y;
 		}
 		GuideObject guideObject = oci.guideObject;
-		if ((Object)(object)guideObject != (Object)null)
+		if (guideObject != null)
 		{
 			Vector3 localPosition = guideObject.transformTarget.localPosition;
 			guideObject.transformTarget.position = newPos;
 			guideObject.changeAmount.pos = guideObject.transformTarget.localPosition;
 			if (guideObject.enablePos)
 			{
-				EqualsInfo val = new EqualsInfo
+				GuideCommand.EqualsInfo val = new GuideCommand.EqualsInfo
 				{
 					dicKey = guideObject.dicKey,
 					oldValue = localPosition,
 					newValue = guideObject.changeAmount.pos
 				};
-				Singleton<UndoRedoManager>.Instance.Push((ICommand)new MoveEqualsCommand((EqualsInfo[])(object)new EqualsInfo[1] { val }));
+				Singleton<UndoRedoManager>.Instance.Push((ICommand)new GuideCommand.MoveEqualsCommand((GuideCommand.EqualsInfo[])(object)new GuideCommand.EqualsInfo[1] { val }));
 			}
 		}
 	}

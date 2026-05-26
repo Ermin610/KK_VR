@@ -13,17 +13,27 @@
   </PropertyGroup>
   <ItemGroup />
   <ItemGroup>
-    <Reference Include="System.Core" />
-    <Reference Include="UnityEngine" />
+    <Reference Include="System.Core">
+      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\System.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
     <Reference Include="LeapCSharp.NET3.5">
       <HintPath>..\..\Koikatu3\BepInEx\LeapCSharp.NET3.5.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.UI" />
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\UnityEngine.UI.dll</HintPath>
+    </Reference>
     <Reference Include="WindowsInput">
       <HintPath>..\..\Koikatu3\BepInEx\WindowsInput.dll</HintPath>
     </Reference>
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Xml">
+      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\System.Xml.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
+      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\System.Xml.Linq.dll</HintPath>
+    </Reference>
     <Reference Include="SpeechTransport">
       <HintPath>..\..\Koikatu3\BepInEx\SpeechTransport.dll</HintPath>
     </Reference>

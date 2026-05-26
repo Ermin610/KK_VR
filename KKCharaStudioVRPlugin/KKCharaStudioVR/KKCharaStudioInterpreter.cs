@@ -8,6 +8,7 @@ using Manager;
 using Studio;
 using UnityEngine;
 using VRGIN.Core;
+using Logger = BepInEx4.Logger;
 
 namespace KKCharaStudioVR;
 
@@ -26,7 +27,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 	protected override void OnStart()
 	{
 		base.OnStart();
-		studioScene = Object.FindObjectOfType<StudioScene>();
+		studioScene = UnityEngine.Object.FindObjectOfType<StudioScene>();
 		additionalCullingMask = LayerMask.GetMask(new string[1] { "Studio/Select" });
 	}
 
@@ -55,7 +56,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 	{
 		try
 		{
-			if (Object.op_Implicit((Object)(object)VR.Manager))
+			if ((VR.Manager != null))
 			{
 				RefreshActors();
 				UpdateMainCameraCullingMask();
@@ -69,7 +70,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 	private void UpdateMainCameraCullingMask()
 	{
 		Camera component = ((Component)VR.Camera.SteamCam).GetComponent<Camera>();
-		if (Singleton<Studio>.Instance.workInfo.visibleAxis)
+		if (Singleton<Studio.Studio>.Instance.workInfo.visibleAxis)
 		{
 			component.cullingMask |= additionalCullingMask;
 		}
@@ -84,7 +85,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 		_Actors.Clear();
 		foreach (ChaControl value in Singleton<Character>.Instance.dictEntryChara.Values)
 		{
-			if (Object.op_Implicit((Object)(object)((ChaInfo)value).objBodyBone))
+			if (((ChaInfo)value).objBodyBone != null)
 			{
 				AddActor(DefaultActorBehaviour<ChaControl>.Create<KKCharaStudioActor>(value));
 			}
@@ -93,7 +94,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 
 	private void AddActor(KKCharaStudioActor actor)
 	{
-		if (!Object.op_Implicit((Object)(object)actor.Eyes))
+		if ((actor.Eyes == null))
 		{
 			actor.Head.Reinitialize();
 		}
@@ -116,7 +117,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 		yield return null;
 		yield return null;
 		yield return null;
-		if (!Object.op_Implicit((Object)(object)VRManager.Instance.Mode) || !(VRManager.Instance.Mode is GenericStandingMode))
+		if ((VRManager.Instance.Mode == null) || !(VRManager.Instance.Mode is GenericStandingMode))
 		{
 			Logger.Log((LogLevel)32, (object)"Mode is not StandingMode. Force reset as Standing Mode.");
 			ForceResetAsStandingMode();
@@ -137,10 +138,10 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 		try
 		{
 			VR.Manager.SetMode<GenericStandingMode>();
-			if (Object.op_Implicit((Object)(object)VR.Camera))
+			if ((VR.Camera != null))
 			{
 				_ = VR.Camera.Blueprint;
-				Camera mainCmaera = Singleton<Studio>.Instance.cameraCtrl.mainCmaera;
+				Camera mainCmaera = Singleton<Studio.Studio>.Instance.cameraCtrl.mainCmaera;
 				Logger.Log((LogLevel)32, (object)$"Force replace blueprint camera with {mainCmaera}");
 				Camera camera = VR.Camera.SteamCam.camera;
 				Camera val = mainCmaera;
@@ -156,10 +157,10 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 				camera.allowHDR = val.allowHDR;
 				camera.backgroundColor = val.backgroundColor;
 				Skybox component = ((Component)val).GetComponent<Skybox>();
-				if ((Object)(object)component != (Object)null)
+				if (component != null)
 				{
 					Skybox val2 = ((Component)camera).gameObject.GetComponent<Skybox>();
-					if ((Object)(object)val2 == (Object)null)
+					if (val2 == null)
 					{
 						val2 = ((Component)val2).gameObject.AddComponent<Skybox>();
 					}

@@ -58,7 +58,7 @@ public class TransientHead : ProtectedBehaviour
 		eyesTransform = GetEyes(avatar);
 		root = ((ChaInfo)avatar).objRoot.transform;
 		m_tongues = (Renderer[])(object)(from renderer in ((Component)root).GetComponentsInChildren<SkinnedMeshRenderer>()
-			where ((Object)renderer).name.ToLower().StartsWith("cm_o_tang") || ((Object)renderer).name == "cf_o_tang"
+			where ((UnityEngine.Object)renderer).name.ToLower().StartsWith("cm_o_tang") || ((UnityEngine.Object)renderer).name == "cf_o_tang"
 			select renderer into tongue
 			where ((Renderer)tongue).enabled
 			select tongue).ToArray();
@@ -66,15 +66,15 @@ public class TransientHead : ProtectedBehaviour
 
 	public static Transform GetHead(ChaControl human)
 	{
-		return ((ChaInfo)human).objHead.GetComponentsInParent<Transform>().First((Transform t) => ((Object)t).name.StartsWith("c") && ((Object)t).name.ToLower().Contains("j_head"));
+		return ((ChaInfo)human).objHead.GetComponentsInParent<Transform>().First((Transform t) => ((UnityEngine.Object)t).name.StartsWith("c") && ((UnityEngine.Object)t).name.ToLower().Contains("j_head"));
 	}
 
 	public static Transform GetEyes(ChaControl human)
 	{
 		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
 		//IL_007f: Unknown result type (might be due to invalid IL or missing references)
-		Transform val = ((ChaInfo)human).objHeadBone.transform.Descendants().FirstOrDefault((Transform t) => ((Object)t).name.StartsWith("c") && ((Object)t).name.ToLower().EndsWith("j_faceup_tz"));
-		if (!Object.op_Implicit((Object)(object)val))
+		Transform val = ((ChaInfo)human).objHeadBone.transform.Descendants().FirstOrDefault((Transform t) => ((UnityEngine.Object)t).name.StartsWith("c") && ((UnityEngine.Object)t).name.ToLower().EndsWith("j_faceup_tz"));
+		if ((val == null))
 		{
 			VRLog.Info("Creating eyes");
 			val = new GameObject("cf_j_faceup_tz").transform;
@@ -96,7 +96,7 @@ public class TransientHead : ProtectedBehaviour
 			{
 				foreach (Renderer renderer in rendererList)
 				{
-					if (Object.op_Implicit((Object)(object)renderer))
+					if ((renderer != null))
 					{
 						renderer.enabled = true;
 					}
@@ -104,7 +104,7 @@ public class TransientHead : ProtectedBehaviour
 				Renderer[] tongues = m_tongues;
 				foreach (Renderer val in tongues)
 				{
-					if (Object.op_Implicit((Object)(object)val))
+					if ((val != null))
 					{
 						val.enabled = true;
 					}
@@ -114,7 +114,7 @@ public class TransientHead : ProtectedBehaviour
 		else if (!hidden)
 		{
 			m_tongues = (Renderer[])(object)(from renderer in ((Component)root).GetComponentsInChildren<SkinnedMeshRenderer>()
-				where ((Object)renderer).name.StartsWith("cm_o_tang") || ((Object)renderer).name == "cf_o_tang"
+				where ((UnityEngine.Object)renderer).name.StartsWith("cm_o_tang") || ((UnityEngine.Object)renderer).name == "cf_o_tang"
 				select renderer into tongue
 				where ((Renderer)tongue).enabled
 				select tongue).ToArray();

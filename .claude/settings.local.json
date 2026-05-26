@@ -11,7 +11,9 @@
       "Bash(Get-ChildItem -Path \"E:\\\\KK_VR\" -Filter \"*.cs\" -Recurse)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(dotnet build *)",
-      "PowerShell($msbuild = Get-ChildItem \"C:\\\\Program Files\\\\Microsoft Visual Studio\" -Recurse -Filter \"MSBuild.exe\" -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName; if \\($msbuild\\) { $msbuild } else { \"No MSBuild found in VS dir\" }; $dotnetPaths = @\\(\"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\", \"C:\\\\Program Files \\(x86\\)\\\\dotnet\\\\dotnet.exe\", \"$env:LOCALAPPDATA\\\\Microsoft\\\\dotnet\\\\dotnet.exe\"\\); foreach \\($p in $dotnetPaths\\) { if \\(Test-Path $p\\) { Write-Output \"Found: $p\" } }; try { \\(Get-Command dotnet -ErrorAction Stop\\).Source } catch { \"dotnet not in PATH\" })"
+      "PowerShell($msbuild = Get-ChildItem \"C:\\\\Program Files\\\\Microsoft Visual Studio\" -Recurse -Filter \"MSBuild.exe\" -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName; if \\($msbuild\\) { $msbuild } else { \"No MSBuild found in VS dir\" }; $dotnetPaths = @\\(\"C:\\\\Program Files\\\\dotnet\\\\dotnet.exe\", \"C:\\\\Program Files \\(x86\\)\\\\dotnet\\\\dotnet.exe\", \"$env:LOCALAPPDATA\\\\Microsoft\\\\dotnet\\\\dotnet.exe\"\\); foreach \\($p in $dotnetPaths\\) { if \\(Test-Path $p\\) { Write-Output \"Found: $p\" } }; try { \\(Get-Command dotnet -ErrorAction Stop\\).Source } catch { \"dotnet not in PATH\" })",
+      "PowerShell(dotnet --version)",
+      "PowerShell(Copy-Item \"E:\\\\KK_VR\\\\KKCharaStudioVRPlugin\\\\bin\\\\Release\\\\net35\\\\KKCharaStudioVRPlugin.dll\" \"E:\\\\Koikatu3\\\\BepInEx\\\\KKCharaStudioVRPlugin.dll\" -Force; Write-Output \"Done — $\\(Get-Item 'E:\\\\Koikatu3\\\\BepInEx\\\\KKCharaStudioVRPlugin.dll' | Select-Object -ExpandProperty Length\\) bytes deployed\")"
     ]
   }
 }

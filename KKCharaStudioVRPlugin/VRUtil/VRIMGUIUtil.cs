@@ -14,7 +14,7 @@ public class VRIMGUIUtil
 	{
 		get
 		{
-			if ((Object)(object)_guiSkin == (Object)null)
+			if (_guiSkin == null)
 			{
 				_guiSkin = CreateVRGUISkin(GUI.skin);
 			}
@@ -22,7 +22,7 @@ public class VRIMGUIUtil
 		}
 		set
 		{
-			if ((Object)(object)value != (Object)null)
+			if (value != null)
 			{
 				_guiSkin = value;
 			}
@@ -55,7 +55,7 @@ public class VRIMGUIUtil
 		//IL_02dd: Unknown result type (might be due to invalid IL or missing references)
 		//IL_03ac: Unknown result type (might be due to invalid IL or missing references)
 		//IL_03c1: Unknown result type (might be due to invalid IL or missing references)
-		GUISkin val = Object.Instantiate<GUISkin>(cloneFrom);
+		GUISkin val = UnityEngine.Object.Instantiate<GUISkin>(cloneFrom);
 		GUIStyle val2 = new GUIStyle(val.window);
 		Texture2D val3 = new Texture2D(1, 1);
 		val3.SetPixel(0, 0, new Color(0.9f, 0.9f, 0.9f, 1f));
@@ -121,7 +121,7 @@ public class VRIMGUIUtil
 		//IL_01a3: Unknown result type (might be due to invalid IL or missing references)
 		float num = 0.5f;
 		float num2 = 0.5f;
-		if ((Object)(object)tex == (Object)null)
+		if (tex == null)
 		{
 			return null;
 		}

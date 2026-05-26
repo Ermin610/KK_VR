@@ -18,7 +18,7 @@ public class VRControllerMgr : MonoBehaviour
 
 	public static VRControllerMgr Install(GameObject container)
 	{
-		if ((Object)(object)_instance == (Object)null)
+		if (_instance == null)
 		{
 			_instance = container.AddComponent<VRControllerMgr>();
 			_instance.OnLevelWasLoaded(Application.loadedLevel);
@@ -58,28 +58,28 @@ public class VRControllerMgr : MonoBehaviour
 			{
 				return;
 			}
-			if ((Object)(object)VR.Mode.Left != (Object)null && VR.Mode.Left.IsTracking)
+			if (VR.Mode.Left != null && VR.Mode.Left.IsTracking)
 			{
-				if ((Object)(object)TransformFindEx.FindLoop(((Component)VR.Mode.Left).transform, "touchpad") != (Object)null)
+				if (TransformFindEx.FindLoop(((Component)VR.Mode.Left).transform, "touchpad") != null)
 				{
 					isOculusTouchMode = false;
 					touchModeCheckCompleted = true;
 					return;
 				}
-				if ((Object)(object)TransformFindEx.FindLoop(((Component)VR.Mode.Left).transform, "thumbstick") != (Object)null)
+				if (TransformFindEx.FindLoop(((Component)VR.Mode.Left).transform, "thumbstick") != null)
 				{
 					isOculusTouchMode = true;
 					touchModeCheckCompleted = true;
 				}
 			}
-			if ((Object)(object)VR.Mode.Right != (Object)null && VR.Mode.Right.IsTracking)
+			if (VR.Mode.Right != null && VR.Mode.Right.IsTracking)
 			{
-				if ((Object)(object)TransformFindEx.FindLoop(((Component)VR.Mode.Right).transform, "touchpad") != (Object)null)
+				if (TransformFindEx.FindLoop(((Component)VR.Mode.Right).transform, "touchpad") != null)
 				{
 					isOculusTouchMode = false;
 					touchModeCheckCompleted = true;
 				}
-				else if ((Object)(object)TransformFindEx.FindLoop(((Component)VR.Mode.Right).transform, "thumbstick") != (Object)null)
+				else if (TransformFindEx.FindLoop(((Component)VR.Mode.Right).transform, "thumbstick") != null)
 				{
 					isOculusTouchMode = true;
 					touchModeCheckCompleted = true;

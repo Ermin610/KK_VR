@@ -23,6 +23,7 @@ namespace KKCharaStudioVR
             public float currentGripVal;
             public float currentTriggerVal;
             public float touchFeedback; // 0 = not touching, 1 = touching
+            public float[] fingerTargets = new float[5];
         }
 
         private HandContext leftHand;
@@ -131,14 +132,19 @@ namespace KKCharaStudioVR
             ctx.trackedObj = tracked;
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
             ctx.root.transform.parent = tracked.transform;
-            ctx.root.transform.localPosition = Vector3.zero;
-            ctx.root.transform.localRotation = Quaternion.identity;
+            ctx.root.transform.localPosition = new Vector3(0f, -0.02f, -0.06f);
+            // Apply pitch first (wrist tilt forward), THEN roll (thumb-up orientation).
+            // Euler(-40, 0, zRoll) would apply Z first then X, causing fingers to point up.
+            float zRoll = isLeft ? 90f : -90f;
+            ctx.root.transform.localRotation = Quaternion.Euler(0f, 0f, zRoll) * Quaternion.Euler(-40f, 0f, 0f);
 
             ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
             ctx.material.color = new Color(0.8f, 0.8f, 0.9f, a);
 
-            float mirror = isLeft ? -1f : 1f;
+            // Swap geometry: left controller gets right-hand shape, right gets left-hand shape.
+            // Combined with zRoll this gives thumb-up + palm-inward orientation.
+            float mirror = isLeft ? 1f : -1f;
             
             // Palm — flat capsule centered below the controller, aligned to SteamVR wand convention
             // (Y-up, Z-forward from the controller grip point)
@@ -229,26 +235,44 @@ namespace KKCharaStudioVR
             var controller = SteamVR_Controller.Input((int)ctx.trackedObj.index);
             if (controller == null) return;
 
+            // Read analog inputs
             float trigger = controller.GetAxis(EVRButtonId.k_EButton_Axis1).x;
-            bool grip = controller.GetPress(EVRButtonId.k_EButton_Grip);
+            
+            // Grip: try analog axis first, fall back to binary
+            float gripAxis = controller.GetAxis(EVRButtonId.k_EButton_Axis2).x;
+            if (gripAxis < 0.01f)
+                gripAxis = controller.GetPress(EVRButtonId.k_EButton_Grip) ? 1.0f : 0.0f;
+            
+            // Thumb: capacitive touch detection
+            bool thumbOnStick = controller.GetTouch(EVRButtonId.k_EButton_Axis0);
+            bool thumbOnButton = controller.GetTouch(EVRButtonId.k_EButton_A);
+            float thumbTarget;
+            if (thumbOnStick || thumbOnButton)
+                thumbTarget = 0.3f;  // Thumb resting on surface — slightly curled
+            else if (gripAxis > 0.7f)
+                thumbTarget = 1.0f;  // Fist — thumb fully curled
+            else
+                thumbTarget = 0.0f;  // Thumb extended
+            
+            // Smooth interpolation
+            float dt = Time.deltaTime;
+            ctx.currentTriggerVal = Mathf.Lerp(ctx.currentTriggerVal, trigger, dt * 15f);
+            ctx.currentGripVal = Mathf.Lerp(ctx.currentGripVal, gripAxis, dt * 15f);
+            
+            // Per-finger targets with slight stagger for natural look
+            float smoothThumb = Mathf.Lerp(ctx.fingerTargets[0], thumbTarget, dt * 10f);
+            ctx.fingerTargets[0] = smoothThumb;
+            ctx.fingerTargets[1] = ctx.currentTriggerVal;
+            ctx.fingerTargets[2] = ctx.currentGripVal;
+            ctx.fingerTargets[3] = Mathf.Lerp(ctx.fingerTargets[3], gripAxis, dt * 11f);
+            ctx.fingerTargets[4] = Mathf.Lerp(ctx.fingerTargets[4], gripAxis, dt * 9f);
 
-            // Smoothly interpolate both trigger and grip for natural motion
-            float smoothRate = Time.deltaTime * 12f;
-            ctx.currentTriggerVal = Mathf.Lerp(ctx.currentTriggerVal, trigger, smoothRate);
-            float targetGrip = grip ? 1.0f : 0.0f;
-            ctx.currentGripVal = Mathf.Lerp(ctx.currentGripVal, targetGrip, smoothRate);
-
-            // Index follows trigger
-            AnimateFinger(ctx.fingers[1], ctx.currentTriggerVal * 50f);
-
-            // Middle/Ring/Little follow grip
-            AnimateFinger(ctx.fingers[2], ctx.currentGripVal * 65f);
-            AnimateFinger(ctx.fingers[3], ctx.currentGripVal * 65f);
-            AnimateFinger(ctx.fingers[4], ctx.currentGripVal * 65f);
-
-            // Thumb follows whichever is larger — grip or trigger
-            float thumbInput = Mathf.Max(ctx.currentGripVal, ctx.currentTriggerVal * 0.5f);
-            AnimateFinger(ctx.fingers[0], thumbInput * 25f);
+            // Apply with realistic curl angles per finger
+            AnimateFinger(ctx.fingers[0], ctx.fingerTargets[0] * 70f);   // Thumb
+            AnimateFinger(ctx.fingers[1], ctx.fingerTargets[1] * 85f);   // Index
+            AnimateFinger(ctx.fingers[2], ctx.fingerTargets[2] * 90f);   // Middle
+            AnimateFinger(ctx.fingers[3], ctx.fingerTargets[3] * 88f);   // Ring
+            AnimateFinger(ctx.fingers[4], ctx.fingerTargets[4] * 85f);   // Little
         }
         
         void AnimateFinger(FingerContext finger, float angle)

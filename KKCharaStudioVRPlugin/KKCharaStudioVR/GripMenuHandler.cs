@@ -130,10 +130,10 @@ public class GripMenuHandler : ProtectedBehaviour
 			//IL_0079: Unknown result type (might be due to invalid IL or missing references)
 			Vector3 position = ((Component)VR.Mode.Left).transform.position;
 			Vector3 val = ((Component)VR.Mode.Right).transform.position - position;
-			Vector3 normalized = ((Vector3)(ref val)).normalized;
+			Vector3 normalized = val.normalized;
 			Vector3 val2 = Vector3.Lerp(((Component)VR.Mode.Left).transform.forward, ((Component)VR.Mode.Right).transform.forward, 0.5f);
 			val = Vector3.Cross(normalized, val2);
-			return Quaternion.LookRotation(((Vector3)(ref val)).normalized, val2);
+			return Quaternion.LookRotation(val.normalized, val2);
 		}
 
 		private void Initialize()
@@ -195,10 +195,6 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private Vector3 _ScaleVector;
 
-	private Vector3 _cachedLaserPos;
-
-	private Vector3 _cachedLaserFwd;
-
 	private float _lastScrollTime;
 
 	private Renderer _dotRenderer;
@@ -213,7 +209,7 @@ public class GripMenuHandler : ProtectedBehaviour
 	{
 		get
 		{
-			if (Object.op_Implicit((Object)(object)_ResizeHandler))
+			if ((_ResizeHandler != null))
 			{
 				return _ResizeHandler.IsDragging;
 			}
@@ -225,7 +221,7 @@ public class GripMenuHandler : ProtectedBehaviour
 	{
 		get
 		{
-			if (Object.op_Implicit((Object)(object)Laser))
+			if ((Laser != null))
 			{
 				return ((Component)Laser).gameObject.activeSelf;
 			}
@@ -233,8 +229,6 @@ public class GripMenuHandler : ProtectedBehaviour
 		}
 		set
 		{
-			//IL_0026: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0042: Unknown result type (might be due to invalid IL or missing references)
 			((Component)Laser).gameObject.SetActive(value);
 			if (dotCursor != null) dotCursor.SetActive(value);
 			if (value)
@@ -253,25 +247,14 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	protected override void OnStart()
 	{
-		//IL_002d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0037: Unknown result type (might be due to invalid IL or missing references)
 		base.OnStart();
 		_Controller = ((Component)this).GetComponent<Controller>();
-		_ScaleVector = Vector2.op_Implicit(new Vector2(1f, 1f));
+		_ScaleVector = (Vector2)(new Vector2(1f, 1f));
 		InitLaser();
 	}
 
 	private void InitLaser()
 	{
-		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0063: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0087: Unknown result type (might be due to invalid IL or missing references)
-		//IL_009d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00bc: Unknown result type (might be due to invalid IL or missing references)
 		Laser = new GameObject().AddComponent<LineRenderer>();
 		((Component)Laser).transform.SetParent(((Component)this).transform, false);
 		((Renderer)Laser).material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
@@ -298,22 +281,18 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	protected override void OnUpdate()
 	{
-		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0056: Unknown result type (might be due to invalid IL or missing references)
 		base.OnUpdate();
 		if (!((Component)VR.Camera).gameObject.activeInHierarchy)
 		{
 			return;
 		}
 
-		GetLaserOrigin(out _cachedLaserPos, out _cachedLaserFwd);
-
 		if (LaserVisible)
 		{
 			if (IsResizing)
 			{
-				Laser.SetPosition(0, _cachedLaserPos);
-				Laser.SetPosition(1, _cachedLaserPos);
+				Laser.SetPosition(0, ((Component)Laser).transform.position);
+				Laser.SetPosition(1, ((Component)Laser).transform.position);
 			}
 			else
 			{
@@ -327,37 +306,16 @@ public class GripMenuHandler : ProtectedBehaviour
 		CheckInput();
 	}
 
-	private void GetLaserOrigin(out Vector3 originPos, out Vector3 originFwd)
-	{
-		originPos = ((Component)Laser).transform.position;
-		originFwd = ((Component)Laser).transform.forward;
-
-		if (VRHandModelManager.Instance != null && VR.Manager != null && VR.Manager.Context != null)
-		{
-			var settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
-			if (settings != null && settings.HandModelEnabled)
-			{
-				bool isLeft = ((Component)this).GetComponent<LeftController>() != null;
-				Transform fingerTip = VRHandModelManager.Instance.GetFingerTipTransform(isLeft, 1);
-				if (fingerTip != null)
-				{
-					originPos = fingerTip.position;
-					originFwd = fingerTip.forward;
-				}
-			}
-		}
-	}
-
 	private void OnDisable()
 	{
 	}
 
 	private void EnsureResizeHandler()
 	{
-		if (!Object.op_Implicit((Object)(object)_ResizeHandler))
+		if ((_ResizeHandler == null))
 		{
 			_ResizeHandler = ((Component)_Target).GetComponent<ResizeHandler>();
-			if (!Object.op_Implicit((Object)(object)_ResizeHandler))
+			if ((_ResizeHandler == null))
 			{
 				_ResizeHandler = ((Component)_Target).gameObject.AddComponent<ResizeHandler>();
 			}
@@ -366,9 +324,9 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private void EnsureNoResizeHandler()
 	{
-		if (Object.op_Implicit((Object)(object)_ResizeHandler))
+		if ((_ResizeHandler != null))
 		{
-			Object.DestroyImmediate((Object)(object)_ResizeHandler);
+			UnityEngine.Object.DestroyImmediate(_ResizeHandler);
 		}
 		_ResizeHandler = null;
 	}
@@ -384,19 +342,15 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	protected void CheckInput()
 	{
-		//IL_0054: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
-		//IL_006f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0075: Unknown result type (might be due to invalid IL or missing references)
-		//IL_007a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_007f: Unknown result type (might be due to invalid IL or missing references)
 		IsPressing = false;
-		if (LaserVisible && Object.op_Implicit((Object)(object)_Target) && !IsResizing)
+		if (LaserVisible && (_Target != null) && !IsResizing)
 		{
 			if (Device.GetPressDown(EVRButtonId.k_EButton_Axis1))
 			{
 				IsPressing = true;
-				VR.Input.Mouse.LeftButtonDown();
+				// Use direct Win32 mouse events for reliable IMGUI click handling
+				// (dropdowns, popups, sliders, etc.)
+				MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftDown);
 				mouseDownPosition = new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
 				PulseHaptic(800);
 			}
@@ -407,12 +361,12 @@ public class GripMenuHandler : ProtectedBehaviour
 			if (Device.GetPressUp(EVRButtonId.k_EButton_Axis1))
 			{
 				IsPressing = true;
-				VR.Input.Mouse.LeftButtonUp();
+				MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftUp);
 				mouseDownPosition = null;
 			}
 
 			float thumbstickY = Device.GetAxis(EVRButtonId.k_EButton_Axis0).y;
-			if (Mathf.Abs(thumbstickY) > 0.3f && Time.time - _lastScrollTime > 0.05f)
+			if (!IsPressing && Mathf.Abs(thumbstickY) > 0.7f && Time.time - _lastScrollTime > 0.05f)
 			{
 				WindowsInterop.mouse_event(0x0800, 0, 0, (int)(thumbstickY * 120f), 0);
 				_lastScrollTime = Time.time;
@@ -424,7 +378,7 @@ public class GripMenuHandler : ProtectedBehaviour
 	private void CheckForNearMenu()
 	{
 		_Target = GUIQuadRegistry.Quads.FirstOrDefault(IsLaserable);
-		if (Object.op_Implicit((Object)(object)_Target))
+		if ((_Target != null))
 		{
 			LaserVisible = true;
 		}
@@ -442,39 +396,24 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private float GetRange(GUIQuad quad)
 	{
-		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
-		//IL_000b: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 localScale = ((Component)quad).transform.localScale;
-		return Mathf.Clamp(((Vector3)(ref localScale)).magnitude * 0.25f, 0.25f, 1.25f);
+		return Mathf.Clamp(localScale.magnitude * 2.0f, 1.5f, 5.0f);
 	}
 
+	// Directly use Laser.transform — identical to VRGIN MenuHandler
 	private bool IsWithinRange(GUIQuad quad)
 	{
-		//IL_0020: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0025: Unknown result type (might be due to invalid IL or missing references)
-		//IL_002a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0031: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0042: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0047: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0053: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0058: Unknown result type (might be due to invalid IL or missing references)
-		//IL_005f: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0060: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0071: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0076: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0093: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)((Component)quad).transform.parent == (Object)(object)((Component)this).transform)
+		if (((Component)quad).transform.parent == ((Component)this).transform)
 		{
 			return false;
 		}
 		Vector3 val = -((Component)quad).transform.forward;
 		_ = ((Component)quad).transform.position;
-		Vector3 position = _cachedLaserPos;
-		Vector3 forward = _cachedLaserFwd;
+		Vector3 position = ((Component)Laser).transform.position;
+		Vector3 forward = ((Component)Laser).transform.forward;
 		float num = 0f - ((Component)quad).transform.InverseTransformPoint(position).z;
 		Vector3 localScale = ((Component)quad).transform.localScale;
-		float num2 = num * ((Vector3)(ref localScale)).magnitude;
+		float num2 = num * localScale.magnitude;
 		if (num2 > 0f && num2 < GetRange(quad))
 		{
 			return Vector3.Dot(val, forward) < 0f;
@@ -482,47 +421,41 @@ public class GripMenuHandler : ProtectedBehaviour
 		return false;
 	}
 
+	// Directly use Laser.transform — identical to VRGIN MenuHandler
 	private bool Raycast(GUIQuad quad, out RaycastHit hit)
 	{
-		//IL_000b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0010: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0021: Unknown result type (might be due to invalid IL or missing references)
-		//IL_004b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0033: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
-		//IL_003b: Unknown result type (might be due to invalid IL or missing references)
-		Vector3 position = _cachedLaserPos;
-		Vector3 forward = _cachedLaserFwd;
+		Vector3 position = ((Component)Laser).transform.position;
+		Vector3 forward = ((Component)Laser).transform.forward;
 		Collider component = ((Component)quad).GetComponent<Collider>();
-		if (Object.op_Implicit((Object)(object)component))
+		if ((component != null))
 		{
-			Ray val = default(Ray);
-			((Ray)(ref val))._002Ector(position, forward);
-			return component.Raycast(val, ref hit, GetRange(quad));
+			Ray val = new Ray(position, forward);
+			return component.Raycast(val, out hit, GetRange(quad));
 		}
 		hit = default(RaycastHit);
 		return false;
 	}
 
+	// Directly use Laser.transform — identical to VRGIN MenuHandler
 	private void UpdateLaser()
 	{
-		Laser.SetPosition(0, _cachedLaserPos);
-		Vector3 endPos = _cachedLaserPos + _cachedLaserFwd;
-		Laser.SetPosition(1, endPos);
+		Vector3 laserPos = ((Component)Laser).transform.position;
+		Vector3 laserEnd = laserPos + ((Component)Laser).transform.forward;
+		Laser.SetPosition(0, laserPos);
+		Laser.SetPosition(1, laserEnd);
 		bool hitUI = false;
 
-		if (Object.op_Implicit((Object)(object)_Target) && ((Component)_Target).gameObject.activeInHierarchy)
+		if ((_Target != null) && ((Component)_Target).gameObject.activeInHierarchy)
 		{
 			if (IsWithinRange(_Target) && Raycast(_Target, out var hit))
 			{
 				hitUI = true;
-				endPos = ((RaycastHit)(ref hit)).point;
-				Laser.SetPosition(1, endPos);
+				laserEnd = hit.point;
+				Laser.SetPosition(1, laserEnd);
 				if (!IsOtherWorkingOn(_Target))
 				{
 					Vector2 val = default(Vector2);
-					((Vector2)(ref val))._002Ector(((RaycastHit)(ref hit)).textureCoord.x * (float)VRGUI.Width, (1f - ((RaycastHit)(ref hit)).textureCoord.y) * (float)VRGUI.Height);
+					val = new Vector2(hit.textureCoord.x * (float)VRGUI.Width, (1f - hit.textureCoord.y) * (float)VRGUI.Height);
 					if (!mouseDownPosition.HasValue || Vector2.Distance(mouseDownPosition.Value, val) > 30f)
 					{
 						MouseOperations.SetClientCursorPosition((int)val.x, (int)val.y);
@@ -547,14 +480,14 @@ public class GripMenuHandler : ProtectedBehaviour
 			if (hitUI)
 			{
 				dotCursor.SetActive(true);
-				dotCursor.transform.position = endPos;
+				dotCursor.transform.position = laserEnd;
 				if (IsPressing)
 				{
 					targetColor = Color.red;
-					Vector3 dir = endPos - _cachedLaserPos;
+					Vector3 dir = laserEnd - laserPos;
 					if (dir.magnitude > 0.02f)
 					{
-						Laser.SetPosition(1, endPos - dir.normalized * 0.02f);
+						Laser.SetPosition(1, laserEnd - dir.normalized * 0.02f);
 					}
 				}
 				else

@@ -16,7 +16,7 @@ namespace KKCharaStudioVR;
 
 internal class GripMoveKKCharaStudioTool : Tool
 {
-	private GUIQuad internalGui;
+	private static GUIQuad internalGui;
 	private float menuDownTime;
 	private KKCharaStudioVRSettings _settings;
 	private GameObject mirror1;
@@ -54,7 +54,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		get
 		{
 			SteamVR_TrackedObject component = ((Component)this).gameObject.GetComponent<SteamVR_TrackedObject>();
-			if ((Object)(object)component != (Object)null)
+			if (component != null)
 			{
 				return SteamVR_Controller.Input((int)component.index);
 			}
@@ -67,9 +67,9 @@ internal class GripMoveKKCharaStudioTool : Tool
 		Transform head = VR.Camera.Head;
 		((Component)internalGui).transform.parent = ((Component)this).transform;
 		((Component)internalGui).transform.localScale = Vector3.one * 0.4f;
-		if ((Object)(object)head != (Object)null)
+		if (head != null)
 		{
-			((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, 0.3f));
+		((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, 0.6f));
 			((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
 		}
 		else
@@ -81,12 +81,22 @@ internal class GripMoveKKCharaStudioTool : Tool
 		internalGui.UpdateAspect();
 	}
 
+	private IEnumerator DelayedResetGUI()
+	{
+		// Wait for VR camera head to be fully initialized
+		yield return new WaitForSeconds(1.0f);
+		if (internalGui != null)
+		{
+			resetGUIPosition();
+		}
+	}
+
 	private void CreatePointer()
 	{
-		if ((Object)(object)pointer == (Object)null)
+		if (pointer == null)
 		{
 			pointer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-			((Object)pointer).name = "pointer";
+			((UnityEngine.Object)pointer).name = "pointer";
 			pointer.GetComponent<SphereCollider>();
 			pointer.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
 			pointer.transform.parent = ((Component)this).transform;
@@ -100,18 +110,17 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	protected override void OnDestroy()
 	{
-		if ((Object)(object)_proximityHighlight != (Object)null)
-			Object.Destroy((Object)(object)_proximityHighlight);
+		if (_proximityHighlight != null)
+			UnityEngine.Object.Destroy(_proximityHighlight);
 		if (_grabLine != null)
-			Object.Destroy(((Component)_grabLine).gameObject);
-		if ((Object)(object)marker != (Object)null)
-			Object.Destroy((Object)(object)marker);
-		if ((Object)(object)mirror1 != (Object)null)
-			Object.Destroy((Object)(object)mirror1);
-		if ((Object)(object)grabHandle != (Object)null)
-			Object.Destroy((Object)(object)grabHandle);
-		if ((Object)(object)internalGui != (Object)null)
-			Object.DestroyImmediate((Object)(object)((Component)internalGui).gameObject);
+			UnityEngine.Object.Destroy(((Component)_grabLine).gameObject);
+		if (marker != null)
+			UnityEngine.Object.Destroy(marker);
+		if (mirror1 != null)
+			UnityEngine.Object.Destroy(mirror1);
+		if (grabHandle != null)
+			UnityEngine.Object.Destroy(grabHandle);
+		// Note: We no longer destroy internalGui here because it is a static shared instance across both controllers
 	}
 
 	protected override void OnStart()
@@ -121,12 +130,16 @@ internal class GripMoveKKCharaStudioTool : Tool
 		{
 			VRLog.Info("Loading GripMoveTool");
 			_settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
-			internalGui = GUIQuad.Create();
-			resetGUIPosition();
-			((Component)internalGui).gameObject.AddComponent<MoveableGUIObject>();
-			((Component)internalGui).gameObject.AddComponent<BoxCollider>();
-			internalGui.IsOwned = true;
-			Object.DontDestroyOnLoad((Object)(object)((Component)internalGui).gameObject);
+			if (internalGui == null)
+			{
+				internalGui = GUIQuad.Create();
+				((Component)internalGui).gameObject.AddComponent<MoveableGUIObject>();
+				((Component)internalGui).gameObject.AddComponent<BoxCollider>();
+				internalGui.IsOwned = true;
+				UnityEngine.Object.DontDestroyOnLoad(((Component)internalGui).gameObject);
+				// Delay position reset so VR camera head is fully initialized
+				((MonoBehaviour)this).StartCoroutine(DelayedResetGUI());
+			}
 			CreatePointer();
 			gripMenuHandler = ((Component)this).gameObject.AddComponent<GripMenuHandler>();
 			((Behaviour)gripMenuHandler).enabled = false;
@@ -135,7 +148,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		{
 			VRLog.Info(obj);
 		}
-		if ((Object)(object)marker == (Object)null)
+		if (marker == null)
 		{
 			marker = new GameObject("__GripMoveMarker__");
 			marker.transform.parent = ((Component)this).transform.parent;
@@ -143,6 +156,9 @@ internal class GripMoveKKCharaStudioTool : Tool
 			marker.transform.rotation = ((Component)this).transform.rotation;
 		}
 		menuHandlder = ((Component)this).GetComponent<MenuHandler>();
+		// Permanently disable VRGIN MenuHandler to prevent two-hand trigger resize/move interference
+		if (menuHandlder != null)
+			((Behaviour)menuHandlder).enabled = false;
 		ikTool = IKTool.instance;
 		_isLeftHand = ((Component)this).GetComponent<VRGIN.Controls.LeftController>() != null;
 		_lastHandModelEnabled = _settings != null && _settings.HandModelEnabled;
@@ -153,19 +169,18 @@ internal class GripMoveKKCharaStudioTool : Tool
 		base.OnDisable();
 		ClearProximityHighlight();
 		if (_grabLine != null) ((Component)_grabLine).gameObject.SetActive(false);
-		if ((Object)(object)gripMenuHandler != (Object)null)
+		if (gripMenuHandler != null)
 			((Behaviour)gripMenuHandler).enabled = false;
-		if ((Object)(object)menuHandlder != (Object)null)
-			((Behaviour)menuHandlder).enabled = true;
-		if (Object.op_Implicit((Object)(object)internalGui))
+		// Keep VRGIN MenuHandler disabled (was permanently disabled in OnStart)
+		if ((internalGui != null))
 			((Component)internalGui).gameObject.SetActive(false);
 
 		// 恢复此手的状态：显示指针，隐藏手部模型，显示 SteamVR 渲染模型
-		if ((Object)(object)pointer != (Object)null)
+		if (pointer != null)
 			pointer.SetActive(true);
 		if (VRHandModelManager.Instance != null)
 			VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
-		if ((Object)(object)Owner != (Object)null)
+		if (Owner != null)
 			Owner.SetRenderModelVisible(true);
 	}
 
@@ -173,21 +188,30 @@ internal class GripMoveKKCharaStudioTool : Tool
 	{
 		if (handEnabled)
 		{
-			if ((Object)(object)pointer != (Object)null)
+			if (pointer != null)
 				pointer.SetActive(false);
 			if (VRHandModelManager.Instance != null)
 				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, true);
-			if ((Object)(object)Owner != (Object)null)
+			if (Owner != null)
+			{
 				Owner.SetRenderModelVisible(false);
+				// Hide the VRGIN tool icon circle and alpha concealer sphere
+				var canvas = ((Component)Owner).GetComponentInChildren<Canvas>(true);
+				if (canvas != null) ((Component)canvas).gameObject.SetActive(false);
+			}
 		}
 		else
 		{
-			if ((Object)(object)pointer != (Object)null)
+			if (pointer != null)
 				pointer.SetActive(true);
 			if (VRHandModelManager.Instance != null)
 				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
-			if ((Object)(object)Owner != (Object)null)
+			if (Owner != null)
+			{
 				Owner.SetRenderModelVisible(true);
+				var canvas = ((Component)Owner).GetComponentInChildren<Canvas>(true);
+				if (canvas != null) ((Component)canvas).gameObject.SetActive(true);
+			}
 		}
 	}
 
@@ -228,7 +252,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 			if (col == null) continue;
 			MoveableGUIObject mgo = ((Component)col).GetComponent<MoveableGUIObject>();
 			// Only consider character IK targets, not GUI elements
-			if (mgo == null || (Object)(object)mgo.guideObject == (Object)null) continue;
+			if (mgo == null || mgo.guideObject == null) continue;
 
 			float dist = Vector3.Distance(((Component)col).transform.position, handPos);
 			if (dist < nearestDist)
@@ -263,11 +287,11 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void ShowProximityHighlight(MoveableGUIObject target)
 	{
-		if ((Object)(object)_proximityHighlight == (Object)null)
+		if (_proximityHighlight == null)
 		{
 			_proximityHighlight = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-			((Object)_proximityHighlight).name = "_VRProximityHighlight";
-			Object.Destroy(_proximityHighlight.GetComponent<Collider>());
+			((UnityEngine.Object)_proximityHighlight).name = "_VRProximityHighlight";
+			UnityEngine.Object.Destroy(_proximityHighlight.GetComponent<Collider>());
 			Renderer r = _proximityHighlight.GetComponent<Renderer>();
 			r.material = new Material(MaterialHelper.GetColorZOrderShader());
 			r.material.color = new Color(0f, 1f, 0.5f, 0.35f);
@@ -296,7 +320,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 		// 只对有 guideObject 的 IK 目标显示连线
 		MoveableGUIObject mgo = grabbingObject.GetComponent<MoveableGUIObject>();
-		if (mgo == null || (Object)(object)mgo.guideObject == (Object)null)
+		if (mgo == null || mgo.guideObject == null)
 		{
 			if (_grabLine != null)
 				((Component)_grabLine).gameObject.SetActive(false);
@@ -307,7 +331,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		if (_grabLine == null)
 		{
 			GameObject lineObj = new GameObject("_VRGrabLine");
-			Object.DontDestroyOnLoad(lineObj);
+			UnityEngine.Object.DontDestroyOnLoad(lineObj);
 			_grabLine = lineObj.AddComponent<LineRenderer>();
 			_grabLine.material = new Material(MaterialHelper.GetColorZOrderShader());
 			_grabLine.material.renderQueue = 3600;
@@ -339,11 +363,10 @@ internal class GripMoveKKCharaStudioTool : Tool
 	protected override void OnEnable()
 	{
 		base.OnEnable();
-		if ((Object)(object)gripMenuHandler != (Object)null)
+		if (gripMenuHandler != null)
 			((Behaviour)gripMenuHandler).enabled = true;
-		if ((Object)(object)menuHandlder != (Object)null)
-			((Behaviour)menuHandlder).enabled = false;
-		if (Object.op_Implicit((Object)(object)internalGui))
+		// Keep VRGIN MenuHandler disabled
+		if ((internalGui != null))
 			((Component)internalGui).gameObject.SetActive(true);
 
 		bool handEnabled = _settings != null && _settings.HandModelEnabled;
@@ -379,7 +402,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 		HandleButtonEvents();
 		HandleObjectGrab();
 		UpdateGrabLine();
-		HandleGripWorldMove();
 
 		lastGrabbedObject = null;
 		nearestGrabable = float.MaxValue;
@@ -393,27 +415,39 @@ internal class GripMoveKKCharaStudioTool : Tool
 		Vector2 axis = controller.GetAxis(EVRButtonId.k_EButton_SteamVR_Touchpad);
 		bool isLeft = _isLeftHand;
 
+		// Right thumbstick click: reset view orientation (fixes MMD animation rotation)
+		if (!isLeft && controller.GetPressDown(EVRButtonId.k_EButton_SteamVR_Touchpad))
+		{
+			Transform origin = VR.Camera.SteamCam.origin;
+			if (origin != null)
+			{
+				Vector3 euler = origin.eulerAngles;
+				origin.rotation = Quaternion.Euler(0f, euler.y, 0f);
+			}
+		}
+
 		if (Mathf.Abs(axis.y) > 0.1f || Mathf.Abs(axis.x) > 0.1f)
 		{
 			Transform head = VR.Camera.Head;
 			Transform origin = VR.Camera.SteamCam.origin;
 
-			if ((Object)(object)origin != (Object)null && (Object)(object)head != (Object)null)
+			if (origin != null && head != null)
 			{
 				if (isLeft)
 				{
 					Vector3 forward = head.forward;
 					forward.y = 0f;
-					((Vector3)(ref forward)).Normalize();
+					forward.Normalize();
 					Vector3 right = head.right;
 					right.y = 0f;
-					((Vector3)(ref right)).Normalize();
+					right.Normalize();
 					
 					float speed = _settings != null ? _settings.LocomotionSpeed : 2.0f;
 					origin.position += (forward * axis.y + right * axis.x) * speed * Time.deltaTime;
 				}
 				else
 				{
+					// Right stick X = turn, Y = height adjustment
 					bool smoothTurn = _settings != null && _settings.SmoothTurnEnabled;
 					if (smoothTurn)
 					{
@@ -429,6 +463,13 @@ internal class GripMoveKKCharaStudioTool : Tool
 							origin.RotateAround(head.position, Vector3.up, Mathf.Sign(axis.x) * angle);
 							lastSnapTurnTime = Time.time;
 						}
+					}
+
+					// Y-axis: height (up/down) adjustment
+					if (Mathf.Abs(axis.y) > 0.1f)
+					{
+						float heightSpeed = _settings != null ? _settings.LocomotionSpeed : 2.0f;
+						origin.position += Vector3.up * axis.y * heightSpeed * Time.deltaTime;
 					}
 				}
 
@@ -468,15 +509,21 @@ internal class GripMoveKKCharaStudioTool : Tool
 			menuDownTime = Time.time;
 		}
 
+		// When the laser is hitting the UI quad, let GripMenuHandler handle ALL trigger input.
+		// Skip trigger handling here to prevent VRToggleObjectSelectOnCursor from interfering
+		// with UI clicks (dropdowns, sliders, settings panels, etc).
+		if (gripMenuHandler != null && gripMenuHandler.LaserVisible)
+			return;
+
 		bool flag = false;
 
 		// 近距离高亮目标：Trigger 点击自动在工作区树中选中
 		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && _proximityTarget != null
-		    && (Object)(object)_proximityTarget.guideObject != (Object)null)
+		    && _proximityTarget.guideObject != null)
 		{
 			GuideObject pg = _proximityTarget.guideObject;
-			if ((Object)(object)pg.guideSelect != (Object)null
-			    && (Object)(object)pg.guideSelect.treeNodeObject != (Object)null)
+			if (pg.guideSelect != null
+			    && pg.guideSelect.treeNodeObject != null)
 			{
 				pg.guideSelect.treeNodeObject.OnClickSelect();
 			}
@@ -488,12 +535,12 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 
 		// 直接接触目标：Trigger 点击选中（与上面互斥）
-		if (!flag && controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
+		if (!flag && controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && lastGrabbedObject != null && lastGrabbedObject.GetComponent<MoveableGUIObject>() != null)
 		{
 			GuideObject guideObject = lastGrabbedObject.GetComponent<MoveableGUIObject>().guideObject;
-			if ((Object)(object)guideObject != (Object)null)
+			if (guideObject != null)
 			{
-				if ((Object)(object)guideObject.guideSelect != (Object)null && (Object)(object)guideObject.guideSelect.treeNodeObject != (Object)null)
+				if (guideObject.guideSelect != null && guideObject.guideSelect.treeNodeObject != null)
 				{
 					guideObject.guideSelect.treeNodeObject.OnClickSelect();
 				}
@@ -504,20 +551,11 @@ internal class GripMoveKKCharaStudioTool : Tool
 				flag = true;
 			}
 		}
-
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Axis1) && !flag)
-		{
-			VRLog.Info("Called on Select VRToggle");
-			if (Object.op_Implicit((Object)(object)gripMenuHandler) && gripMenuHandler.LaserVisible)
-			{
-				VRItemObjMoveHelper.Instance.VRToggleObjectSelectOnCursor();
-			}
-		}
 	}
 
 	private void HandleObjectGrab()
 	{
-		if ((Object)(object)grabHandle == (Object)null)
+		if (grabHandle == null)
 		{
 			grabHandle = new GameObject("__GripMoveGrabHandle__");
 			grabHandle.transform.parent = ((Component)this).transform;
@@ -537,15 +575,15 @@ internal class GripMoveKKCharaStudioTool : Tool
 		bool press = controller.GetPress(EVRButtonId.k_EButton_Grip);
 		bool pressUp = controller.GetPressUp(EVRButtonId.k_EButton_Grip);
 
-		if (pressDown && screenGrabbed && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)grabHandle != (Object)null)
+		if (pressDown && screenGrabbed && lastGrabbedObject != null && grabHandle != null)
 		{
 			grabbingObject = lastGrabbedObject;
 			grabHandle.transform.position = lastGrabbedObject.transform.position;
 			grabHandle.transform.rotation = lastGrabbedObject.transform.rotation;
-			if ((Object)(object)lastGrabbedObject.GetComponent<MoveableGUIObject>() != (Object)null)
+			if (lastGrabbedObject.GetComponent<MoveableGUIObject>() != null)
 			{
 				MoveableGUIObject component = lastGrabbedObject.GetComponent<MoveableGUIObject>();
-				if ((Object)(object)component.guideObject != (Object)null)
+				if (component.guideObject != null)
 				{
 					ApplyFingerFKIfNeeded(component.guideObject);
 					grabHandle.transform.rotation = component.guideObject.transformTarget.rotation;
@@ -559,14 +597,14 @@ internal class GripMoveKKCharaStudioTool : Tool
 			_smoothGrabInitialized = false;
 		}
 
-		if (press && (Object)(object)grabbingObject != (Object)null)
+		if (press && grabbingObject != null)
 		{
 			Vector3 targetPos = grabHandle.transform.position;
 			Quaternion targetRot = grabHandle.transform.rotation;
 
 			// 检测是否为 IK 目标，决定是否使用平滑插值
 			MoveableGUIObject mgo = grabbingObject.GetComponent<MoveableGUIObject>();
-			bool isIKTarget = mgo != null && (Object)(object)mgo.guideObject != (Object)null;
+			bool isIKTarget = mgo != null && mgo.guideObject != null;
 
 			if (isIKTarget)
 			{
@@ -598,9 +636,9 @@ internal class GripMoveKKCharaStudioTool : Tool
 			}
 		}
 
-		if (screenGrabbed && (Object)(object)grabbingObject != (Object)null && pressUp)
+		if (screenGrabbed && grabbingObject != null && pressUp)
 		{
-			if ((Object)(object)grabbingObject.GetComponent<MoveableGUIObject>() != (Object)null)
+			if (grabbingObject.GetComponent<MoveableGUIObject>() != null)
 			{
 				grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
 			}
@@ -618,12 +656,12 @@ internal class GripMoveKKCharaStudioTool : Tool
 		if (VRTwoHandScale.Instance != null && VRTwoHandScale.Instance.IsScaling)
 			return;
 
-		if (controller.GetPress(EVRButtonId.k_EButton_Grip) && (Object)(object)grabbingObject == (Object)null)
+		if (controller.GetPress(EVRButtonId.k_EButton_Grip) && grabbingObject == null)
 		{
 			target = ((Component)VR.Camera.SteamCam.origin).gameObject;
-			if ((Object)(object)target != (Object)null)
+			if (target != null)
 			{
-				if ((Object)(object)mirror1 == (Object)null)
+				if (mirror1 == null)
 				{
 					mirror1 = new GameObject("__GripMoveMirror1__");
 					mirror1.transform.position = ((Component)this).transform.position;
@@ -661,7 +699,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		string[] fINGER_KEYS = FINGER_KEYS;
 		foreach (string value in fINGER_KEYS)
 		{
-			if (((Object)t).name.Contains(value))
+			if (((UnityEngine.Object)t).name.Contains(value))
 			{
 				return true;
 			}
@@ -681,10 +719,10 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void ResetRotation()
 	{
-		if ((Object)(object)target != (Object)null)
+		if (target != null)
 		{
 			Quaternion rotation = target.transform.rotation;
-			Vector3 eulerAngles = ((Quaternion)(ref rotation)).eulerAngles;
+			Vector3 eulerAngles = rotation.eulerAngles;
 			eulerAngles.x = 0f;
 			eulerAngles.z = 0f;
 			target.transform.rotation = Quaternion.Euler(eulerAngles);
@@ -709,7 +747,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	public static Quaternion RemoveXZRot(Quaternion q)
 	{
-		Vector3 eulerAngles = ((Quaternion)(ref q)).eulerAngles;
+		Vector3 eulerAngles = q.eulerAngles;
 		eulerAngles.x = 0f;
 		eulerAngles.z = 0f;
 		return Quaternion.Euler(eulerAngles);
@@ -717,18 +755,18 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void OnTriggerStay(Collider collider)
 	{
-		if ((Object)(object)((Component)collider).GetComponent<GUIQuad>() != (Object)null)
+		if (((Component)collider).GetComponent<GUIQuad>() != null)
 		{
 			screenGrabbed = true;
 			lastGrabbedObject = ((Component)collider).gameObject;
 		}
-		else if ((Object)(object)((Component)collider).GetComponent<MoveableGUIObject>() != (Object)null)
+		else if (((Component)collider).GetComponent<MoveableGUIObject>() != null)
 		{
 			screenGrabbed = true;
-			if ((Object)(object)lastGrabbedObject != (Object)null)
+			if (lastGrabbedObject != null)
 			{
 				Vector3 val = ((Component)collider).gameObject.transform.position - pointer.transform.position;
-				float sqrMagnitude = ((Vector3)(ref val)).sqrMagnitude;
+				float sqrMagnitude = val.sqrMagnitude;
 				if (sqrMagnitude < nearestGrabable)
 				{
 					lastGrabbedObject = ((Component)collider).gameObject;
@@ -740,7 +778,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 				lastGrabbedObject = ((Component)collider).gameObject;
 			}
 		}
-		if (screenGrabbed && (Object)(object)lastGrabbedObject != (Object)null && (Object)(object)pointer != (Object)null)
+		if (screenGrabbed && lastGrabbedObject != null && pointer != null)
 		{
 			((Renderer)pointer.GetComponent<MeshRenderer>()).material.color = Color.red;
 		}
@@ -753,7 +791,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 	private void OnTriggerExit(Collider collider)
 	{
 		GameObject gameObject = ((Component)collider).gameObject;
-		if (screenGrabbed && (Object)(object)((Component)collider).GetComponent<MoveableGUIObject>() != (Object)null && (Object)(object)gameObject == (Object)(object)lastGrabbedObject)
+		if (screenGrabbed && ((Component)collider).GetComponent<MoveableGUIObject>() != null && gameObject == lastGrabbedObject)
 		{
 			((Renderer)pointer.GetComponent<MeshRenderer>()).material.color = Color.white;
 			screenGrabbed = false;

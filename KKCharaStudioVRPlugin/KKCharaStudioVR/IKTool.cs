@@ -32,7 +32,7 @@ public class IKTool : MonoBehaviour
 
 	public static IKTool Create(GameObject container)
 	{
-		if ((Object)(object)instance != (Object)null)
+		if (instance != null)
 		{
 			return instance;
 		}
@@ -53,7 +53,7 @@ public class IKTool : MonoBehaviour
 
 	private IEnumerator InstallMoveableObjectCo()
 	{
-		Studio studio = Singleton<Studio>.Instance;
+		Studio.Studio studio = Singleton<Studio.Studio>.Instance;
 		_ = Singleton<GuideObjectManager>.Instance;
 		while (true)
 		{
@@ -72,7 +72,7 @@ public class IKTool : MonoBehaviour
 						continue;
 					}
 
-					if ((Object)(object)value == (Object)null || (Object)(object)value.guideObject == (Object)null || (Object)(object)((Component)value.guideObject).gameObject == (Object)null)
+					if (value == null || value.guideObject == null || ((Component)value.guideObject).gameObject == null)
 					{
 						continue;
 					}
@@ -84,7 +84,7 @@ public class IKTool : MonoBehaviour
 					{
 						if (val.listIKTarget != null)
 						{
-							foreach (IKInfo item2 in val.listIKTarget)
+							foreach (OCIChar.IKInfo item2 in val.listIKTarget)
 							{
 								if (item2 != null && item2.guideObject != null)
 								{
@@ -95,7 +95,7 @@ public class IKTool : MonoBehaviour
 						
 						if (val.listBones != null)
 						{
-							foreach (BoneInfo listBone in val.listBones)
+							foreach (OCIChar.BoneInfo listBone in val.listBones)
 							{
 								if (listBone != null && listBone.guideObject != null)
 								{
@@ -126,7 +126,7 @@ public class IKTool : MonoBehaviour
 		((MonoBehaviour)this).StopAllCoroutines();
 		processedObjectKeys.Clear();
 		((MonoBehaviour)this).StartCoroutine(InstallMoveableObjectCo());
-		if ((Object)(object)handle == (Object)null)
+		if (handle == null)
 		{
 			handle = new GameObject("handle");
 			handle.transform.parent = ((Component)this).gameObject.transform;
@@ -135,7 +135,7 @@ public class IKTool : MonoBehaviour
 
 	private void MakeObjectMoveable(GuideObject guideObject, bool replaceMaterial = false, bool installToCenter = false)
 	{
-		if (!((Object)(object)guideObject.transformTarget == (Object)null))
+		if (!(guideObject.transformTarget == null))
 		{
 			if (installToCenter)
 			{
@@ -165,14 +165,14 @@ public class IKTool : MonoBehaviour
 		//IL_0174: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00ed: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00f4: Expected O, but got Unknown
-		if ((Object)(object)target.transform.Find("_gripmovemarker") == (Object)null)
+		if (target.transform.Find("_gripmovemarker") == null)
 		{
 			Renderer visibleReference = null;
 			GameObject val;
 			if (installToCenter)
 			{
 				val = GameObject.CreatePrimitive((PrimitiveType)0);
-				((Object)val).name = "_gripmovemarker";
+				((UnityEngine.Object)val).name = "_gripmovemarker";
 				val.layer = LayerMask.NameToLayer("Studio/Select");
 				Renderer component = val.GetComponent<Renderer>();
 				Material val2 = new Material(MaterialHelper.GetColorZOrderShader());
@@ -181,7 +181,7 @@ public class IKTool : MonoBehaviour
 				val2.renderQueue = 3800;
 				component.material = val2;
 				Transform val3 = target.transform.Find("move/XYZ");
-				if ((Object)(object)val3 != (Object)null)
+				if (val3 != null)
 				{
 					visibleReference = ((Component)val3).gameObject.GetComponent<Renderer>();
 				}
@@ -192,7 +192,7 @@ public class IKTool : MonoBehaviour
 				if (replaceMaterial)
 				{
 					Renderer component2 = target.GetComponent<Renderer>();
-					if ((Object)(object)component2 != (Object)null)
+					if (component2 != null)
 					{
 						Material val4 = new Material(MaterialHelper.GetColorZOrderShader());
 						val4.CopyPropertiesFromMaterial(component2.material);
@@ -232,17 +232,17 @@ public class IKTool : MonoBehaviour
 		//IL_0149: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0158: Unknown result type (might be due to invalid IL or missing references)
 		Transform val = ((Component)guideObject).gameObject.transform.Find("scale");
-		if ((Object)(object)((Component)val).transform.Find("X/_gripmovemarker_scale") == (Object)null)
+		if (((Component)val).transform.Find("X/_gripmovemarker_scale") == null)
 		{
 			string[] array = new string[4] { "XYZ", "X", "Y", "Z" };
 			foreach (string text in array)
 			{
 				Transform val2 = val.Find(text);
 				GuideScale component = ((Component)val2).gameObject.GetComponent<GuideScale>();
-				if ((Object)(object)component != (Object)null)
+				if (component != null)
 				{
 					GameObject obj = GameObject.CreatePrimitive((PrimitiveType)0);
-					((Object)obj).name = "_gripmovemarker_scale";
+					((UnityEngine.Object)obj).name = "_gripmovemarker_scale";
 					obj.layer = LayerMask.NameToLayer("Studio/Select");
 					Renderer component2 = obj.GetComponent<Renderer>();
 					Material val3 = new Material(MaterialHelper.GetColorZOrderShader());
@@ -347,17 +347,17 @@ public class IKTool : MonoBehaviour
 		_ = ((Component)marker).transform.parent;
 		GuideObject guideObject = component.guideObject;
 		GuideScale guideScale = component.guideScale;
-		if (!guideObject.enableScale || !Object.op_Implicit((Object)(object)component.guideScale))
+		if (!guideObject.enableScale || (component.guideScale == null))
 		{
 			return;
 		}
 		Vector3 localPosition = ((Component)marker).transform.localPosition;
-		float magnitude = ((Vector3)(ref localPosition)).magnitude;
+		float magnitude = localPosition.magnitude;
 		if (magnitude > 0f)
 		{
 			float num = magnitude / 0.25f;
 			Vector3 val = component.oldScale;
-			ScaleAxis axis = guideScale.axis;
+			GuideScale.ScaleAxis axis = guideScale.axis;
 			switch ((int)axis)
 			{
 			case 3:
@@ -386,7 +386,7 @@ public class IKTool : MonoBehaviour
 		MoveableGUIObject component = ((Component)marker).GetComponent<MoveableGUIObject>();
 		GuideObject guideObject = component.guideObject;
 		GuideScale guideScale = component.guideScale;
-		if (guideObject.enableScale && Object.op_Implicit((Object)(object)guideScale))
+		if (guideObject.enableScale && (guideScale != null))
 		{
 			((Component)marker).transform.localPosition = CalcScaleHandleDefaultPos(guideScale);
 		}
@@ -405,7 +405,7 @@ public class IKTool : MonoBehaviour
 		//IL_0038: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0043: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0088: Unknown result type (might be due to invalid IL or missing references)
-		ScaleAxis axis = guideScale.axis;
+		GuideScale.ScaleAxis axis = guideScale.axis;
 		return (Vector3)((int)axis switch
 		{
 			3 => new Vector3(0.25f, 0.25f, 0.25f) * 0.25f / DEFAULT_SCALE_POS_XYZ_DIST, 

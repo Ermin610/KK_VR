@@ -27,7 +27,7 @@ public class SubGUIQuad : ProtectedBehaviour
 	{
 		VRLog.Info("Create SubGUI");
 		SubGUIQuad subGUIQuad = GameObject.CreatePrimitive((PrimitiveType)5).AddComponent<SubGUIQuad>();
-		((Object)subGUIQuad).name = "SubGUIQuad";
+		((UnityEngine.Object)subGUIQuad).name = "SubGUIQuad";
 		subGUIQuad.left = left;
 		subGUIQuad.bottom = bottom;
 		subGUIQuad.width = width;
@@ -36,7 +36,7 @@ public class SubGUIQuad : ProtectedBehaviour
 		subGUIQuad.virtualScreenHeight = virtualScreenHeight;
 		subGUIQuad.UpdateMesh();
 		subGUIQuad.UpdateGUI();
-		if ((Object)(object)VR.GUI.SoftCursor != (Object)null)
+		if (VR.GUI.SoftCursor != null)
 		{
 			((Behaviour)VR.GUI.SoftCursor).enabled = false;
 		}
@@ -121,7 +121,7 @@ public class SubGUIQuad : ProtectedBehaviour
 	public virtual void UpdateGUI()
 	{
 		UpdateAspect();
-		if (!Object.op_Implicit((Object)(object)renderer))
+		if ((renderer == null))
 		{
 			VRLog.Warn("No renderer!");
 		}
