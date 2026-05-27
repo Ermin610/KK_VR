@@ -64,6 +64,9 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 
 ### Requirements
 - **Koikatsu / Koikatu (Koikatsu Party)** with **Chara Studio**.
+  > [!IMPORTANT]
+  > This plugin is designed for fully modded game clients. If you are missing any essential base plugins, dependency mods, or standard configurations, please supplement your game installation using the official **HF Patch** (a comprehensive, easy-to-use modpack and patcher for Koikatsu).
+  > - **Official HF Patch Repository**: [ManlyMarco/KK-HF_Patch](https://github.com/ManlyMarco/KK-HF_Patch)
 - **BepInEx** (v5.x recommended).
 - **OpenVR / SteamVR** runtime active.
 
