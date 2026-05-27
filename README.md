@@ -24,6 +24,9 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Visual Breathing Pulse**: Nearby targets display a subtle green breathing pulse animation indicating they are ready to be grabbed.
 - **Haptic Vibration**: High-fidelity haptic pulses trigger on your VR controllers when a grab is initiated or released, providing immersive physical feedback.
 
+![Realize controlling IK and adjusting position in KK](ik_control.jpg)
+*Realize controlling IK and adjusting position in KK / 实现在KK中控制IK调整位置*
+
 ### 4. Smooth Locomotion & Comfort Vignette
 - **Left Stick Walk**: Smooth locomotion in any direction using the left joystick (speed customizable).
 - **Right Stick Turn**: Choose between smooth turning (adjustable speed) or snap turning (customizable angle and cooldown).

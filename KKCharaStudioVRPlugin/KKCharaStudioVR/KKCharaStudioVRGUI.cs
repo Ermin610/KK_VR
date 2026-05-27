@@ -147,6 +147,9 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					}
 				}
 
+				GUILayout.Label($"UI Spawn Distance: {settings.UISpawnDistance:F2}m");
+				settings.UISpawnDistance = GUILayout.HorizontalSlider(settings.UISpawnDistance, 0.5f, 3.0f);
+
 				GUILayout.Space(5);
 				GUILayout.Label("--- 手部设置 ---", headerStyle);
 				settings.HandModelEnabled = GUILayout.Toggle(settings.HandModelEnabled, "Hand Model Enabled");

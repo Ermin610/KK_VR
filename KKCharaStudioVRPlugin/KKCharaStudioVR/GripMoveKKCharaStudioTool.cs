@@ -70,7 +70,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 		((Component)internalGui).transform.localScale = Vector3.one * 0.4f;
 		if (head != null)
 		{
-		((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, 0.6f));
+			float dist = _settings != null ? _settings.UISpawnDistance : 1.2f;
+			((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, dist));
 			((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
 		}
 		else
