@@ -27,25 +27,48 @@ namespace KKCharaStudioVR
             if (_settings == null || !_settings.HapticFeedbackEnabled) return;
             if (_trackedObject == null || !_trackedObject.isValid) return;
 
-            // Only fire haptics when touching character meshes (SkinnedMeshRenderer),
-            // not IK markers, GUIQuad, or other tool colliders
+            // Only fire haptics when touching character meshes (SkinnedMeshRenderer) or dynamic bones
             if (other == null) return;
             var smr = other.GetComponentInParent<SkinnedMeshRenderer>();
             var db = other.GetComponentInParent<DynamicBone>();
             if (smr == null && db == null) return;
 
-            // Cooldown to prevent rapid continuous firing
-            if (Time.time - _lastPulseTime > 0.05f)
+            int deviceIndex = (int)_trackedObject.index;
+            var device = SteamVR_Controller.Input(deviceIndex);
+            if (device == null) return;
+
+            float speed = device.velocity.magnitude;
+
+            // Detect if touching the pelvic/crotch region for insertion haptics
+            string nameLower = other.name.ToLower();
+            string parentNameLower = other.transform.parent != null ? other.transform.parent.name.ToLower() : "";
+            bool isPelvic = nameLower.Contains("pelvis") || nameLower.Contains("kokan") || nameLower.Contains("siri") || nameLower.Contains("parts") || nameLower.Contains("penetration") ||
+                            parentNameLower.Contains("pelvis") || parentNameLower.Contains("kokan") || parentNameLower.Contains("siri") || parentNameLower.Contains("parts") || parentNameLower.Contains("penetration");
+
+            if (isPelvic)
             {
-                int deviceIndex = (int)_trackedObject.index;
-                var device = SteamVR_Controller.Input(deviceIndex);
-                if (device != null)
+                // A. Pelvic Insertion: Deep, firm vibration wave modulated by velocity (25Hz)
+                if (Time.time - _lastPulseTime > 0.04f)
                 {
-                    ushort duration = (ushort)Mathf.Clamp(_settings.HapticFeedbackIntensity * 2000f, 100f, 3999f);
+                    float intensity = _settings.HapticFeedbackIntensity;
+                    ushort duration = (ushort)Mathf.Clamp((speed * 3500f + 700f) * intensity, 400f * intensity, 3999f);
                     device.TriggerHapticPulse(duration, EVRButtonId.k_EButton_Axis0);
                     _lastPulseTime = Time.time;
 
-                    // 通知手部模型变色
+                    if (VRHandModelManager.Instance != null)
+                        VRHandModelManager.Instance.NotifyTouch(_isLeftHand);
+                }
+            }
+            else
+            {
+                // B. Skin Sliding Micro-textures: Continuous high-frequency silky friction purr (50Hz), only when hand is moving
+                if (speed > 0.02f && Time.time - _lastPulseTime > 0.02f)
+                {
+                    float intensity = _settings.HapticFeedbackIntensity;
+                    ushort duration = (ushort)Mathf.Clamp((speed * 400f + 100f) * intensity, 100f * intensity, 450f * intensity);
+                    device.TriggerHapticPulse(duration, EVRButtonId.k_EButton_Axis0);
+                    _lastPulseTime = Time.time;
+
                     if (VRHandModelManager.Instance != null)
                         VRHandModelManager.Instance.NotifyTouch(_isLeftHand);
                 }
