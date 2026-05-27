@@ -21,7 +21,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 	private KKCharaStudioVRSettings _settings;
 	private GameObject mirror1;
 	private GameObject grabHandle;
-	private GameObject pointer;
+
 	private bool screenGrabbed;
 	private GameObject lastGrabbedObject;
 	private GameObject grabbingObject;
@@ -91,22 +91,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 	}
 
-	private void CreatePointer()
-	{
-		if (pointer == null)
-		{
-			pointer = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-			((UnityEngine.Object)pointer).name = "pointer";
-			pointer.GetComponent<SphereCollider>();
-			pointer.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
-			pointer.transform.parent = ((Component)this).transform;
-			pointer.transform.localPosition = new Vector3(0f, -0.03f, 0.03f);
-			Renderer component = pointer.GetComponent<Renderer>();
-			component.enabled = true;
-			Material material = new Material(MaterialHelper.GetColorZOrderShader());
-			component.material = material;
-		}
-	}
+
 
 	protected override void OnDestroy()
 	{
@@ -140,7 +125,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 				// Delay position reset so VR camera head is fully initialized
 				((MonoBehaviour)this).StartCoroutine(DelayedResetGUI());
 			}
-			CreatePointer();
+
 			gripMenuHandler = ((Component)this).gameObject.AddComponent<GripMenuHandler>();
 			((Behaviour)gripMenuHandler).enabled = false;
 		}
@@ -175,21 +160,22 @@ internal class GripMoveKKCharaStudioTool : Tool
 		if ((internalGui != null))
 			((Component)internalGui).gameObject.SetActive(false);
 
-		// 恢复此手的状态：显示指针，隐藏手部模型，显示 SteamVR 渲染模型
-		if (pointer != null)
-			pointer.SetActive(true);
-		if (VRHandModelManager.Instance != null)
-			VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
-		if (Owner != null)
-			Owner.SetRenderModelVisible(true);
+		// Don't hide hand models during tool switching — keep them visible
+		// Only hide if settings explicitly disable hand models
+		bool handEnabled = _settings != null && _settings.HandModelEnabled;
+		if (!handEnabled)
+		{
+			if (VRHandModelManager.Instance != null)
+				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
+			if (Owner != null)
+				Owner.SetRenderModelVisible(true);
+		}
 	}
 
 	private void ApplyHandModelState(bool handEnabled)
 	{
 		if (handEnabled)
 		{
-			if (pointer != null)
-				pointer.SetActive(false);
 			if (VRHandModelManager.Instance != null)
 				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, true);
 			if (Owner != null)
@@ -198,12 +184,12 @@ internal class GripMoveKKCharaStudioTool : Tool
 				// Hide the VRGIN tool icon circle and alpha concealer sphere
 				var canvas = ((Component)Owner).GetComponentInChildren<Canvas>(true);
 				if (canvas != null) ((Component)canvas).gameObject.SetActive(false);
+				// Hide AlphaConcealer — it's a Sphere primitive parented directly to Controller
+				HideAlphaConcealer(true);
 			}
 		}
 		else
 		{
-			if (pointer != null)
-				pointer.SetActive(true);
 			if (VRHandModelManager.Instance != null)
 				VRHandModelManager.Instance.SetHandVisible(_isLeftHand, false);
 			if (Owner != null)
@@ -211,6 +197,25 @@ internal class GripMoveKKCharaStudioTool : Tool
 				Owner.SetRenderModelVisible(true);
 				var canvas = ((Component)Owner).GetComponentInChildren<Canvas>(true);
 				if (canvas != null) ((Component)canvas).gameObject.SetActive(true);
+				HideAlphaConcealer(false);
+			}
+		}
+	}
+
+	private void HideAlphaConcealer(bool hide)
+	{
+		if (Owner == null) return;
+		// The AlphaConcealer is a Sphere primitive child of the Controller transform
+		// It has a MeshFilter with "Sphere" mesh and a Renderer but no name set by VRGIN
+		Transform controllerT = ((Component)Owner).transform;
+		for (int i = 0; i < controllerT.childCount; i++)
+		{
+			Transform child = controllerT.GetChild(i);
+			MeshFilter mf = ((Component)child).GetComponent<MeshFilter>();
+			if (mf != null && mf.sharedMesh != null && mf.sharedMesh.name.Contains("Sphere"))
+			{
+				((Component)child).gameObject.SetActive(!hide);
+				break;
 			}
 		}
 	}
@@ -765,7 +770,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 			screenGrabbed = true;
 			if (lastGrabbedObject != null)
 			{
-				Vector3 val = ((Component)collider).gameObject.transform.position - pointer.transform.position;
+				Vector3 val = ((Component)collider).gameObject.transform.position - ((Component)this).transform.position;
 				float sqrMagnitude = val.sqrMagnitude;
 				if (sqrMagnitude < nearestGrabable)
 				{
@@ -778,10 +783,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 				lastGrabbedObject = ((Component)collider).gameObject;
 			}
 		}
-		if (screenGrabbed && lastGrabbedObject != null && pointer != null)
-		{
-			((Renderer)pointer.GetComponent<MeshRenderer>()).material.color = Color.red;
-		}
+
 	}
 
 	private void OnTriggerEnter(Collider collider)
@@ -793,7 +795,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		GameObject gameObject = ((Component)collider).gameObject;
 		if (screenGrabbed && ((Component)collider).GetComponent<MoveableGUIObject>() != null && gameObject == lastGrabbedObject)
 		{
-			((Renderer)pointer.GetComponent<MeshRenderer>()).material.color = Color.white;
+
 			screenGrabbed = false;
 			lastGrabbedObject = null;
 		}

@@ -312,6 +312,10 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private void OnDisable()
 	{
+		if (ActiveMouseHandler == this)
+		{
+			ActiveMouseHandler = null;
+		}
 	}
 
 	private void EnsureResizeHandler()

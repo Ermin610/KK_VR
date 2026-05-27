@@ -24,6 +24,8 @@ namespace KKCharaStudioVR
             public float currentTriggerVal;
             public float touchFeedback; // 0 = not touching, 1 = touching
             public float[] fingerTargets = new float[5];
+            public VRGIN.Controls.Controller cachedController;
+            public bool lastRenderModelHidden;
         }
 
         private HandContext leftHand;
@@ -58,6 +60,17 @@ namespace KKCharaStudioVR
             if (leftTracked != null) leftHand = CreateHand(leftTracked, true);
             if (rightTracked != null) rightHand = CreateHand(rightTracked, false);
             initialized = true;
+
+            // Wait two frames for VRGIN tool system OnEnable/OnDisable cycle to settle,
+            // then force-reapply correct hand visibility from settings
+            yield return null;
+            yield return null;
+
+            bool handEnabled = settings != null ? settings.HandModelEnabled : true;
+            if (leftHand != null && leftHand.root != null)
+                leftHand.root.SetActive(handEnabled);
+            if (rightHand != null && rightHand.root != null)
+                rightHand.root.SetActive(handEnabled);
         }
 
         void Update()
@@ -106,13 +119,13 @@ namespace KKCharaStudioVR
         {
             if (h == null || h.root == null) return;
 
-            // Continuously enforce render model visibility to handle asynchronous loading of SteamVR_RenderModel
-            if (h.trackedObj != null)
+            if (h.cachedController != null)
             {
-                var controller = h.trackedObj.GetComponent<VRGIN.Controls.Controller>();
-                if (controller != null)
+                bool shouldHideRenderModel = h.root.activeSelf;
+                if (shouldHideRenderModel != h.lastRenderModelHidden)
                 {
-                    controller.SetRenderModelVisible(!h.root.activeSelf);
+                    h.lastRenderModelHidden = shouldHideRenderModel;
+                    h.cachedController.SetRenderModelVisible(!shouldHideRenderModel);
                 }
             }
 
@@ -124,10 +137,10 @@ namespace KKCharaStudioVR
             bool isLeft = (h == leftHand);
             float xOffset = settings != null ? settings.HandOffsetX : 0f;
             float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
-            float zOffset = settings != null ? settings.HandOffsetZ : -0.12f;
+            float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
             h.root.transform.localPosition = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
 
-            float pitch = settings != null ? settings.HandRotPitch : 0f;
+            float pitch = settings != null ? settings.HandRotPitch : 30f;
             float yaw = settings != null ? settings.HandRotYaw : 0f;
             float roll = settings != null ? settings.HandRotRoll : 0f;
             float baseRoll = isLeft ? 90f : -90f;
@@ -156,17 +169,12 @@ namespace KKCharaStudioVR
         {
             HandContext ctx = new HandContext();
             ctx.trackedObj = tracked;
+            ctx.cachedController = tracked.GetComponent<VRGIN.Controls.Controller>();
+            ctx.lastRenderModelHidden = false;
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
             ctx.root.transform.parent = tracked.transform;
             // The position and rotation are now continuously updated in UpdateSingleHand
             // using the user's custom settings offsets.
-
-            // Disable the original GameObject of RenderModel once, just in case.
-            var renderModel = tracked.GetComponentInChildren<SteamVR_RenderModel>();
-            if (renderModel != null)
-            {
-                renderModel.gameObject.SetActive(false);
-            }
 
             ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
@@ -178,42 +186,50 @@ namespace KKCharaStudioVR
             
             // Palm — flat capsule centered below the controller, aligned to SteamVR wand convention
             // (Y-up, Z-forward from the controller grip point)
-            GameObject palm = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject palm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             palm.transform.parent = ctx.root.transform;
-            palm.transform.localScale = new Vector3(0.08f, 0.015f, 0.09f);
-            palm.transform.localPosition = new Vector3(0f, -0.03f, 0.04f);
-            palm.transform.localRotation = Quaternion.identity;
+            palm.transform.localScale = new Vector3(0.07f, 0.04f, 0.08f);
+            palm.transform.localPosition = new Vector3(0f, -0.025f, 0.04f);
+            palm.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             SetupMesh(palm, ctx.material);
 
             // Create fingers — positions relative to front edge of palm
             ctx.fingers = new FingerContext[5];
 
+            // Wrist — small capsule connecting palm back toward controller
+            GameObject wrist = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            wrist.transform.parent = ctx.root.transform;
+            wrist.transform.localScale = new Vector3(0.045f, 0.025f, 0.045f);
+            wrist.transform.localPosition = new Vector3(0f, -0.025f, -0.01f);
+            wrist.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            SetupMesh(wrist, ctx.material);
+
             float m = mirror; // +1 right, -1 left
-            // Thumb — sprouts from side of palm, angled outward
+            // Thumb — sprouts from side of palm, angled more outward for natural pose
             ctx.fingers[0] = CreateFinger(ctx.root.transform,
-                new Vector3(0.04f * m, -0.025f, 0.02f),
-                Quaternion.Euler(0, 30 * m, -20 * m),
-                ctx.material, 2, 0.022f, 0.012f);
+                new Vector3(0.035f * m, -0.015f, 0.015f),
+                Quaternion.Euler(-10, 50 * m, -30 * m),
+                ctx.material, 2, 0.024f, 0.013f);
             // Index
             ctx.fingers[1] = CreateFinger(ctx.root.transform,
-                new Vector3(0.025f * m, -0.03f, 0.085f),
-                Quaternion.identity,
-                ctx.material, 3, 0.020f, 0.010f);
-            // Middle
+                new Vector3(0.024f * m, -0.027f, 0.085f),
+                Quaternion.Euler(0, 3 * m, 0),
+                ctx.material, 3, 0.018f, 0.009f);
+            // Middle (longest)
             ctx.fingers[2] = CreateFinger(ctx.root.transform,
-                new Vector3(0.008f * m, -0.03f, 0.09f),
+                new Vector3(0.007f * m, -0.027f, 0.09f),
                 Quaternion.identity,
-                ctx.material, 3, 0.022f, 0.010f);
+                ctx.material, 3, 0.019f, 0.010f);
             // Ring
             ctx.fingers[3] = CreateFinger(ctx.root.transform,
-                new Vector3(-0.010f * m, -0.03f, 0.085f),
-                Quaternion.identity,
-                ctx.material, 3, 0.020f, 0.010f);
-            // Little
+                new Vector3(-0.010f * m, -0.027f, 0.083f),
+                Quaternion.Euler(0, -3 * m, 0),
+                ctx.material, 3, 0.017f, 0.009f);
+            // Little (shortest and thinnest)
             ctx.fingers[4] = CreateFinger(ctx.root.transform,
-                new Vector3(-0.028f * m, -0.03f, 0.075f),
-                Quaternion.identity,
-                ctx.material, 3, 0.017f, 0.008f);
+                new Vector3(-0.026f * m, -0.027f, 0.072f),
+                Quaternion.Euler(0, -6 * m, 0),
+                ctx.material, 3, 0.014f, 0.007f);
             
             bool handEnabled = settings != null ? settings.HandModelEnabled : true;
             ctx.root.SetActive(handEnabled);
@@ -293,24 +309,39 @@ namespace KKCharaStudioVR
             // Per-finger targets with slight stagger for natural look
             float smoothThumb = Mathf.Lerp(ctx.fingerTargets[0], thumbTarget, dt * 10f);
             ctx.fingerTargets[0] = smoothThumb;
-            ctx.fingerTargets[1] = ctx.currentTriggerVal;
-            ctx.fingerTargets[2] = ctx.currentGripVal;
-            ctx.fingerTargets[3] = Mathf.Lerp(ctx.fingerTargets[3], gripAxis, dt * 11f);
-            ctx.fingerTargets[4] = Mathf.Lerp(ctx.fingerTargets[4], gripAxis, dt * 9f);
+            
+            float restCurl = 0.08f; // ~7° at full curl of 85° — subtle natural rest pose
+
+            ctx.fingerTargets[1] = Mathf.Max(ctx.currentTriggerVal, restCurl);   // Index: trigger + rest
+            ctx.fingerTargets[2] = Mathf.Max(ctx.currentGripVal, restCurl);       // Middle: grip + rest
+            ctx.fingerTargets[3] = Mathf.Lerp(ctx.fingerTargets[3], Mathf.Max(gripAxis, restCurl), dt * 11f); // Ring
+            ctx.fingerTargets[4] = Mathf.Lerp(ctx.fingerTargets[4], Mathf.Max(gripAxis, restCurl * 1.2f), dt * 9f); // Little: slightly more curled
 
             // Apply with realistic curl angles per finger
-            AnimateFinger(ctx.fingers[0], ctx.fingerTargets[0] * 70f);   // Thumb
-            AnimateFinger(ctx.fingers[1], ctx.fingerTargets[1] * 85f);   // Index
-            AnimateFinger(ctx.fingers[2], ctx.fingerTargets[2] * 90f);   // Middle
-            AnimateFinger(ctx.fingers[3], ctx.fingerTargets[3] * 88f);   // Ring
-            AnimateFinger(ctx.fingers[4], ctx.fingerTargets[4] * 85f);   // Little
+            AnimateFinger(ctx.fingers[0], ctx.fingerTargets[0] * 70f, true);    // Thumb — isThumb=true
+            AnimateFinger(ctx.fingers[1], ctx.fingerTargets[1] * 90f);          // Index — increased from 85
+            AnimateFinger(ctx.fingers[2], ctx.fingerTargets[2] * 95f);          // Middle — increased from 90
+            AnimateFinger(ctx.fingers[3], ctx.fingerTargets[3] * 92f);          // Ring — increased from 88
+            AnimateFinger(ctx.fingers[4], ctx.fingerTargets[4] * 88f);          // Little — increased from 85
         }
         
-        void AnimateFinger(FingerContext finger, float angle)
+        void AnimateFinger(FingerContext finger, float totalAngle, bool isThumb = false)
         {
-            foreach (Transform joint in finger.joints)
+            for (int i = 0; i < finger.joints.Count; i++)
             {
-                joint.localRotation = Quaternion.Euler(angle, 0, 0);
+                float factor = 1f - i * 0.275f;
+                float curAngle = totalAngle * factor;
+                
+                if (isThumb)
+                {
+                    // Thumb curls inward (Z rotation) as well as forward (X rotation)
+                    float inwardAngle = curAngle * 0.5f;
+                    finger.joints[i].localRotation = Quaternion.Euler(curAngle * 0.7f, 0, inwardAngle);
+                }
+                else
+                {
+                    finger.joints[i].localRotation = Quaternion.Euler(curAngle, 0, 0);
+                }
             }
         }
     }

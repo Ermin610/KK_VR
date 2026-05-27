@@ -9,12 +9,66 @@ namespace KKCharaStudioVR;
 public class KKCharaStudioVRGUI : MonoBehaviour
 {
 	private int windowID = 8731;
-
 	private Rect windowRect = new Rect((float)(Screen.width - 250), (float)(Screen.height - 400), 250f, 10f);
-
 	private string windowTitle = "KKCharaStudioVR Settings";
-
 	private Dictionary<string, GUIStyle> styleBackup = new Dictionary<string, GUIStyle>();
+
+	private bool _desktopCoverEnabled = false;
+	private Camera _coverCamera;
+
+	private void Update()
+	{
+		if (Input.GetKeyDown(KeyCode.Space))
+		{
+			SetDesktopCover(!_desktopCoverEnabled);
+		}
+	}
+
+	private void OnDestroy()
+	{
+		if (_coverCamera != null && _coverCamera.gameObject != null)
+		{
+			Destroy(_coverCamera.gameObject);
+		}
+	}
+
+	private void SetDesktopCover(bool enabled)
+	{
+		_desktopCoverEnabled = enabled;
+		if (_coverCamera == null && enabled)
+		{
+			CreateCoverCamera();
+		}
+		if (_coverCamera != null)
+		{
+			_coverCamera.enabled = enabled;
+		}
+
+		try
+		{
+			UnityEngine.VR.VRSettings.showDeviceView = !enabled;
+		}
+		catch (Exception e)
+		{
+			VRLog.Warn($"Failed to set showDeviceView: {e.Message}");
+		}
+	}
+
+	private void CreateCoverCamera()
+	{
+		GameObject camObj = new GameObject("VRDesktopCoverCamera");
+		GameObject.DontDestroyOnLoad(camObj);
+
+		_coverCamera = camObj.AddComponent<Camera>();
+		_coverCamera.depth = 99999f;
+		_coverCamera.clearFlags = CameraClearFlags.Color;
+		_coverCamera.backgroundColor = Color.black;
+		_coverCamera.cullingMask = 0; // Render nothing
+		_coverCamera.allowHDR = false;
+		_coverCamera.allowMSAA = false;
+		_coverCamera.useOcclusionCulling = false;
+		_coverCamera.enabled = false;
+	}
 
 	private void OnGUI()
 	{
@@ -153,6 +207,11 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				GUILayout.Space(5);
 				GUILayout.Label("--- 高级设置 ---", headerStyle);
 				settings.TwoHandScaleEnabled = GUILayout.Toggle(settings.TwoHandScaleEnabled, "Two-Hand World Scale");
+
+				if (GUILayout.Button(_desktopCoverEnabled ? "Restore Desktop View (Space)" : "Cover Desktop View (Space)"))
+				{
+					SetDesktopCover(!_desktopCoverEnabled);
+				}
 
 				GUILayout.Space(10);
 				GUILayout.BeginHorizontal();

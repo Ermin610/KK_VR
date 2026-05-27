@@ -30,8 +30,14 @@ namespace KKCharaStudioVR
 
         void Update()
         {
-            // Fully disabled two-hand scaling as it modifies the world Y-axis
-            return;
+            if (_settings != null && !_settings.TwoHandScaleEnabled)
+            {
+                _isScaling = false;
+                return;
+            }
+
+            if (VR.Mode == null || VR.Mode.Left == null || VR.Mode.Right == null)
+                return;
 
             var leftTracked = ((Component)VR.Mode.Left).GetComponent<SteamVR_TrackedObject>();
             var rightTracked = ((Component)VR.Mode.Right).GetComponent<SteamVR_TrackedObject>();
@@ -81,7 +87,9 @@ namespace KKCharaStudioVR
                     float scaleChange = newMagnitude / origin.localScale.x;
 
                     origin.localScale = Vector3.one * newMagnitude;
-                    origin.position = midpoint - originToMid * scaleChange;
+                    Vector3 newPos = midpoint - originToMid * scaleChange;
+                    newPos.y = origin.position.y; // 锁定 Y 轴以防止缩放时高度漂移/上下移动
+                    origin.position = newPos;
                 }
             }
             else

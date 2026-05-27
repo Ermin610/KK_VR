@@ -106,7 +106,7 @@ internal class VRLoader : ProtectedBehaviour
 			val.AddComponent<VRHandModelManager>();
 			val.AddComponent<VRQuickActions>();
 			val.AddComponent<VRComfortVignette>();
-			val.AddComponent<VRTwoHandScale>();
+			// val.AddComponent<VRTwoHandScale>(); // Completely disabled two-hand scaling and movement as requested by the user
 			UnityEngine.Object.DontDestroyOnLoad(((Component)VRCamera.Instance).gameObject);
 		}
 	}

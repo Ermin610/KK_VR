@@ -219,7 +219,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 			{
 				int layer = LayerMask.NameToLayer(VR.Context.UILayer);
 				((Component)item).gameObject.layer = layer;
-				Transform[] componentsInChildren = ((Component)item).gameObject.GetComponentsInChildren<Transform>(true);
+				Transform[] componentsInChildren = ((Component)item).gameObject.GetComponentsInChildren<Transform>();
 				for (int i = 0; i < componentsInChildren.Length; i++)
 				{
 					((Component)componentsInChildren[i]).gameObject.layer = layer;
@@ -227,7 +227,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 			}
 			if (VR.Context.EnforceDefaultGUIMaterials)
 			{
-				Graphic[] componentsInChildren2 = ((Component)item).gameObject.GetComponentsInChildren<Graphic>(true);
+				Graphic[] componentsInChildren2 = ((Component)item).gameObject.GetComponentsInChildren<Graphic>();
 				foreach (Graphic obj in componentsInChildren2)
 				{
 					obj.material = obj.defaultMaterial;

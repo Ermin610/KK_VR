@@ -164,8 +164,8 @@ public class KKCharaStudioVRSettings : VRSettings
 	}
 
 	private float _HandOffsetX = 0f;
-	private float _HandOffsetY = -0.01f;
-	private float _HandOffsetZ = -0.04f;
+	private float _HandOffsetY = -0.02f;
+	private float _HandOffsetZ = -0.05f;
 
 	[XmlComment("Hand model X offset")]
 	public float HandOffsetX
@@ -188,7 +188,7 @@ public class KKCharaStudioVRSettings : VRSettings
 		set { _HandOffsetZ = value; TriggerPropertyChanged("HandOffsetZ"); }
 	}
 
-	private float _HandRotPitch = 40f;
+	private float _HandRotPitch = 30f;
 	private float _HandRotYaw = 0f;
 	private float _HandRotRoll = 0f;
 
