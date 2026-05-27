@@ -568,8 +568,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 			grabHandle.transform.rotation = ((Component)this).transform.rotation;
 		}
 
-		// Proximity grab: when grip pressed near character IK target but not directly touching
-		if (controller.GetPressDown(EVRButtonId.k_EButton_Grip) && !screenGrabbed && _proximityTarget != null)
+		// Proximity grab: when grip pressed near character IK target but not currently grabbing
+		if (controller.GetPressDown(EVRButtonId.k_EButton_Grip) && grabbingObject == null && _proximityTarget != null)
 		{
 			screenGrabbed = true;
 			lastGrabbedObject = ((Component)_proximityTarget).gameObject;
@@ -641,17 +641,22 @@ internal class GripMoveKKCharaStudioTool : Tool
 			}
 		}
 
-		if (screenGrabbed && grabbingObject != null && pressUp)
+		if (pressUp)
 		{
-			if (grabbingObject.GetComponent<MoveableGUIObject>() != null)
+			if (grabbingObject != null)
 			{
-				grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
+				if (grabbingObject.GetComponent<MoveableGUIObject>() != null)
+				{
+					grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
+				}
+				// 释放触觉反馈
+				if (controller != null)
+					controller.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
+				_smoothGrabInitialized = false;
+				grabbingObject = null;
 			}
-			// 释放触觉反馈
-			if (controller != null)
-				controller.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
-			_smoothGrabInitialized = false;
-			grabbingObject = null;
+			screenGrabbed = false;
+			lastGrabbedObject = null;
 		}
 	}
 
