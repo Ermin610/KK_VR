@@ -26,7 +26,6 @@ namespace KKCharaStudioVR
             public float[] fingerTargets = new float[5];
             public VRGIN.Controls.Controller cachedController;
             public bool lastRenderModelHidden;
-            public Transform palmTransform; // Store palm transform reference
         }
 
         private HandContext leftHand;
@@ -105,16 +104,6 @@ namespace KKCharaStudioVR
             var joints = h.fingers[fingerIndex].joints;
             if (joints.Count == 0) return null;
             return joints[joints.Count - 1];
-        }
-
-        public List<Transform> GetActivePalms()
-        {
-            List<Transform> list = new List<Transform>();
-            if (leftHand != null && leftHand.root != null && leftHand.root.activeInHierarchy && leftHand.palmTransform != null)
-                list.Add(leftHand.palmTransform);
-            if (rightHand != null && rightHand.root != null && rightHand.root.activeInHierarchy && rightHand.palmTransform != null)
-                list.Add(rightHand.palmTransform);
-            return list;
         }
 
         /// <summary>
@@ -225,7 +214,6 @@ namespace KKCharaStudioVR
             palm.transform.localScale = new Vector3(0.075f, 0.036f, 0.015f);
             palm.transform.localPosition = new Vector3(0f, -0.024f, 0.05f);
             palm.transform.localRotation = Quaternion.Euler(90f, 0f, 90f);
-            ctx.palmTransform = palm.transform;
 
             // Destroy the default CapsuleCollider which does not support non-uniform radial scaling
             // (Otherwise Unity scales its physical thickness to match its width, making the collider way too thick)
@@ -306,9 +294,6 @@ namespace KKCharaStudioVR
                 float ks = t * 1.25f; // slightly larger than thickness for a nice smooth knuckle look
                 knuckle.transform.localScale = new Vector3(ks, ks, ks);
                 SetupMesh(knuckle, mat, true); // Fingers are triggers (can penetrate!)
-
-                // Attach touch detector to the knuckle for auto-conforming
-                knuckle.AddComponent<VRFingerJointTouchDetector>();
 
                 // Capsule oriented along Z — rotated 90° on X so the capsule's Y axis aligns with Z
                 GameObject mesh = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -408,15 +393,6 @@ namespace KKCharaStudioVR
                 float factor = 1f - i * 0.275f;
                 float curAngle = totalAngle * factor;
                 
-                // Physics-based Finger Auto-Conforming:
-                // Query touch detector on the knuckle child of this joint and smoothly add extra curling
-                var detector = finger.joints[i].GetComponentInChildren<VRFingerJointTouchDetector>();
-                if (detector != null)
-                {
-                    float extraCurl = 25.0f * (1f - i * 0.25f) * detector.smoothTouchCurl;
-                    curAngle += extraCurl;
-                }
-
                 if (isThumb)
                 {
                     // Thumb curls inward (Z rotation) as well as forward (X rotation)
@@ -531,40 +507,6 @@ namespace KKCharaStudioVR
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
-        }
-    }
-
-    public class VRFingerJointTouchDetector : MonoBehaviour
-    {
-        public bool isTouching = false;
-        public float smoothTouchCurl = 0f; // Smoothed lerped curl factor (0 = no touch, 1 = full touch)
-        private float lastTouchTime = 0f;
-
-        void OnTriggerStay(Collider other)
-        {
-            if (other == null) return;
-            if (other.name.Contains("VRHandModel") || other.name.Contains("Col")) return;
-
-            var smr = other.GetComponentInParent<SkinnedMeshRenderer>();
-            var db = other.GetComponentInParent<DynamicBone>();
-            var holder = other.name.Contains("PhysicalColliderHolder");
-            if (smr != null || db != null || holder)
-            {
-                isTouching = true;
-                lastTouchTime = Time.time;
-            }
-        }
-
-        void Update()
-        {
-            if (isTouching && Time.time - lastTouchTime > 0.08f)
-            {
-                isTouching = false;
-            }
-
-            // Smoothly lerp the touch curl factor
-            float targetCurl = isTouching ? 1.0f : 0.0f;
-            smoothTouchCurl = Mathf.MoveTowards(smoothTouchCurl, targetCurl, Time.deltaTime * 6.0f); // Takes ~0.16s to fully curl/uncurl
         }
     }
 }
