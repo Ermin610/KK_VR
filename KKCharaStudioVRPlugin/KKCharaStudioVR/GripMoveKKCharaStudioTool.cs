@@ -402,12 +402,31 @@ internal class GripMoveKKCharaStudioTool : Tool
 			ApplyHandModelState(currentHandEnabled);
 		}
 
-		UpdateProximityDetection();
 		HandleThumbstickLocomotion();
-		HandleButtonEvents();
-		HandleObjectGrab();
-		HandleGripWorldMove();
-		UpdateGrabLine();
+
+		if (VRQuickActions.ikVisible)
+		{
+			UpdateProximityDetection();
+			HandleButtonEvents();
+			HandleObjectGrab();
+			HandleGripWorldMove();
+			UpdateGrabLine();
+		}
+		else
+		{
+			// If IK is hidden, force release any active grab and clear highlights immediately to prevent accidental dragging
+			if (grabbingObject != null)
+			{
+				if (grabbingObject.GetComponent<MoveableGUIObject>() != null)
+				{
+					grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
+				}
+				grabbingObject = null;
+			}
+			screenGrabbed = false;
+			lastGrabbedObject = null;
+			ClearProximityHighlight();
+		}
 
 		if (lastGrabbedObject != null && grabbingObject == null)
 		{

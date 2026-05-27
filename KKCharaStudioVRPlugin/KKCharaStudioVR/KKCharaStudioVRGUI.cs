@@ -13,8 +13,13 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 	private string windowTitle = "KKCharaStudioVR Settings";
 	private Dictionary<string, GUIStyle> styleBackup = new Dictionary<string, GUIStyle>();
 
-	private bool _desktopCoverEnabled = false;
+	private bool _desktopCoverEnabled = true;
 	private Camera _coverCamera;
+
+	private void Start()
+	{
+		SetDesktopCover(true);
+	}
 
 	private void Update()
 	{
@@ -177,6 +182,7 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				
 				GUILayout.Space(5);
 				GUILayout.Label("--- 物理设置 ---", headerStyle);
+				settings.PhysicsHandsEnabled = GUILayout.Toggle(settings.PhysicsHandsEnabled, "Physics Hands (防穿模物理手)");
 				settings.DynamicBoneCollisionEnabled = GUILayout.Toggle(settings.DynamicBoneCollisionEnabled, "DynamicBone Collision");
 				if (settings.DynamicBoneCollisionEnabled)
 				{
@@ -239,6 +245,7 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.HandRotYaw = 0f;
 					settings.HandRotRoll = 0f;
 					settings.DynamicBoneCollisionEnabled = true;
+					settings.PhysicsHandsEnabled = true;
 					settings.ColliderRadius = 0.02f;
 					settings.HapticFeedbackEnabled = true;
 					settings.HapticFeedbackIntensity = 0.5f;

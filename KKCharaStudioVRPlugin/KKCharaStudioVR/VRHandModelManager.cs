@@ -135,29 +135,34 @@ namespace KKCharaStudioVR
 
             // Apply custom offset and rotation
             bool isLeft = (h == leftHand);
-            float xOffset = settings != null ? settings.HandOffsetX : 0f;
-            float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
-            float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
-            h.root.transform.localPosition = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
-
-            float pitch = settings != null ? settings.HandRotPitch : 30f;
-            float yaw = settings != null ? settings.HandRotYaw : 0f;
-            float roll = settings != null ? settings.HandRotRoll : 0f;
-            float baseRoll = isLeft ? 90f : -90f;
-            float appliedYaw = isLeft ? yaw : -yaw;
-            float appliedRoll = isLeft ? roll : -roll;
-            h.root.transform.localRotation = Quaternion.Euler(pitch, appliedYaw, baseRoll + appliedRoll);
-
             h.root.transform.localScale = Vector3.one * scale;
+
+            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
+            if (!physicsEnabled)
+            {
+                float xOffset = settings != null ? settings.HandOffsetX : 0f;
+                float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
+                float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
+                h.root.transform.localPosition = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
+
+                float pitch = settings != null ? settings.HandRotPitch : 30f;
+                float yaw = settings != null ? settings.HandRotYaw : 0f;
+                float roll = settings != null ? settings.HandRotRoll : 0f;
+                float baseRoll = isLeft ? 90f : -90f;
+                float appliedYaw = isLeft ? yaw : -yaw;
+                float appliedRoll = isLeft ? roll : -roll;
+                h.root.transform.localRotation = Quaternion.Euler(pitch, appliedYaw, baseRoll + appliedRoll);
+            }
+
             // 触摸反馈：接触角色时渐变为暖色
             h.touchFeedback = Mathf.Lerp(h.touchFeedback, 0f, Time.deltaTime * 4f);
             if (h.material != null)
             {
                 float t = h.touchFeedback;
-                // 默认色 (0.8, 0.8, 0.9) → 触摸色 (1.0, 0.7, 0.75)
-                float cr = Mathf.Lerp(0.8f, 1.0f, t);
-                float cg = Mathf.Lerp(0.8f, 0.7f, t);
-                float cb = Mathf.Lerp(0.9f, 0.75f, t);
+                // 默认温暖肤色 (0.97, 0.88, 0.85) → 接触粉红肤色 (1.0, 0.65, 0.70)
+                float cr = Mathf.Lerp(0.97f, 1.0f, t);
+                float cg = Mathf.Lerp(0.88f, 0.65f, t);
+                float cb = Mathf.Lerp(0.85f, 0.70f, t);
                 Color newCol = new Color(cr, cg, cb, alpha);
                 if (h.material.color != newCol)
                     h.material.color = newCol;
@@ -172,37 +177,62 @@ namespace KKCharaStudioVR
             ctx.cachedController = tracked.GetComponent<VRGIN.Controls.Controller>();
             ctx.lastRenderModelHidden = false;
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
-            ctx.root.transform.parent = tracked.transform;
+            
+            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
+            if (physicsEnabled)
+            {
+                ctx.root.transform.parent = tracked.transform.parent;
+                ctx.root.transform.position = tracked.transform.position;
+                ctx.root.transform.rotation = tracked.transform.rotation;
+                
+                var rb = ctx.root.AddComponent<Rigidbody>();
+                rb.useGravity = false;
+                rb.isKinematic = false;
+                rb.mass = 1.0f;
+                rb.drag = 0.5f;
+                rb.angularDrag = 0.5f;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            }
+            else
+            {
+                ctx.root.transform.parent = tracked.transform;
+            }
             // The position and rotation are now continuously updated in UpdateSingleHand
             // using the user's custom settings offsets.
 
             ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
-            ctx.material.color = new Color(0.8f, 0.8f, 0.9f, a);
+            ctx.material.color = new Color(0.97f, 0.88f, 0.85f, a);
 
             // Swap geometry: left controller gets right-hand shape, right gets left-hand shape.
             // Combined with zRoll this gives thumb-up + palm-inward orientation.
             float mirror = isLeft ? 1f : -1f;
             
-            // Palm — flat capsule centered below the controller, aligned to SteamVR wand convention
-            // (Y-up, Z-forward from the controller grip point)
+            // 1. Unified Palm Capsule — Rounded and organic single capsule to represent the palm smoothly without sharp corners or overlapping internal primitives
             GameObject palm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             palm.transform.parent = ctx.root.transform;
-            palm.transform.localScale = new Vector3(0.07f, 0.04f, 0.08f);
-            palm.transform.localPosition = new Vector3(0f, -0.025f, 0.04f);
-            palm.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            SetupMesh(palm, ctx.material);
+            palm.transform.localScale = new Vector3(0.075f, 0.036f, 0.015f);
+            palm.transform.localPosition = new Vector3(0f, -0.024f, 0.05f);
+            palm.transform.localRotation = Quaternion.Euler(90f, 0f, 90f);
+
+            // Destroy the default CapsuleCollider which does not support non-uniform radial scaling
+            // (Otherwise Unity scales its physical thickness to match its width, making the collider way too thick)
+            Collider defaultCol = palm.GetComponent<Collider>();
+            if (defaultCol != null)
+            {
+                DestroyImmediate(defaultCol);
+            }
+
+            // Attach a BoxCollider that supports independent 3D scaling to match the visual mesh perfectly
+            BoxCollider boxCol = palm.AddComponent<BoxCollider>();
+            boxCol.size = new Vector3(0.85f, 1.8f, 0.7f); // Inset slightly more (Z-scale 70%) for realistic fleshy contact sink-in depth and smooth sliding
+
+            SetupMesh(palm, ctx.material, false);
+
+
 
             // Create fingers — positions relative to front edge of palm
             ctx.fingers = new FingerContext[5];
-
-            // Wrist — small capsule connecting palm back toward controller
-            GameObject wrist = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            wrist.transform.parent = ctx.root.transform;
-            wrist.transform.localScale = new Vector3(0.045f, 0.025f, 0.045f);
-            wrist.transform.localPosition = new Vector3(0f, -0.025f, -0.01f);
-            wrist.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            SetupMesh(wrist, ctx.material);
 
             float m = mirror; // +1 right, -1 left
             // Thumb — sprouts from side of palm, angled more outward for natural pose
@@ -254,23 +284,54 @@ namespace KKCharaStudioVR
 
                 finger.joints.Add(joint.transform);
 
+                float t = thickness * (1f - i * 0.1f); // slightly taper toward fingertip
+
+                // Add a Sphere at each joint knuckle to act as a smooth visual bridge!
+                GameObject knuckle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                knuckle.transform.parent = joint.transform;
+                knuckle.transform.localPosition = Vector3.zero;
+                knuckle.transform.localRotation = Quaternion.identity;
+                float ks = t * 1.25f; // slightly larger than thickness for a nice smooth knuckle look
+                knuckle.transform.localScale = new Vector3(ks, ks, ks);
+                SetupMesh(knuckle, mat, true); // Fingers are triggers (can penetrate!)
+
                 // Capsule oriented along Z — rotated 90° on X so the capsule's Y axis aligns with Z
                 GameObject mesh = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 mesh.transform.parent = joint.transform;
-                float t = thickness * (1f - i * 0.1f); // slightly taper toward fingertip
                 mesh.transform.localScale = new Vector3(t, segLen * 0.5f, t);
                 mesh.transform.localPosition = new Vector3(0, 0, segLen * 0.5f);
                 mesh.transform.localRotation = Quaternion.Euler(90, 0, 0);
-                SetupMesh(mesh, mat);
+                SetupMesh(mesh, mat, true); // Fingers are triggers (can penetrate!)
 
                 currentParent = joint.transform;
             }
             return finger;
         }
         
-        void SetupMesh(GameObject obj, Material mat)
+        void SetupMesh(GameObject obj, Material mat, bool isFinger = false)
         {
-            Destroy(obj.GetComponent<Collider>());
+            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
+            Collider col = obj.GetComponent<Collider>();
+            if (col != null)
+            {
+                if (physicsEnabled)
+                {
+                    col.isTrigger = isFinger; // Fingers are triggers (can penetrate!), palm/wrist are solid blockers!
+
+                    // Apply frictionless physics material to make sliding incredibly smooth and realistic
+                    PhysicMaterial frictionless = new PhysicMaterial();
+                    frictionless.staticFriction = 0.0f;
+                    frictionless.dynamicFriction = 0.0f;
+                    frictionless.frictionCombine = PhysicMaterialCombine.Minimum;
+                    frictionless.bounciness = 0.0f;
+                    frictionless.bounceCombine = PhysicMaterialCombine.Minimum;
+                    col.material = frictionless;
+                }
+                else
+                {
+                    Destroy(col);
+                }
+            }
             Renderer r = obj.GetComponent<Renderer>();
             r.material = mat;
             r.material.renderQueue = 3000;
@@ -342,6 +403,109 @@ namespace KKCharaStudioVR
                 {
                     finger.joints[i].localRotation = Quaternion.Euler(curAngle, 0, 0);
                 }
+            }
+        }
+
+        void FixedUpdate()
+        {
+            if (!initialized) return;
+
+            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
+            if (!physicsEnabled) return;
+
+            UpdateHandPhysics(leftHand, true);
+            UpdateHandPhysics(rightHand, false);
+        }
+
+        private void UpdateHandPhysics(HandContext h, bool isLeft)
+        {
+            if (h == null || h.root == null || h.trackedObj == null || h.trackedObj.transform == null) return;
+            if (!h.root.activeSelf) return;
+
+            var rb = h.root.GetComponent<Rigidbody>();
+            if (rb == null) return;
+
+            // Target local offset calculation
+            float xOffset = settings != null ? settings.HandOffsetX : 0f;
+            float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
+            float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
+            Vector3 targetLocalPos = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
+
+            float pitch = settings != null ? settings.HandRotPitch : 30f;
+            float yaw = settings != null ? settings.HandRotYaw : 0f;
+            float roll = settings != null ? settings.HandRotRoll : 0f;
+            float baseRoll = isLeft ? 90f : -90f;
+            float appliedYaw = isLeft ? yaw : -yaw;
+            float appliedRoll = isLeft ? roll : -roll;
+            Quaternion targetLocalRot = Quaternion.Euler(pitch, appliedYaw, baseRoll + appliedRoll);
+
+            // Convert to global space targets
+            Transform tracker = h.trackedObj.transform;
+            Vector3 targetPos = tracker.TransformPoint(targetLocalPos);
+            Quaternion targetRot = tracker.rotation * targetLocalRot;
+
+            // 1. Position tracking (Velocity-based)
+            Vector3 deltaPos = targetPos - rb.position;
+            if (float.IsNaN(deltaPos.x) || float.IsNaN(deltaPos.y) || float.IsNaN(deltaPos.z) ||
+                float.IsInfinity(deltaPos.x) || float.IsInfinity(deltaPos.y) || float.IsInfinity(deltaPos.z))
+            {
+                rb.velocity = Vector3.zero;
+            }
+            else
+            {
+                // Soft spring tracking (20.0f spring factor) for smooth compliant touch
+                Vector3 desiredVelocity = deltaPos * 20.0f;
+                float maxVelocity = 5.0f;
+                if (desiredVelocity.magnitude > maxVelocity)
+                {
+                    desiredVelocity = desiredVelocity.normalized * maxVelocity;
+                }
+                rb.velocity = desiredVelocity;
+            }
+
+            // 2. Rotation tracking (Angular velocity-based)
+            Quaternion deltaRot = targetRot * Quaternion.Inverse(rb.rotation);
+            deltaRot.ToAngleAxis(out float angle, out Vector3 axis);
+            if (angle > 180f) angle -= 360f;
+            
+            if (Mathf.Abs(angle) > 0.1f && axis.sqrMagnitude > 0.0001f)
+            {
+                if (!float.IsNaN(axis.x) && !float.IsNaN(axis.y) && !float.IsNaN(axis.z) &&
+                    !float.IsInfinity(axis.x) && !float.IsInfinity(axis.y) && !float.IsInfinity(axis.z))
+                {
+                    // Soft spring tracking (20.0f spring factor) for smooth compliant rotation
+                    Vector3 desiredAngularVelocity = axis.normalized * (angle * Mathf.Deg2Rad * 20.0f);
+                    if (!float.IsNaN(desiredAngularVelocity.x) && !float.IsInfinity(desiredAngularVelocity.x))
+                    {
+                        float maxAngularVelocity = 20.0f;
+                        if (desiredAngularVelocity.magnitude > maxAngularVelocity)
+                        {
+                            desiredAngularVelocity = desiredAngularVelocity.normalized * maxAngularVelocity;
+                        }
+                        rb.angularVelocity = desiredAngularVelocity;
+                    }
+                    else
+                    {
+                        rb.angularVelocity = Vector3.zero;
+                    }
+                }
+                else
+                {
+                    rb.angularVelocity = Vector3.zero;
+                }
+            }
+            else
+            {
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            // 3. Teleport fallback if too far (e.g., stuck in geometry)
+            if (deltaPos.magnitude > 0.4f)
+            {
+                rb.position = targetPos;
+                rb.rotation = targetRot;
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
             }
         }
     }

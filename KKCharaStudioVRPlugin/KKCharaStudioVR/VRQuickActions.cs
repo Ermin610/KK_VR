@@ -26,12 +26,16 @@ public class VRQuickActions : MonoBehaviour
         SteamVR_Controller.Device leftController = GetDevice(left);
         SteamVR_Controller.Device rightController = GetDevice(right);
 
-        // A 按钮（右手）或 X 按钮（左手）—— 切换所有 UI
-        // 不再响应 Axis0（摇杆按下），留给快捷功能
-        if ((rightController != null && rightController.GetPressDown(EVRButtonId.k_EButton_A)) ||
-            (leftController != null && leftController.GetPressDown(EVRButtonId.k_EButton_A)))
+        // A 按钮（右手） —— 切换所有 UI
+        if (rightController != null && rightController.GetPressDown(EVRButtonId.k_EButton_A))
         {
             ToggleAllGUI();
+        }
+
+        // X 按钮（左手） —— 隐藏/显示所有 IK 控制器轴向与抓取标记
+        if (leftController != null && leftController.GetPressDown(EVRButtonId.k_EButton_A))
+        {
+            ToggleIKVisibility();
         }
 
         // 左摇杆按下 —— 召唤主菜单到面前（替代之前冲突的 Menu 键）
@@ -275,5 +279,62 @@ public class VRQuickActions : MonoBehaviour
         {
             VRLog.Warn("Undo failed: " + e.Message);
         }
+    }
+
+    public static bool ikVisible = true;
+
+    private void ToggleIKVisibility()
+    {
+        ikVisible = !ikVisible;
+
+        // 1. 隐藏/显示我们自建的 VR 实体抓取球 (通过控制 Renderer 和 Collider 的启用状态，保持 GameObject 处于 Active 状态以便 FindObjectsOfType 能够搜索到)
+        MoveableGUIObject[] mgos = FindObjectsOfType<MoveableGUIObject>();
+        foreach (var mgo in mgos)
+        {
+            if (mgo != null && mgo.gameObject != null)
+            {
+                Renderer[] rs = mgo.GetComponentsInChildren<Renderer>(true);
+                foreach (var r in rs)
+                {
+                    r.enabled = ikVisible;
+                }
+
+                Collider[] cs = mgo.GetComponentsInChildren<Collider>(true);
+                foreach (var c in cs)
+                {
+                    c.enabled = ikVisible;
+                }
+            }
+        }
+
+        // 2. 隐藏/显示游戏自带的坐标轴控制箭头 (move, rotation, scale)
+        if (Singleton<GuideObjectManager>.Instance != null)
+        {
+            var manager = Singleton<GuideObjectManager>.Instance;
+            var field = typeof(GuideObjectManager).GetField("dicGuideObject", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (field != null)
+            {
+                var dic = field.GetValue(manager) as System.Collections.IDictionary;
+                if (dic != null)
+                {
+                    foreach (System.Collections.DictionaryEntry entry in dic)
+                    {
+                        var go = entry.Value as GuideObject;
+                        if (go != null && go.gameObject != null)
+                        {
+                            Transform move = go.transform.Find("move");
+                            if (move != null) move.gameObject.SetActive(ikVisible);
+                            
+                            Transform rotation = go.transform.Find("rotation");
+                            if (rotation != null) rotation.gameObject.SetActive(ikVisible);
+                            
+                            Transform scale = go.transform.Find("scale");
+                            if (scale != null) scale.gameObject.SetActive(ikVisible);
+                        }
+                    }
+                }
+            }
+        }
+        VRLog.Info($"Toggled IK Controls visibility to: {ikVisible}");
     }
 }

@@ -83,6 +83,14 @@ public class KKCharaStudioVRSettings : VRSettings
 	private float _ColliderRadius = 0.02f;
 	private bool _HapticFeedbackEnabled = true;
 	private float _HapticFeedbackIntensity = 0.5f;
+	private bool _PhysicsHandsEnabled = true;
+
+	[XmlComment("Enable VAM-style non-clipping physics hands")]
+	public bool PhysicsHandsEnabled
+	{
+		get { return _PhysicsHandsEnabled; }
+		set { _PhysicsHandsEnabled = value; TriggerPropertyChanged("PhysicsHandsEnabled"); }
+	}
 
 	[XmlComment("Enable DynamicBone collision on hands")]
 	public bool DynamicBoneCollisionEnabled
