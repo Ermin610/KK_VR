@@ -20,7 +20,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 	private float menuDownTime;
 	private KKCharaStudioVRSettings _settings;
 	private GameObject mirror1;
-	private GameObject grabHandle;
+	private Vector3 _grabLocalPosOffset;
+	private Quaternion _grabLocalRotOffset;
 
 	private bool screenGrabbed;
 	private GameObject lastGrabbedObject;
@@ -103,8 +104,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 			UnityEngine.Object.Destroy(marker);
 		if (mirror1 != null)
 			UnityEngine.Object.Destroy(mirror1);
-		if (grabHandle != null)
-			UnityEngine.Object.Destroy(grabHandle);
 		// Note: We no longer destroy internalGui here because it is a static shared instance across both controllers
 	}
 
@@ -406,9 +405,18 @@ internal class GripMoveKKCharaStudioTool : Tool
 		HandleThumbstickLocomotion();
 		HandleButtonEvents();
 		HandleObjectGrab();
+		HandleGripWorldMove();
 		UpdateGrabLine();
 
-		lastGrabbedObject = null;
+		if (lastGrabbedObject != null && grabbingObject == null)
+		{
+			float dist = Vector3.Distance(((Component)this).transform.position, lastGrabbedObject.transform.position);
+			if (dist > 0.25f)
+			{
+				lastGrabbedObject = null;
+				screenGrabbed = false;
+			}
+		}
 		nearestGrabable = float.MaxValue;
 		marker.transform.position = ((Component)this).transform.position;
 		marker.transform.rotation = ((Component)this).transform.rotation;
@@ -560,14 +568,6 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	private void HandleObjectGrab()
 	{
-		if (grabHandle == null)
-		{
-			grabHandle = new GameObject("__GripMoveGrabHandle__");
-			grabHandle.transform.parent = ((Component)this).transform;
-			grabHandle.transform.position = ((Component)this).transform.position;
-			grabHandle.transform.rotation = ((Component)this).transform.rotation;
-		}
-
 		// Proximity grab: when grip pressed near character IK target but not currently grabbing
 		if (controller.GetPressDown(EVRButtonId.k_EButton_Grip) && grabbingObject == null && _proximityTarget != null)
 		{
@@ -580,22 +580,23 @@ internal class GripMoveKKCharaStudioTool : Tool
 		bool press = controller.GetPress(EVRButtonId.k_EButton_Grip);
 		bool pressUp = controller.GetPressUp(EVRButtonId.k_EButton_Grip);
 
-		if (pressDown && screenGrabbed && lastGrabbedObject != null && grabHandle != null)
+		if (pressDown && screenGrabbed && lastGrabbedObject != null)
 		{
 			grabbingObject = lastGrabbedObject;
-			grabHandle.transform.position = lastGrabbedObject.transform.position;
-			grabHandle.transform.rotation = lastGrabbedObject.transform.rotation;
+			_grabLocalPosOffset = ((Component)this).transform.InverseTransformPoint(grabbingObject.transform.position);
+			_grabLocalRotOffset = Quaternion.Inverse(((Component)this).transform.rotation) * grabbingObject.transform.rotation;
+
 			if (lastGrabbedObject.GetComponent<MoveableGUIObject>() != null)
 			{
 				MoveableGUIObject component = lastGrabbedObject.GetComponent<MoveableGUIObject>();
 				if (component.guideObject != null)
 				{
 					ApplyFingerFKIfNeeded(component.guideObject);
-					grabHandle.transform.rotation = component.guideObject.transformTarget.rotation;
-					grabbingObject.transform.rotation = component.guideObject.transformTarget.rotation;
+					_grabLocalRotOffset = Quaternion.Inverse(((Component)this).transform.rotation) * component.guideObject.transformTarget.rotation;
 					component.OnMoveStart();
 				}
 			}
+
 			// 抓取开始触觉反馈
 			if (controller != null)
 				controller.TriggerHapticPulse(1500, EVRButtonId.k_EButton_Axis0);
@@ -604,8 +605,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 		if (press && grabbingObject != null)
 		{
-			Vector3 targetPos = grabHandle.transform.position;
-			Quaternion targetRot = grabHandle.transform.rotation;
+			Vector3 targetPos = ((Component)this).transform.TransformPoint(_grabLocalPosOffset);
+			Quaternion targetRot = ((Component)this).transform.rotation * _grabLocalRotOffset;
 
 			// 检测是否为 IK 目标，决定是否使用平滑插值
 			MoveableGUIObject mgo = grabbingObject.GetComponent<MoveableGUIObject>();
