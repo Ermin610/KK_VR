@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using VRGIN.Controls;
 using VRGIN.Core;
 using VRGIN.Native;
@@ -207,6 +209,12 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private Color _currentDotColor = Color.cyan;
 
+	private Vector2 _lastHitScreenPos;
+
+	private bool _hasValidHit;
+
+	private GameObject _clickOverrideTarget;
+
 	protected SteamVR_Controller.Device Device => SteamVR_Controller.Input((int)_Controller.Tracking.index);
 
 	private bool IsResizing
@@ -348,6 +356,44 @@ public class GripMenuHandler : ProtectedBehaviour
 		}
 	}
 
+	// Finds the uGUI click target the user actually aimed at, by sorting raycast
+	// hits by sortingOrder (then depth) descending — the correct visual top.
+	//
+	// Why this is needed: Koikatu's SortingAwareGraphicRaycaster returns hits in an
+	// order where a lower-sortingOrder element (e.g. the scene-card grid, order 10)
+	// can come BEFORE a higher-sortingOrder popup button (e.g. the Load confirm,
+	// order 100). Unity's EventSystem always acts on results[0], so the click lands
+	// on the grid behind the popup. We detect that case and dispatch the click to
+	// the correct top element ourselves.
+	//
+	// Returns the GameObject that should receive the click, or null if no override
+	// is needed (results[0] is already the top — let the normal Win32 click handle it).
+	private GameObject FindClickOverrideTarget()
+	{
+		if (EventSystem.current == null) return null;
+		var ped = new PointerEventData(EventSystem.current);
+		ped.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+		var results = new List<RaycastResult>();
+		EventSystem.current.RaycastAll(ped, results);
+		if (results.Count < 2) return null;
+
+		// Pick the hit with the highest sortingOrder, tie-broken by depth.
+		int bestIdx = 0;
+		for (int i = 1; i < results.Count; i++)
+		{
+			bool higher = results[i].sortingOrder > results[bestIdx].sortingOrder
+				|| (results[i].sortingOrder == results[bestIdx].sortingOrder && results[i].depth > results[bestIdx].depth);
+			if (higher) bestIdx = i;
+		}
+
+		// Only override when the EventSystem would pick the WRONG element, i.e. the
+		// true top (by sortingOrder) is not what RaycastAll put first.
+		if (results[bestIdx].sortingOrder <= results[0].sortingOrder) return null;
+
+		// Walk up to the nearest object that actually handles a pointer click.
+		return ExecuteEvents.GetEventHandler<IPointerClickHandler>(results[bestIdx].gameObject);
+	}
+
 	protected void CheckInput()
 	{
 		IsPressing = false;
@@ -356,9 +402,30 @@ public class GripMenuHandler : ProtectedBehaviour
 			if (Device.GetPressDown(EVRButtonId.k_EButton_Axis1))
 			{
 				IsPressing = true;
-				// Use direct Win32 mouse events for reliable IMGUI click handling
-				// (dropdowns, popups, sliders, etc.)
-				MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftDown);
+				// Re-assert the cursor to the exact laser hit point BEFORE the click.
+				if (_hasValidHit)
+				{
+					MouseOperations.SetClientCursorPosition((int)_lastHitScreenPos.x, (int)_lastHitScreenPos.y);
+				}
+
+				// Detect the broken-sorting case (e.g. Load/Import/Cancel/Delete popup
+				// over the scene-card grid) and remember the correct target.
+				_clickOverrideTarget = FindClickOverrideTarget();
+
+				if (_clickOverrideTarget != null)
+				{
+					// Dispatch pointer-down directly to the correct top element,
+					// bypassing the EventSystem's wrong results[0] pick.
+					var down = new PointerEventData(EventSystem.current);
+					down.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+					down.button = PointerEventData.InputButton.Left;
+					ExecuteEvents.Execute(_clickOverrideTarget, down, ExecuteEvents.pointerDownHandler);
+				}
+				else
+				{
+					// Normal path: Win32 mouse event for IMGUI/uGUI that sorts correctly.
+					MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftDown);
+				}
 				mouseDownPosition = new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
 				PulseHaptic(800);
 			}
@@ -369,7 +436,20 @@ public class GripMenuHandler : ProtectedBehaviour
 			if (Device.GetPressUp(EVRButtonId.k_EButton_Axis1))
 			{
 				IsPressing = true;
-				MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftUp);
+				if (_clickOverrideTarget != null)
+				{
+					// Fire pointer-up + click on the same correct target.
+					var up = new PointerEventData(EventSystem.current);
+					up.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+					up.button = PointerEventData.InputButton.Left;
+					ExecuteEvents.Execute(_clickOverrideTarget, up, ExecuteEvents.pointerUpHandler);
+					ExecuteEvents.Execute(_clickOverrideTarget, up, ExecuteEvents.pointerClickHandler);
+					_clickOverrideTarget = null;
+				}
+				else
+				{
+					MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftUp);
+				}
 				mouseDownPosition = null;
 			}
 
@@ -444,6 +524,22 @@ public class GripMenuHandler : ProtectedBehaviour
 		return false;
 	}
 
+	// Map a quad UV (0..1) to client-pixel coordinates using the CURRENT window
+	// client size, not the size cached at startup. The IMGUI is rendered at the
+	// live window resolution, so if the window was resized/maximized or DPI-scaled
+	// after VRGIN init, the cached VRGUI.Width/Height would map clicks off-target —
+	// landing on the large thumbnail behind a small confirm button. Using the live
+	// rect keeps clicks pixel-accurate.
+	private Vector2 UVToClient(float u, float v)
+	{
+		WindowsInterop.RECT r = WindowManager.GetClientRect();
+		float w = r.Right - r.Left;
+		float h = r.Bottom - r.Top;
+		if (w <= 0f) w = VRGUI.Width;
+		if (h <= 0f) h = VRGUI.Height;
+		return new Vector2(u * w, (1f - v) * h);
+	}
+
 	// Directly use Laser.transform — identical to VRGIN MenuHandler
 	private void UpdateLaser()
 	{
@@ -452,6 +548,7 @@ public class GripMenuHandler : ProtectedBehaviour
 		Laser.SetPosition(0, laserPos);
 		Laser.SetPosition(1, laserEnd);
 		bool hitUI = false;
+		_hasValidHit = false;
 
 		if ((_Target != null) && ((Component)_Target).gameObject.activeInHierarchy)
 		{
@@ -460,6 +557,11 @@ public class GripMenuHandler : ProtectedBehaviour
 				hitUI = true;
 				laserEnd = hit.point;
 				Laser.SetPosition(1, laserEnd);
+
+				// Always remember the exact screen position the laser points at,
+				// so a click can re-assert the cursor there right before firing.
+				_lastHitScreenPos = UVToClient(hit.textureCoord.x, hit.textureCoord.y);
+				_hasValidHit = true;
 
 				bool stealFocus = false;
 				if (ActiveMouseHandler == null || ActiveMouseHandler == this || !ActiveMouseHandler.LaserVisible)
@@ -474,8 +576,7 @@ public class GripMenuHandler : ProtectedBehaviour
 				if (!IsOtherWorkingOn(_Target) && stealFocus)
 				{
 					ActiveMouseHandler = this;
-					Vector2 val = default(Vector2);
-					val = new Vector2(hit.textureCoord.x * (float)VRGUI.Width, (1f - hit.textureCoord.y) * (float)VRGUI.Height);
+					Vector2 val = UVToClient(hit.textureCoord.x, hit.textureCoord.y);
 					if (!mouseDownPosition.HasValue || Vector2.Distance(mouseDownPosition.Value, val) > 30f)
 					{
 						MouseOperations.SetClientCursorPosition((int)val.x, (int)val.y);
