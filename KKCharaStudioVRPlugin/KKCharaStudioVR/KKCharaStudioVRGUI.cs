@@ -14,15 +14,13 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 	private string windowTitle = "KKCharaStudioVR Settings";
 	private Dictionary<string, GUIStyle> styleBackup = new Dictionary<string, GUIStyle>();
 
-	private bool _desktopCoverEnabled = false;
+	private bool _desktopCoverEnabled = true;
 	private Camera _coverCamera;
 
 	private void Start()
 	{
-		// Default to OFF during initialization for maximum VR compatibility.
-		// VRSettings.showDeviceView=false during early init can break VR rendering.
-		// User can toggle with Space key after startup.
-		SetDesktopCover(false);
+		// Test: default ON to isolate if desktop cover causes VR black screen
+		SetDesktopCover(true);
 	}
 
 	private void Update()
