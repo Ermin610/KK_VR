@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using Manager;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace KKCharaStudioVR
@@ -22,7 +24,9 @@ namespace KKCharaStudioVR
         private List<DynamicBoneCollider> _handColliders = new List<DynamicBoneCollider>();
         private List<ColliderContext> _colliderContexts = new List<ColliderContext>();
         private int _updateCounter = 0;
-        private HashSet<DynamicBone> _registeredBones = new HashSet<DynamicBone>();
+        
+        // Use a generic HashSet<MonoBehaviour> to store registered bones to avoid static compile-time type dependency
+        private HashSet<MonoBehaviour> _registeredBonesReflection = new HashSet<MonoBehaviour>();
 
         public void Start()
         {
@@ -111,28 +115,53 @@ namespace KKCharaStudioVR
                 rb.isKinematic = true;
                 rb.useGravity = false;
 
-                obj.AddComponent<VRHandHapticTrigger>();
+                var trigger = obj.AddComponent<VRHandHapticTrigger>();
+                var tracked = controllerRoot.GetComponent<SteamVR_TrackedObject>();
+                trigger.trackedObject = tracked;
+                trigger.isLeftHand = isLeft;
             }
         }
 
         private void OnLevelWasLoaded(int level)
         {
-            // Characters are destroyed on level change; clear stale references
-            _registeredBones.Clear();
+            lock (_registeredBonesReflection)
+            {
+                _registeredBonesReflection.Clear();
+            }
         }
 
         private void OnDestroy()
         {
-            // Unregister our colliders from any surviving DynamicBones
-            foreach (var bone in _registeredBones)
+            lock (_registeredBonesReflection)
             {
-                if (bone == null || bone.m_Colliders == null) continue;
-                foreach (var hc in _handColliders)
+                foreach (var bone in _registeredBonesReflection)
                 {
-                    bone.m_Colliders.Remove(hc);
+                    if (bone == null) continue;
+                    try
+                    {
+                        Type type = bone.GetType();
+                        var field = type.GetField("m_Colliders", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                                 ?? type.GetField("Colliders", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                        if (field != null)
+                        {
+                            var list = field.GetValue(bone) as IList;
+                            if (list != null)
+                            {
+                                foreach (var hc in _handColliders)
+                                {
+                                    list.Remove(hc);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        VRLog.Warn("Failed to unregister collider via reflection: " + ex.Message);
+                    }
                 }
+                _registeredBonesReflection.Clear();
             }
-            _registeredBones.Clear();
         }
 
         private void Update()
@@ -205,37 +234,96 @@ namespace KKCharaStudioVR
                     continue;
                 }
 
-                if (Singleton<Character>.Instance != null)
+                lock (_registeredBonesReflection)
                 {
-                    _registeredBones.RemoveWhere(b => b == null);
-
-                    foreach (var kvp in Singleton<Character>.Instance.dictEntryChara)
+                    // Clean up null entries
+                    var toRemove = new List<MonoBehaviour>();
+                    foreach (var b in _registeredBonesReflection)
                     {
-                        var chaCtrl = kvp.Value;
-                        if (chaCtrl != null && chaCtrl.objBodyBone != null)
+                        if (b == null) toRemove.Add(b);
+                    }
+                    foreach (var b in toRemove)
+                    {
+                        _registeredBonesReflection.Remove(b);
+                    }
+                }
+
+                var allChas = FindObjectsOfType<ChaControl>();
+                foreach (var chaCtrl in allChas)
+                {
+                    if (chaCtrl != null && chaCtrl.objBodyBone != null)
+                    {
+                        // Retrieve all MonoBehaviour scripts attached to character children
+                        var behaviours = chaCtrl.GetComponentsInChildren<MonoBehaviour>(true);
+                        foreach (var b in behaviours)
                         {
-                            var bones = chaCtrl.GetComponentsInChildren<DynamicBone>(true);
-                            foreach (var bone in bones)
+                            if (b == null) continue;
+                            
+                            string typeName = b.GetType().Name;
+                            if (typeName.Contains("DynamicBone") && !typeName.Contains("Collider"))
                             {
-                                if (bone != null && !_registeredBones.Contains(bone))
+                                bool alreadyRegistered = false;
+                                lock (_registeredBonesReflection)
                                 {
-                                    if (bone.m_Colliders == null)
-                                    {
-                                        bone.m_Colliders = new List<DynamicBoneCollider>();
-                                    }
-                                    foreach (var hc in _handColliders)
-                                    {
-                                        if (!bone.m_Colliders.Contains(hc))
-                                        {
-                                            bone.m_Colliders.Add(hc);
-                                        }
-                                    }
-                                    _registeredBones.Add(bone);
+                                    alreadyRegistered = _registeredBonesReflection.Contains(b);
+                                }
+
+                                if (!alreadyRegistered)
+                                {
+                                    RegisterCollidersReflection(b);
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+
+        private void RegisterCollidersReflection(MonoBehaviour bone)
+        {
+            try
+            {
+                Type type = bone.GetType();
+                FieldInfo field = null;
+                Type t = type;
+                while (t != null && field == null)
+                {
+                    field = t.GetField("m_Colliders", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                         ?? t.GetField("Colliders", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    t = t.BaseType;
+                }
+
+                if (field != null)
+                {
+                    var list = field.GetValue(bone) as IList;
+                    if (list == null)
+                    {
+                        // If null, create a new List<DynamicBoneCollider>
+                        var listType = typeof(List<>).MakeGenericType(typeof(DynamicBoneCollider));
+                        list = Activator.CreateInstance(listType) as IList;
+                        field.SetValue(bone, list);
+                    }
+
+                    if (list != null)
+                    {
+                        foreach (var hc in _handColliders)
+                        {
+                            if (!list.Contains(hc))
+                            {
+                                list.Add(hc);
+                            }
+                        }
+
+                        lock (_registeredBonesReflection)
+                        {
+                            _registeredBonesReflection.Add(bone);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                VRLog.Error("Reflection error in RegisterCollidersReflection: " + ex.Message);
             }
         }
     }

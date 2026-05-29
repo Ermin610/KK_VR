@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using System.Xml.Serialization;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.VR;
 using VRGIN.Core;
 using VRSettings = UnityEngine.VR.VRSettings;
@@ -83,13 +84,29 @@ internal class VRLoader : ProtectedBehaviour
 	private IEnumerator LoadDevice(string newDevice)
 	{
 		bool vrMode = newDevice != DeviceNone;
-		VRSettings.LoadDeviceByName(newDevice);
-		yield return null;
-		VRSettings.enabled = vrMode;
-		yield return null;
-		while (VRSettings.loadedDeviceName != newDevice || VRSettings.enabled != vrMode)
+		if (vrMode && VRSettings.enabled && VRSettings.loadedDeviceName == newDevice)
 		{
+			// VR was already initialized at engine startup (via boot.config or
+			// globalgamemanagers patch). This is the ideal path for ReShade VR
+			// compatibility — no Init->Shutdown->Init cycle occurred.
+			VRLog.Info("VR device '{0}' already active, skipping LoadDeviceByName", newDevice);
+		}
+		else
+		{
+			// Fallback: VR not initialized at engine startup.
+			// LoadDeviceByName triggers VR_Init -> VR_Shutdown -> D3D11 -> VR_Init,
+			// which breaks ReShade's IVRCompositor hooks. VR will work but ReShade
+			// effects won't appear in the headset. Use StartCharaStudioVR.bat for
+			// ReShade support.
+			VRLog.Info("VR not active at engine startup, loading device '{0}' via plugin (ReShade VR may not work)", newDevice);
+			VRSettings.LoadDeviceByName(newDevice);
 			yield return null;
+			VRSettings.enabled = vrMode;
+			yield return null;
+			while (VRSettings.loadedDeviceName != newDevice || VRSettings.enabled != vrMode)
+			{
+				yield return null;
+			}
 		}
 		if (vrMode)
 		{
@@ -106,7 +123,7 @@ internal class VRLoader : ProtectedBehaviour
 			val.AddComponent<VRHandModelManager>();
 			val.AddComponent<VRQuickActions>();
 			val.AddComponent<VRComfortVignette>();
-			// val.AddComponent<VRTwoHandScale>(); // Completely disabled two-hand scaling and movement as requested by the user
+			val.AddComponent<VRTwoHandScale>(); // Controlled by TwoHandScaleEnabled setting
 			UnityEngine.Object.DontDestroyOnLoad(((Component)VRCamera.Instance).gameObject);
 		}
 	}

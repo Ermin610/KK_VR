@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRUtil;
 using VRGIN.Core;
 
@@ -18,6 +19,9 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 
 	private void Start()
 	{
+		// Default to ON to hide desktop rendering (saves GPU and prevents peeping).
+		// ReShade VR works regardless of desktop cover state — it hooks IVRCompositor
+		// directly, not the desktop swap chain. User can toggle with Space.
 		SetDesktopCover(true);
 	}
 
@@ -72,6 +76,7 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 		_coverCamera.allowHDR = false;
 		_coverCamera.allowMSAA = false;
 		_coverCamera.useOcclusionCulling = false;
+		_coverCamera.stereoTargetEye = StereoTargetEyeMask.None; // Desktop only, never render to VR eyes
 		_coverCamera.enabled = false;
 	}
 
@@ -195,6 +200,7 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				{
 					GUILayout.Label($"Haptic Intensity: {settings.HapticFeedbackIntensity:F2}");
 					settings.HapticFeedbackIntensity = GUILayout.HorizontalSlider(settings.HapticFeedbackIntensity, 0.1f, 1f);
+					settings.VibrateOnlyOnBreasts = GUILayout.Toggle(settings.VibrateOnlyOnBreasts, "Only Vibrate on Breasts (仅触碰胸部时震动)");
 				}
 
 				settings.ProximityGrabEnabled = GUILayout.Toggle(settings.ProximityGrabEnabled, "Proximity Grab");
@@ -239,9 +245,9 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.HandModelAlpha = 0.3f;
 					settings.HandModelScale = 1.0f;
 					settings.HandOffsetX = 0f;
-					settings.HandOffsetY = -0.01f;
-					settings.HandOffsetZ = -0.04f;
-					settings.HandRotPitch = 40f;
+					settings.HandOffsetY = -0.02f;
+					settings.HandOffsetZ = -0.05f;
+					settings.HandRotPitch = 30f;
 					settings.HandRotYaw = 0f;
 					settings.HandRotRoll = 0f;
 					settings.DynamicBoneCollisionEnabled = true;
@@ -249,8 +255,10 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.ColliderRadius = 0.02f;
 					settings.HapticFeedbackEnabled = true;
 					settings.HapticFeedbackIntensity = 0.5f;
+					settings.VibrateOnlyOnBreasts = true;
 					settings.ProximityGrabEnabled = true;
 					settings.ProximityGrabRadius = 0.12f;
+					settings.UISpawnDistance = 2.0f;
 					settings.ComfortVignetteEnabled = true;
 					settings.ComfortVignetteRadius = 0.5f;
 					settings.TwoHandScaleEnabled = true;

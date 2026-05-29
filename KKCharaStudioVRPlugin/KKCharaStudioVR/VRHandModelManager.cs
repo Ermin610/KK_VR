@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,9 +10,15 @@ namespace KKCharaStudioVR
 {
     internal class VRHandModelManager : MonoBehaviour
     {
+        private class JointContext
+        {
+            public Transform transform;
+            public Quaternion initialLocalRotation;
+        }
+
         private class FingerContext
         {
-            public List<Transform> joints = new List<Transform>();
+            public List<JointContext> joints = new List<JointContext>();
         }
 
         private class HandContext
@@ -26,12 +33,15 @@ namespace KKCharaStudioVR
             public float[] fingerTargets = new float[5];
             public VRGIN.Controls.Controller cachedController;
             public bool lastRenderModelHidden;
+            public Rigidbody cachedRigidbody;
+            public bool isOfficialModel;
         }
 
         private HandContext leftHand;
         private HandContext rightHand;
         private KKCharaStudioVRSettings settings;
         private bool initialized;
+        private static PhysicMaterial _sharedFrictionless;
 
         public static VRHandModelManager Instance { get; private set; }
 
@@ -103,7 +113,7 @@ namespace KKCharaStudioVR
             if (h == null || h.fingers == null || fingerIndex < 0 || fingerIndex >= h.fingers.Length) return null;
             var joints = h.fingers[fingerIndex].joints;
             if (joints.Count == 0) return null;
-            return joints[joints.Count - 1];
+            return joints[joints.Count - 1].transform;
         }
 
         /// <summary>
@@ -170,6 +180,18 @@ namespace KKCharaStudioVR
             UpdateHandAnimation(h);
         }
         
+        private Transform FindDeepChild(Transform parent, string name)
+        {
+            if (parent.name == name) return parent;
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                Transform found = FindDeepChild(child, name);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
         HandContext CreateHand(SteamVR_TrackedObject tracked, bool isLeft)
         {
             HandContext ctx = new HandContext();
@@ -185,82 +207,206 @@ namespace KKCharaStudioVR
                 ctx.root.transform.position = tracked.transform.position;
                 ctx.root.transform.rotation = tracked.transform.rotation;
                 
-                var rb = ctx.root.AddComponent<Rigidbody>();
-                rb.useGravity = false;
-                rb.isKinematic = false;
-                rb.mass = 1.0f;
-                rb.drag = 0.5f;
-                rb.angularDrag = 0.5f;
-                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                ctx.cachedRigidbody = ctx.root.AddComponent<Rigidbody>();
+                ctx.cachedRigidbody.useGravity = false;
+                ctx.cachedRigidbody.isKinematic = false;
+                ctx.cachedRigidbody.mass = 1.0f;
+                ctx.cachedRigidbody.drag = 0.5f;
+                ctx.cachedRigidbody.angularDrag = 0.5f;
+                ctx.cachedRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             }
             else
             {
                 ctx.root.transform.parent = tracked.transform;
             }
-            // The position and rotation are now continuously updated in UpdateSingleHand
-            // using the user's custom settings offsets.
 
             ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
             ctx.material.color = new Color(0.97f, 0.88f, 0.85f, a);
 
-            // Swap geometry: left controller gets right-hand shape, right gets left-hand shape.
-            // Combined with zRoll this gives thumb-up + palm-inward orientation.
-            float mirror = isLeft ? 1f : -1f;
-            
-            // 1. Unified Palm Capsule — Rounded and organic single capsule to represent the palm smoothly without sharp corners or overlapping internal primitives
-            GameObject palm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            palm.transform.parent = ctx.root.transform;
-            palm.transform.localScale = new Vector3(0.075f, 0.036f, 0.015f);
-            palm.transform.localPosition = new Vector3(0f, -0.024f, 0.05f);
-            palm.transform.localRotation = Quaternion.Euler(90f, 0f, 90f);
-
-            // Destroy the default CapsuleCollider which does not support non-uniform radial scaling
-            // (Otherwise Unity scales its physical thickness to match its width, making the collider way too thick)
-            Collider defaultCol = palm.GetComponent<Collider>();
-            if (defaultCol != null)
+            bool loadedOfficial = false;
+            try
             {
-                DestroyImmediate(defaultCol);
+                string assetBundleName = "h/common/00_00.unity3d";
+                string assetName = isLeft ? "p_handL" : "p_handR";
+                GameObject handPrefab = CommonLib.LoadAsset<GameObject>(assetBundleName, assetName, true, null);
+                
+                if (handPrefab != null)
+                {
+                    handPrefab.transform.parent = ctx.root.transform;
+                    handPrefab.transform.localPosition = Vector3.zero;
+                    handPrefab.transform.localRotation = Quaternion.identity;
+                    handPrefab.transform.localScale = Vector3.one;
+
+                    // Clean/Disable Animator to allow manual joint control
+                    var animator = handPrefab.GetComponent<Animator>();
+                    if (animator != null)
+                    {
+                        DestroyImmediate(animator);
+                    }
+
+                    // Clean existing colliders
+                    foreach (var col in handPrefab.GetComponentsInChildren<Collider>(true))
+                    {
+                        DestroyImmediate(col);
+                    }
+
+                    // Apply custom hand material (use sharedMaterial so touch color feedback works)
+                    ctx.material.renderQueue = 3000;
+                    foreach (var r in handPrefab.GetComponentsInChildren<Renderer>(true))
+                    {
+                        r.sharedMaterial = ctx.material;
+                    }
+
+                    // Map finger joints — dynamically detect segment count
+                    string handSuffix = isLeft ? "_L" : "_R";
+                    string[] fingerNames = { "thumb", "index", "middle", "ring", "little" };
+                    ctx.fingers = new FingerContext[5];
+
+                    for (int f = 0; f < 5; f++)
+                    {
+                        ctx.fingers[f] = new FingerContext();
+
+                        // Probe up to 5 segments; stop at first missing bone
+                        for (int s = 1; s <= 5; s++)
+                        {
+                            string boneName = "cf_j_" + fingerNames[f] + "0" + s + handSuffix;
+                            Transform bone = FindDeepChild(handPrefab.transform, boneName);
+                            if (bone == null) break;
+
+                            var jc = new JointContext
+                            {
+                                transform = bone,
+                                initialLocalRotation = bone.localRotation
+                            };
+                            ctx.fingers[f].joints.Add(jc);
+                        }
+
+                        int foundCount = ctx.fingers[f].joints.Count;
+                        VRLog.Info("Hand {0} finger {1}: found {2} bone segments", isLeft ? "L" : "R", fingerNames[f], foundCount);
+
+                        // Log bone directions for curl axis diagnosis
+                        if (foundCount >= 2)
+                        {
+                            var j0 = ctx.fingers[f].joints[0].transform;
+                            var j1 = ctx.fingers[f].joints[1].transform;
+                            Vector3 localDir = j0.InverseTransformPoint(j1.position);
+                            VRLog.Info("  bone01->02 local dir: ({0:F3}, {1:F3}, {2:F3})", localDir.x, localDir.y, localDir.z);
+                            VRLog.Info("  bone01 localRot: {0}", j0.localRotation.eulerAngles);
+                        }
+
+                        // Add fingertip collider + haptic to the LAST found joint
+                        if (foundCount > 0)
+                        {
+                            var lastJoint = ctx.fingers[f].joints[foundCount - 1];
+                            var tipCol = lastJoint.transform.gameObject.AddComponent<SphereCollider>();
+                            tipCol.isTrigger = true;
+                            tipCol.radius = settings != null ? settings.ColliderRadius : 0.02f;
+
+                            if (_sharedFrictionless == null)
+                            {
+                                _sharedFrictionless = new PhysicMaterial("VRHandFrictionless");
+                                _sharedFrictionless.staticFriction = 0f;
+                                _sharedFrictionless.dynamicFriction = 0f;
+                                _sharedFrictionless.frictionCombine = PhysicMaterialCombine.Minimum;
+                                _sharedFrictionless.bounciness = 0f;
+                                _sharedFrictionless.bounceCombine = PhysicMaterialCombine.Minimum;
+                            }
+                            tipCol.sharedMaterial = _sharedFrictionless;
+
+                            var trigger = lastJoint.transform.gameObject.AddComponent<VRHandHapticTrigger>();
+                            trigger.trackedObject = ctx.trackedObj;
+                            trigger.isLeftHand = isLeft;
+                        }
+                    }
+
+                    // Log renderer types for skinning diagnosis
+                    foreach (var r in handPrefab.GetComponentsInChildren<Renderer>(true))
+                    {
+                        var smr = r as SkinnedMeshRenderer;
+                        if (smr != null)
+                            VRLog.Info("Hand renderer: SkinnedMeshRenderer '{0}', bones={1}", ((UnityEngine.Object)r).name, smr.bones != null ? smr.bones.Length : 0);
+                        else
+                            VRLog.Info("Hand renderer: {0} '{1}' (NOT skinned — bone rotation will not deform mesh!)", r.GetType().Name, ((UnityEngine.Object)r).name);
+                    }
+
+                    // Add palm BoxCollider
+                    Transform palmBone = FindDeepChild(handPrefab.transform, isLeft ? "cf_j_hand_L" : "cf_j_hand_R");
+                    if (palmBone != null)
+                    {
+                        var palmBox = palmBone.gameObject.AddComponent<BoxCollider>();
+                        palmBox.size = new Vector3(0.06f, 0.03f, 0.06f);
+                        palmBox.center = new Vector3(0f, -0.015f, 0.02f);
+                        palmBox.isTrigger = false; // palm blocks solid objects!
+
+                        if (_sharedFrictionless == null)
+                        {
+                            _sharedFrictionless = new PhysicMaterial("VRHandFrictionless");
+                            _sharedFrictionless.staticFriction = 0f;
+                            _sharedFrictionless.dynamicFriction = 0f;
+                            _sharedFrictionless.frictionCombine = PhysicMaterialCombine.Minimum;
+                            _sharedFrictionless.bounciness = 0f;
+                            _sharedFrictionless.bounceCombine = PhysicMaterialCombine.Minimum;
+                        }
+                        palmBox.sharedMaterial = _sharedFrictionless;
+
+                        var trigger = palmBone.gameObject.AddComponent<VRHandHapticTrigger>();
+                        trigger.trackedObject = ctx.trackedObj;
+                        trigger.isLeftHand = isLeft;
+                    }
+
+                    loadedOfficial = true;
+                    ctx.isOfficialModel = true;
+                    VRLog.Info("Successfully loaded official VR hand for {0}", isLeft ? "Left" : "Right");
+                }
+            }
+            catch (Exception e)
+            {
+                VRLog.Error($"Error loading official hand: {e.Message}. Falling back to procedural capsule hands.");
             }
 
-            // Attach a BoxCollider that supports independent 3D scaling to match the visual mesh perfectly
-            BoxCollider boxCol = palm.AddComponent<BoxCollider>();
-            boxCol.size = new Vector3(0.85f, 1.8f, 0.7f); // Inset slightly more (Z-scale 70%) for realistic fleshy contact sink-in depth and smooth sliding
+            if (!loadedOfficial)
+            {
+                // Procedural capsule hand fallback!
+                float mirror = isLeft ? 1f : -1f;
+                GameObject palm = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                palm.transform.parent = ctx.root.transform;
+                palm.transform.localScale = new Vector3(0.075f, 0.036f, 0.015f);
+                palm.transform.localPosition = new Vector3(0f, -0.024f, 0.05f);
+                palm.transform.localRotation = Quaternion.Euler(90f, 0f, 90f);
 
-            SetupMesh(palm, ctx.material, false);
+                Collider defaultCol = palm.GetComponent<Collider>();
+                if (defaultCol != null) DestroyImmediate(defaultCol);
 
+                BoxCollider boxCol = palm.AddComponent<BoxCollider>();
+                boxCol.size = new Vector3(0.85f, 1.8f, 0.7f);
 
+                SetupMesh(palm, ctx.material, false);
 
-            // Create fingers — positions relative to front edge of palm
-            ctx.fingers = new FingerContext[5];
+                ctx.fingers = new FingerContext[5];
+                float m = mirror;
+                ctx.fingers[0] = CreateFinger(ctx.root.transform,
+                    new Vector3(0.035f * m, -0.015f, 0.015f),
+                    Quaternion.Euler(-10, 50 * m, -30 * m),
+                    ctx.material, 2, 0.024f, 0.013f);
+                ctx.fingers[1] = CreateFinger(ctx.root.transform,
+                    new Vector3(0.024f * m, -0.027f, 0.085f),
+                    Quaternion.Euler(0, 3 * m, 0),
+                    ctx.material, 3, 0.018f, 0.009f);
+                ctx.fingers[2] = CreateFinger(ctx.root.transform,
+                    new Vector3(0.007f * m, -0.027f, 0.09f),
+                    Quaternion.identity,
+                    ctx.material, 3, 0.019f, 0.010f);
+                ctx.fingers[3] = CreateFinger(ctx.root.transform,
+                    new Vector3(-0.010f * m, -0.027f, 0.083f),
+                    Quaternion.Euler(0, -3 * m, 0),
+                    ctx.material, 3, 0.017f, 0.009f);
+                ctx.fingers[4] = CreateFinger(ctx.root.transform,
+                    new Vector3(-0.026f * m, -0.027f, 0.072f),
+                    Quaternion.Euler(0, -6 * m, 0),
+                    ctx.material, 3, 0.014f, 0.007f);
+            }
 
-            float m = mirror; // +1 right, -1 left
-            // Thumb — sprouts from side of palm, angled more outward for natural pose
-            ctx.fingers[0] = CreateFinger(ctx.root.transform,
-                new Vector3(0.035f * m, -0.015f, 0.015f),
-                Quaternion.Euler(-10, 50 * m, -30 * m),
-                ctx.material, 2, 0.024f, 0.013f);
-            // Index
-            ctx.fingers[1] = CreateFinger(ctx.root.transform,
-                new Vector3(0.024f * m, -0.027f, 0.085f),
-                Quaternion.Euler(0, 3 * m, 0),
-                ctx.material, 3, 0.018f, 0.009f);
-            // Middle (longest)
-            ctx.fingers[2] = CreateFinger(ctx.root.transform,
-                new Vector3(0.007f * m, -0.027f, 0.09f),
-                Quaternion.identity,
-                ctx.material, 3, 0.019f, 0.010f);
-            // Ring
-            ctx.fingers[3] = CreateFinger(ctx.root.transform,
-                new Vector3(-0.010f * m, -0.027f, 0.083f),
-                Quaternion.Euler(0, -3 * m, 0),
-                ctx.material, 3, 0.017f, 0.009f);
-            // Little (shortest and thinnest)
-            ctx.fingers[4] = CreateFinger(ctx.root.transform,
-                new Vector3(-0.026f * m, -0.027f, 0.072f),
-                Quaternion.Euler(0, -6 * m, 0),
-                ctx.material, 3, 0.014f, 0.007f);
-            
             bool handEnabled = settings != null ? settings.HandModelEnabled : true;
             ctx.root.SetActive(handEnabled);
             return ctx;
@@ -282,7 +428,12 @@ namespace KKCharaStudioVR
                 joint.transform.localPosition = i == 0 ? Vector3.zero : new Vector3(0, 0, segLen);
                 joint.transform.localRotation = Quaternion.identity;
 
-                finger.joints.Add(joint.transform);
+                var jc = new JointContext
+                {
+                    transform = joint.transform,
+                    initialLocalRotation = joint.transform.localRotation
+                };
+                finger.joints.Add(jc);
 
                 float t = thickness * (1f - i * 0.1f); // slightly taper toward fingertip
 
@@ -318,14 +469,17 @@ namespace KKCharaStudioVR
                 {
                     col.isTrigger = isFinger; // Fingers are triggers (can penetrate!), palm/wrist are solid blockers!
 
-                    // Apply frictionless physics material to make sliding incredibly smooth and realistic
-                    PhysicMaterial frictionless = new PhysicMaterial();
-                    frictionless.staticFriction = 0.0f;
-                    frictionless.dynamicFriction = 0.0f;
-                    frictionless.frictionCombine = PhysicMaterialCombine.Minimum;
-                    frictionless.bounciness = 0.0f;
-                    frictionless.bounceCombine = PhysicMaterialCombine.Minimum;
-                    col.material = frictionless;
+                    // Apply shared frictionless physics material
+                    if (_sharedFrictionless == null)
+                    {
+                        _sharedFrictionless = new PhysicMaterial("VRHandFrictionless");
+                        _sharedFrictionless.staticFriction = 0.0f;
+                        _sharedFrictionless.dynamicFriction = 0.0f;
+                        _sharedFrictionless.frictionCombine = PhysicMaterialCombine.Minimum;
+                        _sharedFrictionless.bounciness = 0.0f;
+                        _sharedFrictionless.bounceCombine = PhysicMaterialCombine.Minimum;
+                    }
+                    col.sharedMaterial = _sharedFrictionless;
                 }
                 else
                 {
@@ -333,8 +487,8 @@ namespace KKCharaStudioVR
                 }
             }
             Renderer r = obj.GetComponent<Renderer>();
-            r.material = mat;
-            r.material.renderQueue = 3000;
+            mat.renderQueue = 3000;
+            r.sharedMaterial = mat;
         }
         
         void UpdateHandAnimation(HandContext ctx)
@@ -345,6 +499,8 @@ namespace KKCharaStudioVR
 
             // Read analog inputs
             float trigger = controller.GetAxis(EVRButtonId.k_EButton_Axis1).x;
+            if (trigger < 0.01f)
+                trigger = controller.GetPress(EVRButtonId.k_EButton_Axis1) ? 1.0f : 0.0f;
             
             // Grip: try analog axis first, fall back to binary
             float gripAxis = controller.GetAxis(EVRButtonId.k_EButton_Axis2).x;
@@ -379,29 +535,71 @@ namespace KKCharaStudioVR
             ctx.fingerTargets[4] = Mathf.Lerp(ctx.fingerTargets[4], Mathf.Max(gripAxis, restCurl * 1.2f), dt * 9f); // Little: slightly more curled
 
             // Apply with realistic curl angles per finger
-            AnimateFinger(ctx.fingers[0], ctx.fingerTargets[0] * 70f, true);    // Thumb — isThumb=true
-            AnimateFinger(ctx.fingers[1], ctx.fingerTargets[1] * 90f);          // Index — increased from 85
-            AnimateFinger(ctx.fingers[2], ctx.fingerTargets[2] * 95f);          // Middle — increased from 90
-            AnimateFinger(ctx.fingers[3], ctx.fingerTargets[3] * 92f);          // Ring — increased from 88
-            AnimateFinger(ctx.fingers[4], ctx.fingerTargets[4] * 88f);          // Little — increased from 85
+            bool official = ctx.isOfficialModel;
+            AnimateFinger(ctx.fingers[0], ctx.fingerTargets[0] * 70f, true, official);    // Thumb
+            AnimateFinger(ctx.fingers[1], ctx.fingerTargets[1] * 90f, false, official);   // Index
+            AnimateFinger(ctx.fingers[2], ctx.fingerTargets[2] * 95f, false, official);   // Middle
+            AnimateFinger(ctx.fingers[3], ctx.fingerTargets[3] * 92f, false, official);   // Ring
+            AnimateFinger(ctx.fingers[4], ctx.fingerTargets[4] * 88f, false, official);   // Little
         }
         
-        void AnimateFinger(FingerContext finger, float totalAngle, bool isThumb = false)
+        void AnimateFinger(FingerContext finger, float totalAngle, bool isThumb = false, bool isOfficialModel = false)
         {
-            for (int i = 0; i < finger.joints.Count; i++)
+            if (finger == null || finger.joints.Count == 0) return;
+            int count = finger.joints.Count;
+
+            for (int i = 0; i < count; i++)
             {
-                float factor = 1f - i * 0.275f;
-                float curAngle = totalAngle * factor;
-                
-                if (isThumb)
+                var joint = finger.joints[i];
+                // For 3-bone chains (Koikatu official): MCP=40%, PIP=35%, DIP=25%
+                // For 4-bone chains (procedural): gradual decrease
+                float factor;
+                if (count == 3)
                 {
-                    // Thumb curls inward (Z rotation) as well as forward (X rotation)
-                    float inwardAngle = curAngle * 0.5f;
-                    finger.joints[i].localRotation = Quaternion.Euler(curAngle * 0.7f, 0, inwardAngle);
+                    float[] dist3 = { 0.40f, 0.35f, 0.25f };
+                    factor = dist3[i];
+                }
+                else if (count == 2)
+                {
+                    float[] dist2 = { 0.55f, 0.45f };
+                    factor = dist2[i];
                 }
                 else
                 {
-                    finger.joints[i].localRotation = Quaternion.Euler(curAngle, 0, 0);
+                    factor = (1f - i * 0.275f) / count * 1.5f; // Original approach, normalized
+                    if (factor < 0.1f) factor = 0.1f;
+                }
+                float curAngle = totalAngle * factor;
+
+                if (isOfficialModel)
+                {
+                    // Official Koikatu hand model: fingers curl toward palm via positive Z rotation.
+                    // Tested: negative Z causes outward hyperextension (wrong direction).
+                    if (isThumb)
+                    {
+                        float inward = curAngle * 0.4f;
+                        joint.transform.localRotation = joint.initialLocalRotation
+                            * Quaternion.Euler(0, 0, curAngle * 0.7f)
+                            * Quaternion.Euler(inward, 0, 0);
+                    }
+                    else
+                    {
+                        joint.transform.localRotation = joint.initialLocalRotation
+                            * Quaternion.Euler(0, 0, curAngle);
+                    }
+                }
+                else
+                {
+                    // Procedural capsule hand — bones extend along Z, joints created at identity
+                    if (isThumb)
+                    {
+                        float inwardAngle = curAngle * 0.5f;
+                        joint.transform.localRotation = joint.initialLocalRotation * Quaternion.Euler(curAngle * 0.7f, 0, inwardAngle);
+                    }
+                    else
+                    {
+                        joint.transform.localRotation = joint.initialLocalRotation * Quaternion.Euler(curAngle, 0, 0);
+                    }
                 }
             }
         }
@@ -422,7 +620,7 @@ namespace KKCharaStudioVR
             if (h == null || h.root == null || h.trackedObj == null || h.trackedObj.transform == null) return;
             if (!h.root.activeSelf) return;
 
-            var rb = h.root.GetComponent<Rigidbody>();
+            var rb = h.cachedRigidbody;
             if (rb == null) return;
 
             // Target local offset calculation

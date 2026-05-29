@@ -1,22 +1,35 @@
 using System;
+using System.Runtime.InteropServices;
 using BepInEx;
+using VRGIN.Core;
 using VRGIN.Helpers;
 
 namespace KKCharaStudioVR;
 
 [BepInProcess("CharaStudio")]
-[BepInPlugin("KKCharaStudioVRPlugin.KKCharaStudioVRPlugin", "KKCharaStudioVRPlugin", "0.0.3")]
+[BepInPlugin("KKCharaStudioVRPlugin.KKCharaStudioVRPlugin", "KKCharaStudioVRPlugin", "0.0.4")]
 public class KKCharaStudioVRPlugin : BaseUnityPlugin
 {
 	public const string NAME = "KKCharaStudioVRPlugin";
 
-	public const string VERSION = "0.0.3";
+	public const string VERSION = "0.0.4";
+
+	[DllImport("user32.dll")]
+	private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+	[DllImport("user32.dll")]
+	private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
 	public KKCharaStudioVRPlugin()
 	{
 		bool flag = Environment.CommandLine.Contains("--novr");
 		if (Environment.CommandLine.Contains("--studiovr") || (!flag && SteamVRDetector.IsRunning))
 		{
+			// NOTE: Do NOT pre-load openvr_api.dll or call LoadDeviceByName here.
+			// Doing so causes an extra VR_Init -> VR_Shutdown cycle that breaks
+			// ReShade's IVRCompositor::Submit hooks. For ReShade VR to work,
+			// VR must be initialized at engine startup via boot.config or the
+			// globalgamemanagers patch. See StartCharaStudioVR.bat.
 			VRLoader.Create(isEnable: true);
 			SaveLoadSceneHook.InstallHook();
 			LoadFixHook.InstallHook();
@@ -27,12 +40,6 @@ public class KKCharaStudioVRPlugin : BaseUnityPlugin
 			VRLoader.Create(isEnable: false);
 		}
 	}
-
-	[System.Runtime.InteropServices.DllImport("user32.dll")]
-	private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-	[System.Runtime.InteropServices.DllImport("user32.dll")]
-	private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
 	public void Start()
 	{

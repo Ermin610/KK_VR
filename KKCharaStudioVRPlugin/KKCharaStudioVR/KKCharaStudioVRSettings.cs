@@ -84,6 +84,7 @@ public class KKCharaStudioVRSettings : VRSettings
 	private bool _HapticFeedbackEnabled = true;
 	private float _HapticFeedbackIntensity = 0.5f;
 	private bool _PhysicsHandsEnabled = true;
+	private bool _VibrateOnlyOnBreasts = true;
 
 	[XmlComment("Enable VAM-style non-clipping physics hands")]
 	public bool PhysicsHandsEnabled
@@ -120,6 +121,13 @@ public class KKCharaStudioVRSettings : VRSettings
 		set { _HapticFeedbackIntensity = value; TriggerPropertyChanged("HapticFeedbackIntensity"); }
 	}
 
+	[XmlComment("Only vibrate when touching breasts")]
+	public bool VibrateOnlyOnBreasts
+	{
+		get { return _VibrateOnlyOnBreasts; }
+		set { _VibrateOnlyOnBreasts = value; TriggerPropertyChanged("VibrateOnlyOnBreasts"); }
+	}
+
 	private bool _ProximityGrabEnabled = true;
 	private float _ProximityGrabRadius = 0.12f;
 
@@ -137,7 +145,7 @@ public class KKCharaStudioVRSettings : VRSettings
 		set { _ProximityGrabRadius = value; TriggerPropertyChanged("ProximityGrabRadius"); }
 	}
 
-	private float _UISpawnDistance = 1.2f;
+	private float _UISpawnDistance = 2.0f;
 
 	[XmlComment("Distance in front of head when UI respawns (meters)")]
 	public float UISpawnDistance
