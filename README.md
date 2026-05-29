@@ -4,9 +4,9 @@ A customized interaction and physics overhaul plugin for Koikatu (Koikatsu) Char
 
 > [!TIP]
 > **Quick Download / 快速下载**:
-> You can download the complete pre-configured integration modpack containing BepInEx, patchers, Unity VR support, and our optimized plugin DLL together with a step-by-step setup tutorial directly from the [Releases Page](https://github.com/Ermin610/KK_VR/releases/tag/v0.1.0)!
+> You can download the complete pre-configured integration modpack containing BepInEx, patchers, Unity VR support, and our optimized plugin DLL together with a step-by-step setup tutorial directly from the [Releases Page](https://github.com/Ermin610/KK_VR/releases/tag/v0.2.0)!
 > 
-> 您可以在 [Release 发布页](https://github.com/Ermin610/KK_VR/releases/tag/v0.1.0) 直接一键下载包含 BepInEx、补丁加载器、Unity VR 支持、我们重构优化后的最新 DLL 以及**完整三语步骤教程**的整包！
+> 您可以在 [Release 发布页](https://github.com/Ermin610/KK_VR/releases/tag/v0.2.0) 直接一键下载包含 BepInEx、补丁加载器、Unity VR 支持、我们重构优化后的最新 DLL 以及**完整三语步骤教程**的整包！
 
 This plugin transforms the studio VR control feeling from clunky legacy wand controls into a premium, responsive, and immersive experience similar to **Virt-A-Mate (VaM)** and **VRChat**.
 
