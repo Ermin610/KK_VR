@@ -86,19 +86,12 @@ internal class VRLoader : ProtectedBehaviour
 		bool vrMode = newDevice != DeviceNone;
 		if (vrMode && VRSettings.enabled && VRSettings.loadedDeviceName == newDevice)
 		{
-			// VR was already initialized at engine startup (via boot.config or
-			// globalgamemanagers patch). This is the ideal path for ReShade VR
-			// compatibility — no Init->Shutdown->Init cycle occurred.
 			VRLog.Info("VR device '{0}' already active, skipping LoadDeviceByName", newDevice);
 		}
 		else
 		{
-			// Fallback: VR not initialized at engine startup.
-			// LoadDeviceByName triggers VR_Init -> VR_Shutdown -> D3D11 -> VR_Init,
-			// which breaks ReShade's IVRCompositor hooks. VR will work but ReShade
-			// effects won't appear in the headset. Use StartCharaStudioVR.bat for
-			// ReShade support.
-			VRLog.Info("VR not active at engine startup, loading device '{0}' via plugin (ReShade VR may not work)", newDevice);
+			VRLog.Info("VR not active at engine startup (enabled={0}, device='{1}'), loading via plugin",
+				VRSettings.enabled, VRSettings.loadedDeviceName);
 			VRSettings.LoadDeviceByName(newDevice);
 			yield return null;
 			VRSettings.enabled = vrMode;

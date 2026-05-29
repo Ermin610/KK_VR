@@ -14,15 +14,15 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 	private string windowTitle = "KKCharaStudioVR Settings";
 	private Dictionary<string, GUIStyle> styleBackup = new Dictionary<string, GUIStyle>();
 
-	private bool _desktopCoverEnabled = true;
+	private bool _desktopCoverEnabled = false;
 	private Camera _coverCamera;
 
 	private void Start()
 	{
-		// Default to ON to hide desktop rendering (saves GPU and prevents peeping).
-		// ReShade VR works regardless of desktop cover state — it hooks IVRCompositor
-		// directly, not the desktop swap chain. User can toggle with Space.
-		SetDesktopCover(true);
+		// Default to OFF during initialization for maximum VR compatibility.
+		// VRSettings.showDeviceView=false during early init can break VR rendering.
+		// User can toggle with Space key after startup.
+		SetDesktopCover(false);
 	}
 
 	private void Update()
