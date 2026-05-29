@@ -44,7 +44,7 @@ public class SimulatedCursor : ProtectedBehaviour
 		if (Cursor.visible)
 		{
 			Vector2 val = default(Vector2);
-			((Vector2)(ref val))._002Ector(Input.mousePosition.x, (float)Screen.height - Input.mousePosition.y);
+			val = new Vector2(Input.mousePosition.x, (float)Screen.height - Input.mousePosition.y);
 			GUI.DrawTexture(new Rect(val.x, val.y, _Scale.x, _Scale.y), (Texture)(object)(_Sprite ?? _DefaultSprite));
 		}
 	}

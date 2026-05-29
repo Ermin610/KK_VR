@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Rendering;
 using VRGIN.Core;
 
@@ -85,7 +86,7 @@ public class GUIQuad : ProtectedBehaviour
 	public virtual void UpdateGUI()
 	{
 		UpdateAspect();
-		if (!Object.op_Implicit((Object)(object)renderer))
+		if (!(renderer != null))
 		{
 			VRLog.Warn("No renderer!");
 		}

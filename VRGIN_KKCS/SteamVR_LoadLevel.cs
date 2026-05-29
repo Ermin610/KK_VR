@@ -3,6 +3,8 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using Object = UnityEngine.Object;
 using UnityEngine.SceneManagement;
 using Valve.VR;
 
@@ -76,13 +78,13 @@ public class SteamVR_LoadLevel : MonoBehaviour
 
 	public bool autoTriggerOnEnable;
 
-	public static bool loading => (Object)(object)_active != (Object)null;
+	public static bool loading => _active != null;
 
 	public static float progress
 	{
 		get
 		{
-			if (!((Object)(object)_active != (Object)null) || _active.async == null)
+			if (!(_active != null) || _active.async == null)
 			{
 				return 0f;
 			}
@@ -94,7 +96,7 @@ public class SteamVR_LoadLevel : MonoBehaviour
 	{
 		get
 		{
-			if (!((Object)(object)_active != (Object)null))
+			if (!(_active != null))
 			{
 				return null;
 			}
@@ -142,20 +144,20 @@ public class SteamVR_LoadLevel : MonoBehaviour
 		//IL_0140: Unknown result type (might be due to invalid IL or missing references)
 		//IL_015b: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00f0: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)_active != (Object)(object)this || !((Object)(object)progressBarEmpty != (Object)null) || !((Object)(object)progressBarFull != (Object)null))
+		if (_active != this || !(progressBarEmpty != null) || !(progressBarFull != null))
 		{
 			return;
 		}
 		if (progressBarOverlayHandle == 0L)
 		{
-			progressBarOverlayHandle = GetOverlayHandle("progressBar", ((Object)(object)progressBarTransform != (Object)null) ? progressBarTransform : ((Component)this).transform, progressBarWidthInMeters);
+			progressBarOverlayHandle = GetOverlayHandle("progressBar", (progressBarTransform != null) ? progressBarTransform : ((Component)this).transform, progressBarWidthInMeters);
 		}
 		if (progressBarOverlayHandle != 0L)
 		{
 			float num = ((async != null) ? async.progress : 0f);
 			int width = progressBarFull.width;
 			int height = progressBarFull.height;
-			if ((Object)(object)renderTexture == (Object)null)
+			if (renderTexture == null)
 			{
 				renderTexture = new RenderTexture(width, height, 0);
 				renderTexture.Create();
@@ -185,7 +187,7 @@ public class SteamVR_LoadLevel : MonoBehaviour
 
 	private void Update()
 	{
-		if ((Object)(object)_active != (Object)(object)this)
+		if (_active != this)
 		{
 			return;
 		}
@@ -206,7 +208,7 @@ public class SteamVR_LoadLevel : MonoBehaviour
 
 	private IEnumerator LoadLevel()
 	{
-		if ((Object)(object)loadingScreen != (Object)null && loadingScreenDistance > 0f)
+		if (loadingScreen != null && loadingScreenDistance > 0f)
 		{
 			SteamVR_Controller.Device hmd = SteamVR_Controller.Input(0);
 			while (!hmd.hasTracking)
@@ -214,10 +216,9 @@ public class SteamVR_LoadLevel : MonoBehaviour
 				yield return null;
 			}
 			SteamVR_Utils.RigidTransform transform = hmd.transform;
-			transform.rot = Quaternion.Euler(0f, ((Quaternion)(ref transform.rot)).eulerAngles.y, 0f);
-			ref Vector3 pos = ref transform.pos;
-			pos += transform.rot * new Vector3(0f, 0f, loadingScreenDistance);
-			Transform obj = (((Object)(object)loadingScreenTransform != (Object)null) ? loadingScreenTransform : ((Component)this).transform);
+			transform.rot = Quaternion.Euler(0f, transform.rot.eulerAngles.y, 0f);
+			transform.pos += transform.rot * new Vector3(0f, 0f, loadingScreenDistance);
+			Transform obj = ((loadingScreenTransform != null) ? loadingScreenTransform : ((Component)this).transform);
 			obj.position = transform.pos;
 			obj.rotation = transform.rot;
 		}
@@ -232,9 +233,9 @@ public class SteamVR_LoadLevel : MonoBehaviour
 			alpha = 1f;
 		}
 		CVROverlay overlay = OpenVR.Overlay;
-		if ((Object)(object)loadingScreen != (Object)null && overlay != null)
+		if (loadingScreen != null && overlay != null)
 		{
-			loadingScreenOverlayHandle = GetOverlayHandle("loadingScreen", ((Object)(object)loadingScreenTransform != (Object)null) ? loadingScreenTransform : ((Component)this).transform, loadingScreenWidthInMeters);
+			loadingScreenOverlayHandle = GetOverlayHandle("loadingScreen", (loadingScreenTransform != null) ? loadingScreenTransform : ((Component)this).transform, loadingScreenWidthInMeters);
 			if (loadingScreenOverlayHandle != 0L)
 			{
 				Texture_t pTexture = default(Texture_t);
@@ -249,7 +250,7 @@ public class SteamVR_LoadLevel : MonoBehaviour
 		CVRCompositor compositor2 = OpenVR.Compositor;
 		if (compositor2 != null)
 		{
-			if ((Object)(object)front != (Object)null)
+			if (front != null)
 			{
 				SteamVR_Skybox.SetOverride(front, back, left, right, top, bottom);
 				compositor2.FadeGrid(fadeOutTime, bFadeIn: true);
@@ -346,7 +347,7 @@ public class SteamVR_LoadLevel : MonoBehaviour
 			{
 				compositor2.FadeGrid(fadeInTime, bFadeIn: false);
 				yield return (object)new WaitForSeconds(fadeInTime);
-				if ((Object)(object)front != (Object)null)
+				if (front != null)
 				{
 					SteamVR_Skybox.ClearOverride();
 				}
@@ -404,7 +405,7 @@ public class SteamVR_LoadLevel : MonoBehaviour
 				overlay.SetOverlayTextureBounds(pOverlayHandle, ref pOverlayTextureBounds);
 			}
 			SteamVR_Camera steamVR_Camera = ((loadingScreenDistance == 0f) ? SteamVR_Render.Top() : null);
-			if ((Object)(object)steamVR_Camera != (Object)null && (Object)(object)steamVR_Camera.origin != (Object)null)
+			if (steamVR_Camera != null && steamVR_Camera.origin != null)
 			{
 				SteamVR_Utils.RigidTransform rigidTransform = new SteamVR_Utils.RigidTransform(steamVR_Camera.origin, transform);
 				rigidTransform.pos.x /= steamVR_Camera.origin.localScale.x;

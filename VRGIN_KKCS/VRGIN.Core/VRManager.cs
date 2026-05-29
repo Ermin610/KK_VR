@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls.Speech;
 using VRGIN.Modes;
 using WindowsInput;
@@ -26,7 +27,7 @@ public class VRManager : ProtectedBehaviour
 	{
 		get
 		{
-			if ((Object)(object)_Instance == (Object)null)
+			if (_Instance == null)
 			{
 				throw new InvalidOperationException("VR Manager has not been created yet!");
 			}
@@ -53,7 +54,7 @@ public class VRManager : ProtectedBehaviour
 	public static VRManager Create<T>(IVRManagerContext context) where T : GameInterpreter
 	{
 		//IL_001b: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)_Instance == (Object)null)
+		if (_Instance == null)
 		{
 			VR.Active = true;
 			_Instance = new GameObject("VRGIN_Manager").AddComponent<VRManager>();
@@ -76,10 +77,10 @@ public class VRManager : ProtectedBehaviour
 
 	public void SetMode<T>() where T : ControlMode
 	{
-		if ((Object)(object)Mode == (Object)null || !(Mode is T))
+		if (Mode == null || !(Mode is T))
 		{
 			ModeType = typeof(T);
-			if ((Object)(object)Mode != (Object)null)
+			if (Mode != null)
 			{
 				Mode.ControllersCreated -= OnControllersCreated;
 				Object.DestroyImmediate((Object)(object)Mode);
@@ -150,7 +151,7 @@ public class VRManager : ProtectedBehaviour
 	public void EnableEffects()
 	{
 		_IsEnabledEffects = true;
-		if (Object.op_Implicit((Object)(object)VR.Camera.Blueprint))
+		if ((VR.Camera.Blueprint != null))
 		{
 			ApplyEffects();
 		}

@@ -48,7 +48,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 		{
 			get
 			{
-				if ((Object)(object)_Canvas != (Object)null)
+				if (_Canvas != null)
 				{
 					return _Canvas;
 				}
@@ -98,7 +98,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 		get
 		{
 			//IL_0011: Unknown result type (might be due to invalid IL or missing references)
-			if (!Object.op_Implicit((Object)(object)_Instance))
+			if (!(_Instance != null))
 			{
 				_Instance = new GameObject("VRGIN_GUI").AddComponent<VRGUI>();
 				if (VR.Context.SimulateCursor)
@@ -192,9 +192,9 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 		//IL_000f: Invalid comparison between Unknown and I4
 		if ((int)c.renderMode != 0)
 		{
-			if ((int)c.renderMode == 1 && (Object)(object)c.worldCamera != (Object)(object)_VRGUICamera)
+			if ((int)c.renderMode == 1 && c.worldCamera != _VRGUICamera)
 			{
-				return (Object)(object)c.worldCamera.targetTexture == (Object)null;
+				return c.worldCamera.targetTexture == null;
 			}
 			return false;
 		}
@@ -206,7 +206,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 		//IL_00be: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00da: Unknown result type (might be due to invalid IL or missing references)
 		_VRGUICamera.targetTexture = uGuiTexture;
-		foreach (Canvas item in (_Registry.Keys as ICollection<Canvas>).Where((Canvas c) => Object.op_Implicit((Object)(object)c)).ToList().Where(IsUnprocessed))
+		foreach (Canvas item in (_Registry.Keys as ICollection<Canvas>).Where((Canvas c) => (c != null)).ToList().Where(IsUnprocessed))
 		{
 			if (VR.Interpreter.IsIgnoredCanvas(item))
 			{
@@ -236,7 +236,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 			if (VR.Context.GUIAlternativeSortingMode)
 			{
 				GraphicRaycaster component = ((Component)item).GetComponent<GraphicRaycaster>();
-				if (Object.op_Implicit((Object)(object)component))
+				if ((component != null))
 				{
 					Object.DestroyImmediate((Object)(object)component);
 					SortingAwareGraphicRaycaster obj2 = ((Component)item).gameObject.AddComponent<SortingAwareGraphicRaycaster>();
@@ -336,11 +336,11 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 		List<Camera> list = new List<Camera>();
 		foreach (KeyValuePair<Camera, IScreenGrabber> cameraMapping in _CameraMappings)
 		{
-			if (!Object.op_Implicit((Object)(object)cameraMapping.Key))
+			if (!(cameraMapping.Key != null))
 			{
 				list.Add(cameraMapping.Key);
 			}
-			else if ((Object)(object)cameraMapping.Key.targetTexture != (Object)(object)cameraMapping.Value.GetTextures().FirstOrDefault())
+			else if (cameraMapping.Key.targetTexture != cameraMapping.Value.GetTextures().FirstOrDefault())
 			{
 				cameraMapping.Key.targetTexture = cameraMapping.Value.GetTextures().FirstOrDefault();
 			}

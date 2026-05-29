@@ -6,7 +6,7 @@ public abstract class DefaultActorBehaviour<T> : ProtectedBehaviour, IActor wher
 {
 	public T Actor { get; protected set; }
 
-	public virtual bool IsValid => Object.op_Implicit((Object)(object)Actor);
+	public virtual bool IsValid => (Actor != null);
 
 	public abstract Transform Eyes { get; }
 
@@ -15,7 +15,7 @@ public abstract class DefaultActorBehaviour<T> : ProtectedBehaviour, IActor wher
 	public static A Create<A>(T nativeActor) where A : DefaultActorBehaviour<T>
 	{
 		A val = ((Component)(object)nativeActor).GetComponent<A>();
-		if (!Object.op_Implicit((Object)(object)val))
+		if (!(val != null))
 		{
 			val = ((Component)(object)nativeActor).gameObject.AddComponent<A>();
 			val.Initialize(nativeActor);

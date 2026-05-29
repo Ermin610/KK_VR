@@ -7,6 +7,7 @@ using BepInEx4;
 using Manager;
 using Studio;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 using Logger = BepInEx4.Logger;
 

@@ -129,6 +129,39 @@ namespace KKCharaStudioVR
         {
             if (h == null || h.root == null) return;
 
+            // Check if controller tracking is valid
+            bool isTracked = false;
+            try
+            {
+                if (h.trackedObj != null && h.trackedObj.transform != null)
+                {
+                    bool isZero = h.trackedObj.transform.localPosition.sqrMagnitude < 0.000001f;
+                    isTracked = !isZero && h.trackedObj.index != SteamVR_TrackedObject.EIndex.None;
+                }
+            }
+            catch (Exception ex)
+            {
+                VRLog.Error("Error checking tracking state in UpdateSingleHand: " + ex.Message);
+            }
+            bool shouldBeActive = isTracked && (settings != null ? settings.HandModelEnabled : true);
+            
+            // Hide the hand model if not tracked
+            if (h.root.activeSelf != shouldBeActive)
+            {
+                h.root.SetActive(shouldBeActive);
+            }
+
+            if (!shouldBeActive)
+            {
+                // If the hand is inactive, make sure we restore the VRGIN controller model
+                if (h.cachedController != null && h.lastRenderModelHidden)
+                {
+                    h.lastRenderModelHidden = false;
+                    h.cachedController.SetRenderModelVisible(true);
+                }
+                return;
+            }
+
             if (h.cachedController != null)
             {
                 bool shouldHideRenderModel = h.root.activeSelf;

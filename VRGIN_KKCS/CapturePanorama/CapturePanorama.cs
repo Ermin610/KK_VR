@@ -9,6 +9,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using CapturePanorama.Internals;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using Object = UnityEngine.Object;
+using Color = UnityEngine.Color;
 using VRGIN.Core;
 
 namespace CapturePanorama;
@@ -235,7 +238,7 @@ public class CapturePanorama : ProtectedBehaviour
 
 	protected override void OnAwake()
 	{
-		if ((Object)(object)instance == (Object)null)
+		if (instance == null)
 		{
 			instance = this;
 		}
@@ -275,7 +278,7 @@ public class CapturePanorama : ProtectedBehaviour
 		{
 			for (int num = camGos.Length - 1; num >= 0; num--)
 			{
-				if ((Object)(object)camGos[num] != (Object)null)
+				if (camGos[num] != null)
 				{
 					Object.Destroy((Object)(object)camGos[num]);
 				}
@@ -284,7 +287,7 @@ public class CapturePanorama : ProtectedBehaviour
 		camGos = null;
 		numCameras = -1;
 		hFov = (vFov = -1f);
-		if ((Object)(object)cubemapRenderTexture != (Object)null)
+		if (cubemapRenderTexture != null)
 		{
 			Object.Destroy((Object)(object)cubemapRenderTexture);
 		}
@@ -292,7 +295,7 @@ public class CapturePanorama : ProtectedBehaviour
 		convertPanoramaKernelIdx = (renderStereoIdx = (textureToBufferIdx = -1));
 		convertPanoramaKernelIdxs = null;
 		resultPixels = (cameraPixels = null);
-		if ((Object)(object)forceWaitTexture != (Object)null)
+		if (forceWaitTexture != null)
 		{
 			Object.Destroy((Object)(object)forceWaitTexture);
 		}
@@ -381,7 +384,7 @@ public class CapturePanorama : ProtectedBehaviour
 		cameraHeight = (int)Math.Ceiling(Math.Tan(vFov * ((float)Math.PI * 2f) / 360f / 2f) * num4 * (double)ssaaFactor);
 		Log("Number of cameras: " + numCameras);
 		Log("Camera dimensions: " + cameraWidth + "x" + cameraHeight);
-		usingGpuTransform = useGpuTransform && (Object)(object)convertPanoramaShader != (Object)null;
+		usingGpuTransform = useGpuTransform && convertPanoramaShader != null;
 		cubemapRenderTexture = new RenderTexture(cameraWidth, cameraHeight, 24, (RenderTextureFormat)0);
 		cubemapRenderTexture.antiAliasing = (int)antiAliasing;
 		cubemapRenderTexture.Create();
@@ -465,7 +468,7 @@ public class CapturePanorama : ProtectedBehaviour
 				{
 					Debug.LogError((object)"Initialization of Capture Panorama script failed. Cannot capture content.");
 				}
-				if ((Object)(object)failSound != (Object)null && (Object)(object)Camera.main != (Object)null)
+				if (failSound != null && Camera.main != null)
 				{
 					audioSource.PlayOneShot(failSound);
 				}
@@ -608,7 +611,7 @@ public class CapturePanorama : ProtectedBehaviour
 			}
 		}
 		Log("Starting panorama capture");
-		if (!captureEveryFrame && (Object)(object)startSound != (Object)null && (Object)(object)Camera.main != (Object)null)
+		if (!captureEveryFrame && startSound != null && Camera.main != null)
 		{
 			audioSource.PlayOneShot(startSound);
 		}
@@ -616,7 +619,7 @@ public class CapturePanorama : ProtectedBehaviour
 		array = Camera.allCameras;
 		foreach (Camera val2 in array)
 		{
-			if (((Behaviour)val2).isActiveAndEnabled && (Object)(object)val2.targetTexture == (Object)null)
+			if (((Behaviour)val2).isActiveAndEnabled && val2.targetTexture == null)
 			{
 				ScreenFadeControl screenFadeControl = ((Component)val2).gameObject.AddComponent<ScreenFadeControl>();
 				screenFadeControl.fadeMaterial = fadeMaterial;
@@ -998,12 +1001,12 @@ public class CapturePanorama : ProtectedBehaviour
 		}
 		if (!producedImageSuccess)
 		{
-			if ((Object)(object)failSound != (Object)null && (Object)(object)Camera.main != (Object)null)
+			if (failSound != null && Camera.main != null)
 			{
 				audioSource.PlayOneShot(failSound);
 			}
 		}
-		else if (!captureEveryFrame && (Object)(object)doneSound != (Object)null && (Object)(object)Camera.main != (Object)null)
+		else if (!captureEveryFrame && doneSound != null && Camera.main != null)
 		{
 			audioSource.PlayOneShot(doneSound);
 		}
@@ -1076,7 +1079,7 @@ public class CapturePanorama : ProtectedBehaviour
 		else
 		{
 			CubemapFace val = (CubemapFace)i;
-			text = ((object)(CubemapFace)(ref val)).ToString();
+			text = ((object)val).ToString();
 			Log("Saving cubemap image " + text);
 		}
 		string filename = imagePath + "/" + filenameBase + "_" + text + suffix;
@@ -1106,7 +1109,7 @@ public class CapturePanorama : ProtectedBehaviour
 		float num14 = Mathf.Lerp(Mathf.Lerp((float)(num10 >> 16), (float)(num12 >> 16), num6), Mathf.Lerp((float)(num11 >> 16), (float)(num13 >> 16), num6), num5);
 		float num15 = Mathf.Lerp(Mathf.Lerp((float)((num10 >> 8) & 0xFFu), (float)((num12 >> 8) & 0xFFu), num6), Mathf.Lerp((float)((num11 >> 8) & 0xFFu), (float)((num13 >> 8) & 0xFFu), num6), num5);
 		float num16 = Mathf.Lerp(Mathf.Lerp((float)(num10 & 0xFFu), (float)(num12 & 0xFFu), num6), Mathf.Lerp((float)(num11 & 0xFFu), (float)(num13 & 0xFFu), num6), num5);
-		return Color32.op_Implicit(new Color(num14 / 255f, num15 / 255f, num16 / 255f, 1f));
+		return ((Color32)(new Color(num14 / 255f, num15 / 255f, num16 / 255f, 1f)));
 	}
 
 	internal void ClearProcessQueue()
@@ -1132,7 +1135,7 @@ public class CapturePanorama : ProtectedBehaviour
 		if (!string.IsNullOrEmpty(w.error))
 		{
 			Debug.LogError((object)("Panorama upload failed: " + w.error), (Object)(object)this);
-			if ((Object)(object)failSound != (Object)null && (Object)(object)Camera.main != (Object)null)
+			if (failSound != null && Camera.main != null)
 			{
 				audioSource.PlayOneShot(failSound);
 			}
@@ -1140,7 +1143,7 @@ public class CapturePanorama : ProtectedBehaviour
 		else
 		{
 			Log("Time to upload panorama screenshot: " + (Time.realtimeSinceStartup - startTime) + " sec");
-			if (!captureEveryFrame && (Object)(object)doneSound != (Object)null && (Object)(object)Camera.main != (Object)null)
+			if (!captureEveryFrame && doneSound != null && Camera.main != null)
 			{
 				audioSource.PlayOneShot(doneSound);
 			}
@@ -1182,10 +1185,10 @@ public class CapturePanorama : ProtectedBehaviour
 					float num8 = IpdScaleFunction(latitudeNormalized);
 					float num9 = num8 * interpupillaryDistance / 2f;
 					float num10 = 1f - num8 * 5f;
-					((Color)(ref val))._002Ector(0f, 0f, 0f, 0f);
+					val = new Color(0f, 0f, 0f, 0f);
 					if (num10 > 0f)
 					{
-						((Vector3)(ref val2))._002Ector(num4 * num6, num3, num4 * num7);
+						val2 = new Vector3(num4 * num6, num3, num4 * num7);
 						float num11 = 1f / val2.y;
 						float num12 = val2.x * num11;
 						float num13 = val2.z * num11;
@@ -1203,12 +1206,12 @@ public class CapturePanorama : ProtectedBehaviour
 							}
 							num12 = (num12 + 1f) * 0.5f;
 							num13 = (num13 + 1f) * 0.5f;
-							val = Color32.op_Implicit(GetCameraPixelBilinear(cameraPixels, cameraNum, num12, num13));
+							val = ((Color32)(GetCameraPixelBilinear(cameraPixels, cameraNum, num12, num13)));
 						}
 					}
 					for (int i = 0; i < 2; i++)
 					{
-						((Vector3)(ref val3))._002Ector(num6, 0f, num7);
+						val3 = new Vector3(num6, 0f, num7);
 						float num14 = (float)Math.PI / 2f - Mathf.Acos(num9 / circleRadius);
 						if (i == 0)
 						{
@@ -1239,7 +1242,7 @@ public class CapturePanorama : ProtectedBehaviour
 							int cameraNum = 2 + num18 * 2 + ((num22 >= 0f) ? 1 : 0);
 							float num25 = ((num22 >= 0f) ? (0f - hFovAdjust) : hFovAdjust);
 							float num26 = num22 + num25;
-							((Vector3)(ref val6))._002Ector(num4 * Mathf.Sin(num26), num3, num4 * Mathf.Cos(num26));
+							val6 = new Vector3(num4 * Mathf.Sin(num26), num3, num4 * Mathf.Cos(num26));
 							float num12 = val6.x / val6.z / tanHalfHFov;
 							float num13 = (0f - val6.y) / val6.z / tanHalfVFov;
 							if (!(val6.z > 0f) || !(num12 * num12 <= 1f) || !(num13 * num13 <= 0.9f))
@@ -1248,13 +1251,13 @@ public class CapturePanorama : ProtectedBehaviour
 								float num27 = ((num2 >= 0f) ? vFovAdjust : (0f - vFovAdjust));
 								float num28 = Mathf.Cos(num27);
 								float num29 = Mathf.Sin(num27);
-								((Vector3)(ref val6))._002Ector(num4 * num24, num28 * num3 - num4 * num23 * num29, num29 * num3 + num4 * num23 * num28);
+								val6 = new Vector3(num4 * num24, num28 * num3 - num4 * num23 * num29, num29 * num3 + num4 * num23 * num28);
 								num12 = val6.x / val6.z / tanHalfHFov;
 								num13 = (0f - val6.y) / val6.z / tanHalfVFov;
 							}
 							num12 = (num12 + 1f) * 0.5f;
 							num13 = (num13 + 1f) * 0.5f;
-							Color val7 = Color32.op_Implicit(GetCameraPixelBilinear(cameraPixels, cameraNum, num12, num13));
+							Color val7 = ((Color32)(GetCameraPixelBilinear(cameraPixels, cameraNum, num12, num13)));
 							if (j == 0)
 							{
 								val4 = val7;
@@ -1264,10 +1267,10 @@ public class CapturePanorama : ProtectedBehaviour
 								val5 = val7;
 							}
 						}
-						Color32 val8 = Color32.op_Implicit(Color.Lerp(val4, val5, num16 - Mathf.Floor(num16)));
+						Color32 val8 = ((Color32)(Color.Lerp(val4, val5, num16 - Mathf.Floor(num16))));
 						if (val.a > 0f && num10 > 0f)
 						{
-							val8 = Color32.op_Implicit(Color.Lerp(Color32.op_Implicit(val8), val, num10));
+							val8 = ((Color32)(Color.Lerp(((Color32)(val8)), val, num10)));
 						}
 						int num30 = stride * (y + panoramaHeight * i) + x * 4;
 						pixelValues[num30] = val8.b;
@@ -1485,7 +1488,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.y;
 						float num10 = val.x * num9;
 						float num11 = val.z * num9;
@@ -1531,7 +1534,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.y;
 						float num10 = val.x * num9;
 						float num11 = val.z * num9;
@@ -1578,7 +1581,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.x;
 						float num10 = (0f - val.z) * num9;
 						float num11 = val.y * num9;
@@ -1625,7 +1628,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.x;
 						float num10 = (0f - val.z) * num9;
 						float num11 = val.y * num9;
@@ -1671,7 +1674,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.z;
 						float num10 = val.x * num9;
 						float num11 = val.y * num9;
@@ -1718,7 +1721,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.z;
 						float num10 = val.x * num9;
 						float num11 = val.y * num9;
@@ -1764,7 +1767,7 @@ public class CapturePanorama : ProtectedBehaviour
 						float num6 = ((float)i / (float)(panoramaHeight * ssaaFactor) - 0.5f) * (float)Math.PI;
 						float num7 = (num5 * 2f - 1f) * (float)Math.PI;
 						float num8 = Mathf.Cos(num6);
-						((Vector3)(ref val))._002Ector(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
+						val = new Vector3(num8 * Mathf.Sin(num7), 0f - Mathf.Sin(num6), num8 * Mathf.Cos(num7));
 						float num9 = 1f / val.y;
 						float num10 = val.x * num9;
 						float num11 = val.z * num9;

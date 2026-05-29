@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading;
 using SpeechTransport;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace VRGIN.Controls.Speech;

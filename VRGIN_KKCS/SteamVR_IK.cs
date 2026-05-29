@@ -107,10 +107,10 @@ public class SteamVR_IK : MonoBehaviour
 		}
 		Vector3 val;
 		Vector3 val2;
-		if (!Object.op_Implicit((Object)(object)upVector))
+		if (!(upVector != null))
 		{
 			val = Vector3.Cross(end.position - start.position, joint.position - start.position);
-			val2 = ((Vector3)(ref val)).normalized;
+			val2 = val.normalized;
 		}
 		else
 		{
@@ -123,9 +123,9 @@ public class SteamVR_IK : MonoBehaviour
 		Vector3 position2 = start.position;
 		Vector3 position3 = poleVector.position;
 		val = joint.position - start.position;
-		float magnitude = ((Vector3)(ref val)).magnitude;
+		float magnitude = val.magnitude;
 		val = end.position - joint.position;
-		Solve(position2, position, position3, magnitude, ((Vector3)(ref val)).magnitude, ref result, out var _, out var up);
+		Solve(position2, position, position3, magnitude, val.magnitude, ref result, out var _, out var up);
 		if (!(up == Vector3.zero))
 		{
 			Vector3 position4 = start.position;
@@ -140,7 +140,7 @@ public class SteamVR_IK : MonoBehaviour
 			Vector3 localScale = start.localScale;
 			Vector3 localScale2 = joint.localScale;
 			Vector3 localScale3 = end.localScale;
-			if ((Object)(object)startXform == (Object)null)
+			if (startXform == null)
 			{
 				startXform = new GameObject("startXform").transform;
 				startXform.parent = ((Component)this).transform;
@@ -148,7 +148,7 @@ public class SteamVR_IK : MonoBehaviour
 			startXform.position = position4;
 			startXform.LookAt(joint, val3);
 			start.parent = startXform;
-			if ((Object)(object)jointXform == (Object)null)
+			if (jointXform == null)
 			{
 				jointXform = new GameObject("jointXform").transform;
 				jointXform.parent = startXform;
@@ -156,7 +156,7 @@ public class SteamVR_IK : MonoBehaviour
 			jointXform.position = position5;
 			jointXform.LookAt(end, val3);
 			joint.parent = jointXform;
-			if ((Object)(object)endXform == (Object)null)
+			if (endXform == null)
 			{
 				endXform = new GameObject("endXform").transform;
 				endXform.parent = jointXform;
@@ -245,21 +245,21 @@ public class SteamVR_IK : MonoBehaviour
 		float num = jointDist + targetDist;
 		Vector3 val = end - start;
 		Vector3 val2 = poleVector - start;
-		Vector3 normalized = ((Vector3)(ref val2)).normalized;
-		float magnitude = ((Vector3)(ref val)).magnitude;
+		Vector3 normalized = val2.normalized;
+		float magnitude = val.magnitude;
 		result = start;
 		if (magnitude < 0.001f)
 		{
 			result += normalized * jointDist;
 			forward = Vector3.Cross(normalized, Vector3.up);
 			val2 = Vector3.Cross(forward, normalized);
-			up = ((Vector3)(ref val2)).normalized;
+			up = val2.normalized;
 		}
 		else
 		{
 			forward = val * (1f / magnitude);
 			val2 = Vector3.Cross(forward, normalized);
-			up = ((Vector3)(ref val2)).normalized;
+			up = val2.normalized;
 			if (magnitude + 0.001f < num)
 			{
 				float num2 = (num + magnitude) * 0.5f;

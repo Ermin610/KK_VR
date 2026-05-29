@@ -1,6 +1,7 @@
 using System;
 using System.Xml.Serialization;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls.Speech;
 using VRGIN.Core;
 using VRGIN.Visuals;

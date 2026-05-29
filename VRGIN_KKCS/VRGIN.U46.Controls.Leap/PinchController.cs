@@ -74,7 +74,7 @@ public class PinchController : ProtectedBehaviour
 		//IL_0127: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0131: Unknown result type (might be due to invalid IL or missing references)
 		_Pinching = true;
-		if (Object.op_Implicit((Object)(object)_Current))
+		if ((_Current != null))
 		{
 			Object.DestroyImmediate((Object)(object)((Component)_Current).gameObject);
 		}
@@ -97,10 +97,10 @@ public class PinchController : ProtectedBehaviour
 			return;
 		}
 		_Pinching = false;
-		if (Object.op_Implicit((Object)(object)_Current))
+		if ((_Current != null))
 		{
 			Vector3 localScale = ((Component)_Current).transform.localScale;
-			if (((Vector3)(ref localScale)).magnitude < 0.3f)
+			if (localScale.magnitude < 0.3f)
 			{
 				Object.DestroyImmediate((Object)(object)((Component)_Current).gameObject);
 			}

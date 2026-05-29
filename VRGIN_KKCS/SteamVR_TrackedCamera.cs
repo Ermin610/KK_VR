@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 public class SteamVR_TrackedCamera
@@ -146,7 +147,7 @@ public class SteamVR_TrackedCamera
 				return;
 			}
 			IntPtr ppD3D11ShaderResourceView = IntPtr.Zero;
-			Texture2D val = (Texture2D)(((Object)(object)_texture != (Object)null) ? ((object)_texture) : ((object)new Texture2D(2, 2)));
+			Texture2D val = (Texture2D)((_texture != null) ? ((object)_texture) : ((object)new Texture2D(2, 2)));
 			uint nFrameHeaderSize = (uint)Marshal.SizeOf(header.GetType());
 			if (instance.textureType == ETextureType.OpenGL)
 			{
@@ -164,7 +165,7 @@ public class SteamVR_TrackedCamera
 			{
 				return;
 			}
-			if ((Object)(object)_texture == (Object)null)
+			if (_texture == null)
 			{
 				_texture = Texture2D.CreateExternalTexture((int)header.nWidth, (int)header.nHeight, (TextureFormat)4, false, false, ppD3D11ShaderResourceView);
 				uint pnWidth = 0u;

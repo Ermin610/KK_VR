@@ -48,7 +48,7 @@ public class RiggedHand : HandModel
 		//IL_0065: Unknown result type (might be due to invalid IL or missing references)
 		//IL_006a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_004e: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)palm != (Object)null)
+		if (palm != null)
 		{
 			if (ModelPalmAtLeapWrist)
 			{
@@ -57,20 +57,20 @@ public class RiggedHand : HandModel
 			else
 			{
 				palm.position = GetPalmPosition();
-				if (Object.op_Implicit((Object)(object)wristJoint))
+				if ((wristJoint != null))
 				{
 					wristJoint.position = GetWristPosition();
 				}
 			}
 			palm.rotation = GetRiggedPalmRotation() * Reorientation();
 		}
-		if ((Object)(object)forearm != (Object)null)
+		if (forearm != null)
 		{
 			forearm.rotation = GetArmRotation() * Reorientation();
 		}
 		for (int i = 0; i < fingers.Length; i++)
 		{
-			if ((Object)(object)fingers[i] != (Object)null)
+			if (fingers[i] != null)
 			{
 				fingers[i].fingerType = (Finger.FingerType)i;
 				fingers[i].UpdateFinger();
@@ -88,7 +88,7 @@ public class RiggedHand : HandModel
 			LeapTransform basis = hand_.Basis;
 			return CalculateRotation(basis);
 		}
-		if (Object.op_Implicit((Object)(object)palm))
+		if ((palm != null))
 		{
 			return palm.rotation;
 		}

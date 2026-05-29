@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 public class SteamVR_Render : MonoBehaviour
@@ -45,10 +46,10 @@ public class SteamVR_Render : MonoBehaviour
 		get
 		{
 			//IL_0029: Unknown result type (might be due to invalid IL or missing references)
-			if ((Object)(object)_instance == (Object)null)
+			if (_instance == null)
 			{
 				_instance = Object.FindObjectOfType<SteamVR_Render>();
-				if ((Object)(object)_instance == (Object)null)
+				if (_instance == null)
 				{
 					_instance = new GameObject("[SteamVR]").AddComponent<SteamVR_Render>();
 				}
@@ -91,7 +92,7 @@ public class SteamVR_Render : MonoBehaviour
 
 	public static void Remove(SteamVR_Camera vrcam)
 	{
-		if (!isQuitting && (Object)(object)_instance != (Object)null)
+		if (!isQuitting && _instance != null)
 		{
 			instance.RemoveInternal(vrcam);
 		}
@@ -134,7 +135,7 @@ public class SteamVR_Render : MonoBehaviour
 		int num2 = 0;
 		for (int i = 0; i < num; i++)
 		{
-			if ((Object)(object)cameras[i] == (Object)(object)vrcam)
+			if (cameras[i] == vrcam)
 			{
 				num2++;
 			}
@@ -148,7 +149,7 @@ public class SteamVR_Render : MonoBehaviour
 		for (int j = 0; j < num; j++)
 		{
 			SteamVR_Camera steamVR_Camera = cameras[j];
-			if ((Object)(object)steamVR_Camera != (Object)(object)vrcam)
+			if (steamVR_Camera != vrcam)
 			{
 				array[num3++] = steamVR_Camera;
 			}
@@ -184,7 +185,7 @@ public class SteamVR_Render : MonoBehaviour
 				compositor.SetTrackingSpace(trackingSpace);
 			}
 			SteamVR_Overlay steamVR_Overlay = SteamVR_Overlay.instance;
-			if ((Object)(object)steamVR_Overlay != (Object)null)
+			if (steamVR_Overlay != null)
 			{
 				steamVR_Overlay.UpdateOverlay();
 			}
@@ -194,7 +195,7 @@ public class SteamVR_Render : MonoBehaviour
 
 	private void RenderExternalCamera()
 	{
-		if (!((Object)(object)externalCamera == (Object)null) && ((Component)externalCamera).gameObject.activeInHierarchy)
+		if (!(externalCamera == null) && ((Component)externalCamera).gameObject.activeInHierarchy)
 		{
 			int num = (int)Mathf.Max(externalCamera.config.frameSkip, 0f);
 			if (Time.frameCount % (num + 1) == 0)
@@ -287,7 +288,7 @@ public class SteamVR_Render : MonoBehaviour
 		SteamVR_Events.InputFocus.Listen(OnInputFocus);
 		SteamVR_Events.System(EVREventType.VREvent_Quit).Listen(OnQuit);
 		SteamVR_Events.System(EVREventType.VREvent_RequestScreenshot).Listen(OnRequestScreenshot);
-		Camera.onPreCull = (CameraCallback)Delegate.Combine((Delegate)(object)Camera.onPreCull, (Delegate)new CameraCallback(OnCameraPreCull));
+		Camera.onPreCull += OnCameraPreCull;
 		if (SteamVR.instance == null)
 		{
 			((Behaviour)this).enabled = false;
@@ -307,12 +308,12 @@ public class SteamVR_Render : MonoBehaviour
 		SteamVR_Events.InputFocus.Remove(OnInputFocus);
 		SteamVR_Events.System(EVREventType.VREvent_Quit).Remove(OnQuit);
 		SteamVR_Events.System(EVREventType.VREvent_RequestScreenshot).Remove(OnRequestScreenshot);
-		Camera.onPreCull = (CameraCallback)Delegate.Remove((Delegate)(object)Camera.onPreCull, (Delegate)new CameraCallback(OnCameraPreCull));
+		Camera.onPreCull -= OnCameraPreCull;
 	}
 
 	private void Awake()
 	{
-		if ((Object)(object)externalCamera == (Object)null && File.Exists(externalCameraConfigPath))
+		if (externalCamera == null && File.Exists(externalCameraConfigPath))
 		{
 			GameObject val = Object.Instantiate<GameObject>(Resources.Load<GameObject>("SteamVR_ExternalCamera"));
 			((Object)val.gameObject).name = "External Camera";

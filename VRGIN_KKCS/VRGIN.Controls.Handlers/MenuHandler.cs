@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls.Tools;
 using VRGIN.Core;
 using VRGIN.Native;
@@ -131,10 +132,10 @@ public class MenuHandler : ProtectedBehaviour
 			//IL_0079: Unknown result type (might be due to invalid IL or missing references)
 			Vector3 position = ((Component)VR.Mode.Left).transform.position;
 			Vector3 val = ((Component)VR.Mode.Right).transform.position - position;
-			Vector3 normalized = ((Vector3)(ref val)).normalized;
+			Vector3 normalized = val.normalized;
 			Vector3 val2 = Vector3.Lerp(((Component)VR.Mode.Left).transform.forward, ((Component)VR.Mode.Right).transform.forward, 0.5f);
 			val = Vector3.Cross(normalized, val2);
-			return Quaternion.LookRotation(((Vector3)(ref val)).normalized, val2);
+			return Quaternion.LookRotation(val.normalized, val2);
 		}
 
 		private void Initialize()
@@ -204,7 +205,7 @@ public class MenuHandler : ProtectedBehaviour
 	{
 		get
 		{
-			if (Object.op_Implicit((Object)(object)_ResizeHandler))
+			if ((_ResizeHandler != null))
 			{
 				return _ResizeHandler.IsDragging;
 			}
@@ -216,7 +217,7 @@ public class MenuHandler : ProtectedBehaviour
 	{
 		get
 		{
-			if (Object.op_Implicit((Object)(object)Laser))
+			if ((Laser != null))
 			{
 				return ((Component)Laser).gameObject.activeSelf;
 			}
@@ -226,7 +227,7 @@ public class MenuHandler : ProtectedBehaviour
 		{
 			//IL_007e: Unknown result type (might be due to invalid IL or missing references)
 			//IL_009a: Unknown result type (might be due to invalid IL or missing references)
-			if (!Object.op_Implicit((Object)(object)Laser))
+			if (!(Laser != null))
 			{
 				return;
 			}
@@ -265,7 +266,7 @@ public class MenuHandler : ProtectedBehaviour
 		base.OnStart();
 		VRLog.Info("Menu Handler started");
 		_Controller = ((Component)this).GetComponent<Controller>();
-		_ScaleVector = Vector2.op_Implicit(new Vector2(1f, 1f));
+		_ScaleVector = ((Vector2)(new Vector2(1f, 1f)));
 		_Other = ((Component)_Controller.Other).GetComponent<MenuHandler>();
 	}
 
@@ -281,12 +282,12 @@ public class MenuHandler : ProtectedBehaviour
 		//IL_011f: Unknown result type (might be due to invalid IL or missing references)
 		try
 		{
-			if (!Object.op_Implicit((Object)(object)_Controller))
+			if (!(_Controller != null))
 			{
 				_Controller = ((Component)this).GetComponent<Controller>();
 			}
 			Transform val = _Controller.FindAttachPosition("tip");
-			if (!Object.op_Implicit((Object)(object)val))
+			if (!(val != null))
 			{
 				VRLog.Error("Attach position not found for laser!");
 				val = ((Component)this).transform;
@@ -347,10 +348,10 @@ public class MenuHandler : ProtectedBehaviour
 
 	private void EnsureResizeHandler()
 	{
-		if (!Object.op_Implicit((Object)(object)_ResizeHandler))
+		if (!(_ResizeHandler != null))
 		{
 			_ResizeHandler = ((Component)_Target).GetComponent<ResizeHandler>();
-			if (!Object.op_Implicit((Object)(object)_ResizeHandler))
+			if (!(_ResizeHandler != null))
 			{
 				_ResizeHandler = ((Component)_Target).gameObject.AddComponent<ResizeHandler>();
 			}
@@ -359,7 +360,7 @@ public class MenuHandler : ProtectedBehaviour
 
 	private void EnsureNoResizeHandler()
 	{
-		if (Object.op_Implicit((Object)(object)_ResizeHandler))
+		if ((_ResizeHandler != null))
 		{
 			Object.DestroyImmediate((Object)(object)_ResizeHandler);
 		}
@@ -375,11 +376,11 @@ public class MenuHandler : ProtectedBehaviour
 		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00b2: Unknown result type (might be due to invalid IL or missing references)
 		IsPressing = false;
-		if (!LaserVisible || !Object.op_Implicit((Object)(object)_Target))
+		if (!LaserVisible || !(_Target != null))
 		{
 			return;
 		}
-		if (_Other.LaserVisible && (Object)(object)_Other._Target == (Object)(object)_Target)
+		if (_Other.LaserVisible && _Other._Target == _Target)
 		{
 			EnsureResizeHandler();
 		}
@@ -410,7 +411,7 @@ public class MenuHandler : ProtectedBehaviour
 		if (Device.GetPressUp(EVRButtonId.k_EButton_Grip))
 		{
 			MenuTool component = ((Component)_Controller).GetComponent<MenuTool>();
-			if (Object.op_Implicit((Object)(object)component) && !Object.op_Implicit((Object)(object)component.Gui))
+			if ((component != null) && !(component.Gui != null))
 			{
 				component.TakeGUI(_Target);
 				_Controller.ToolIndex = _Controller.Tools.IndexOf(component);
@@ -421,7 +422,7 @@ public class MenuHandler : ProtectedBehaviour
 	private void CheckForNearMenu()
 	{
 		_Target = GUIQuadRegistry.Quads.FirstOrDefault(IsLaserable);
-		if (Object.op_Implicit((Object)(object)_Target))
+		if ((_Target != null))
 		{
 			LaserVisible = true;
 		}
@@ -442,7 +443,7 @@ public class MenuHandler : ProtectedBehaviour
 		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
 		//IL_000b: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 localScale = ((Component)quad).transform.localScale;
-		return Mathf.Clamp(((Vector3)(ref localScale)).magnitude * 0.25f, 0.25f, 1.25f) * VR.Settings.IPDScale;
+		return Mathf.Clamp(localScale.magnitude * 0.25f, 0.25f, 1.25f) * VR.Settings.IPDScale;
 	}
 
 	private bool IsWithinRange(GUIQuad quad)
@@ -461,7 +462,7 @@ public class MenuHandler : ProtectedBehaviour
 		//IL_0085: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00a2: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00a3: Unknown result type (might be due to invalid IL or missing references)
-		if (!Object.op_Implicit((Object)(object)Laser))
+		if (!(Laser != null))
 		{
 			return false;
 		}
@@ -475,7 +476,7 @@ public class MenuHandler : ProtectedBehaviour
 		Vector3 forward = ((Component)Laser).transform.forward;
 		float num = 0f - ((Component)quad).transform.InverseTransformPoint(position).z;
 		Vector3 localScale = ((Component)quad).transform.localScale;
-		float num2 = num * ((Vector3)(ref localScale)).magnitude;
+		float num2 = num * localScale.magnitude;
 		if (num2 > 0f && num2 < GetRange(quad))
 		{
 			return Vector3.Dot(val, forward) < 0f;
@@ -496,11 +497,11 @@ public class MenuHandler : ProtectedBehaviour
 		Vector3 position = ((Component)Laser).transform.position;
 		Vector3 forward = ((Component)Laser).transform.forward;
 		Collider component = ((Component)quad).GetComponent<Collider>();
-		if (Object.op_Implicit((Object)(object)component))
+		if ((component != null))
 		{
 			Ray val = default(Ray);
-			((Ray)(ref val))._002Ector(position, forward);
-			return component.Raycast(val, ref hit, GetRange(quad));
+			val = new Ray(position, forward);
+			return component.Raycast(val, out hit, GetRange(quad));
 		}
 		hit = default(RaycastHit);
 		return false;
@@ -521,15 +522,15 @@ public class MenuHandler : ProtectedBehaviour
 		//IL_0105: Unknown result type (might be due to invalid IL or missing references)
 		Laser.SetPosition(0, ((Component)Laser).transform.position);
 		Laser.SetPosition(1, ((Component)Laser).transform.position + ((Component)Laser).transform.forward);
-		if (Object.op_Implicit((Object)(object)_Target) && ((Component)_Target).gameObject.activeInHierarchy)
+		if ((_Target != null) && ((Component)_Target).gameObject.activeInHierarchy)
 		{
 			if (IsWithinRange(_Target) && Raycast(_Target, out var hit))
 			{
-				Laser.SetPosition(1, ((RaycastHit)(ref hit)).point);
+				Laser.SetPosition(1, hit.point);
 				if (!IsOtherWorkingOn(_Target))
 				{
 					Vector2 val = default(Vector2);
-					((Vector2)(ref val))._002Ector(((RaycastHit)(ref hit)).textureCoord.x * (float)VRGUI.Width, (1f - ((RaycastHit)(ref hit)).textureCoord.y) * (float)VRGUI.Height);
+					val = new Vector2(hit.textureCoord.x * (float)VRGUI.Width, (1f - hit.textureCoord.y) * (float)VRGUI.Height);
 					if (!mouseDownPosition.HasValue || Vector2.Distance(mouseDownPosition.Value, val) > 30f)
 					{
 						MouseOperations.SetClientCursorPosition((int)val.x, (int)val.y);
@@ -550,7 +551,7 @@ public class MenuHandler : ProtectedBehaviour
 
 	private bool IsOtherWorkingOn(GUIQuad target)
 	{
-		if (Object.op_Implicit((Object)(object)_Other) && _Other.LaserVisible && (Object)(object)_Other._Target == (Object)(object)target)
+		if ((_Other != null) && _Other.LaserVisible && _Other._Target == target)
 		{
 			return _Other.IsPressing;
 		}

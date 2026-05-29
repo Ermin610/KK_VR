@@ -28,13 +28,13 @@ public class PlayAreaVisualization : ProtectedBehaviour
 			//IL_0058: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0072: Unknown result type (might be due to invalid IL or missing references)
 			base.OnUpdate();
-			if (!Object.op_Implicit((Object)(object)NewParent) && !((Behaviour)this).enabled)
+			if (!(NewParent != null) && !((Behaviour)this).enabled)
 			{
 				Object.DestroyImmediate((Object)(object)((Component)this).gameObject);
 			}
-			if (Object.op_Implicit((Object)(object)((Component)this).GetComponent<Renderer>()))
+			if ((((Component)this).GetComponent<Renderer>() != null))
 			{
-				if (Object.op_Implicit((Object)(object)NewParent))
+				if ((NewParent != null))
 				{
 					((Component)this).transform.SetParent(NewParent, false);
 					((Component)this).transform.localScale = Vector3.one;

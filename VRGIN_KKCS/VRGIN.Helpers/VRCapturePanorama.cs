@@ -1,6 +1,7 @@
 using System;
 using CapturePanorama;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls;
 using VRGIN.Core;
 using Valve.VR;
@@ -49,7 +50,7 @@ public class VRCapturePanorama : global::CapturePanorama.CapturePanorama
 	public override void OnDestroy()
 	{
 		base.OnDestroy();
-		if (Object.op_Implicit((Object)(object)_Camera))
+		if ((_Camera != null))
 		{
 			Object.Destroy((Object)(object)((Component)_Camera).gameObject);
 		}
@@ -69,7 +70,7 @@ public class VRCapturePanorama : global::CapturePanorama.CapturePanorama
 		//IL_00f0: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00de: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00e3: Unknown result type (might be due to invalid IL or missing references)
-		if (!Object.op_Implicit((Object)(object)_Camera))
+		if (!(_Camera != null))
 		{
 			_Camera = VR.Camera.Clone(VR.Settings.Capture.WithEffects);
 			((Component)_Camera).gameObject.SetActive(false);
@@ -83,8 +84,8 @@ public class VRCapturePanorama : global::CapturePanorama.CapturePanorama
 		if (VR.Settings.Capture.SetCameraUpright)
 		{
 			Vector3 val = Vector3.ProjectOnPlane(VR.Camera.Head.forward, Vector3.up);
-			Vector3 val2 = ((Vector3)(ref val)).normalized;
-			if ((double)((Vector3)(ref val2)).magnitude < 0.1)
+			Vector3 val2 = val.normalized;
+			if ((double)val2.magnitude < 0.1)
 			{
 				val2 = Vector3.forward;
 			}

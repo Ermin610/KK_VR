@@ -56,7 +56,7 @@ public abstract class FingerModel : MonoBehaviour
 		{
 			return finger_.Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)bones[3]) && Object.op_Implicit((Object)(object)joints[1]))
+		if ((bones[3] != null) && (joints[1] != null))
 		{
 			return 2f * bones[3].position - joints[1].position;
 		}
@@ -77,7 +77,7 @@ public abstract class FingerModel : MonoBehaviour
 		{
 			return finger_.Bone((Bone.BoneType)joint).PrevJoint.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)joints[joint]))
+		if ((joints[joint] != null))
 		{
 			return joints[joint].position;
 		}
@@ -101,7 +101,7 @@ public abstract class FingerModel : MonoBehaviour
 		{
 			return finger_.Bone((Bone.BoneType)bone_type).Center.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)bones[bone_type]))
+		if ((bones[bone_type] != null))
 		{
 			return bones[bone_type].position;
 		}
@@ -120,9 +120,9 @@ public abstract class FingerModel : MonoBehaviour
 		if (finger_ != null)
 		{
 			Vector3 val = GetJointPosition(bone_type + 1) - GetJointPosition(bone_type);
-			return ((Vector3)(ref val)).normalized;
+			return val.normalized;
 		}
-		if (Object.op_Implicit((Object)(object)bones[bone_type]))
+		if ((bones[bone_type] != null))
 		{
 			return bones[bone_type].forward;
 		}
@@ -138,7 +138,7 @@ public abstract class FingerModel : MonoBehaviour
 		{
 			return finger_.Bone((Bone.BoneType)bone_type).Rotation.ToQuaternion();
 		}
-		if (Object.op_Implicit((Object)(object)bones[bone_type]))
+		if ((bones[bone_type] != null))
 		{
 			return bones[bone_type].rotation;
 		}
@@ -175,11 +175,11 @@ public abstract class FingerModel : MonoBehaviour
 		{
 			val = Quaternion.Inverse(finger_.Bone((Bone.BoneType)joint_type).Rotation.ToQuaternion()) * finger_.Bone((Bone.BoneType)(joint_type + 1)).Rotation.ToQuaternion();
 		}
-		else if (Object.op_Implicit((Object)(object)bones[joint_type]) && Object.op_Implicit((Object)(object)bones[joint_type + 1]))
+		else if ((bones[joint_type] != null) && (bones[joint_type + 1] != null))
 		{
 			val = Quaternion.Inverse(GetBoneRotation(joint_type)) * GetBoneRotation(joint_type + 1);
 		}
-		float num = 0f - ((Quaternion)(ref val)).eulerAngles.x;
+		float num = 0f - val.eulerAngles.x;
 		if (num <= -180f)
 		{
 			num += 360f;
@@ -208,7 +208,7 @@ public abstract class FingerModel : MonoBehaviour
 		{
 			val = Quaternion.Inverse(finger_.Bone(Bone.BoneType.TYPE_METACARPAL).Rotation.ToQuaternion()) * finger_.Bone(Bone.BoneType.TYPE_PROXIMAL).Rotation.ToQuaternion();
 		}
-		else if (Object.op_Implicit((Object)(object)bones[0]) && Object.op_Implicit((Object)(object)bones[1]))
+		else if ((bones[0] != null) && (bones[1] != null))
 		{
 			val = Quaternion.Inverse(GetBoneRotation(0)) * GetBoneRotation(1);
 		}
@@ -220,7 +220,7 @@ public abstract class FingerModel : MonoBehaviour
 		}
 		if (fingerType == Finger.FingerType.TYPE_INDEX || fingerType == Finger.FingerType.TYPE_MIDDLE)
 		{
-			num = ((Quaternion)(ref val)).eulerAngles.y;
+			num = val.eulerAngles.y;
 			if (num > 180f)
 			{
 				num -= 360f;
@@ -228,7 +228,7 @@ public abstract class FingerModel : MonoBehaviour
 		}
 		if (fingerType == Finger.FingerType.TYPE_THUMB || fingerType == Finger.FingerType.TYPE_RING || fingerType == Finger.FingerType.TYPE_PINKY)
 		{
-			num = 0f - ((Quaternion)(ref val)).eulerAngles.y;
+			num = 0f - val.eulerAngles.y;
 			if (num <= -180f)
 			{
 				num += 360f;

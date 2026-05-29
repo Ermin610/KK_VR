@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace CapturePanorama;
 
@@ -66,7 +67,7 @@ public static class Icosphere
 			new Vector3(0f - num, 0f, 1f)
 		};
 		Vector3 val2 = new Vector3(1f, num, 0f);
-		float num2 = radius / ((Vector3)(ref val2)).magnitude;
+		float num2 = radius / val2.magnitude;
 		for (int i = 0; i < array.Length; i++)
 		{
 			ref Vector3 reference = ref array[i];

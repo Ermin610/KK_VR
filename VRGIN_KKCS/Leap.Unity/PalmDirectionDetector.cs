@@ -42,7 +42,7 @@ public class PalmDirectionDetector : Detector
 	private void Awake()
 	{
 		watcherCoroutine = palmWatcher();
-		if ((Object)(object)HandModel == (Object)null)
+		if (HandModel == null)
 		{
 			HandModel = ((Component)this).gameObject.GetComponentInParent<IHandModel>();
 		}
@@ -62,7 +62,7 @@ public class PalmDirectionDetector : Detector
 	{
 		while (true)
 		{
-			if ((Object)(object)HandModel != (Object)null)
+			if (HandModel != null)
 			{
 				Hand leapHand = HandModel.GetLeapHand();
 				if (leapHand != null)
@@ -103,7 +103,7 @@ public class PalmDirectionDetector : Detector
 		case PointingType.RelativeToHorizon:
 		{
 			Quaternion rotation = ((Component)VR.Camera.Head).transform.rotation;
-			return Quaternion.AngleAxis(((Quaternion)(ref rotation)).eulerAngles.y, Vector3.up) * PointingDirection;
+			return Quaternion.AngleAxis(rotation.eulerAngles.y, Vector3.up) * PointingDirection;
 		}
 		case PointingType.RelativeToCamera:
 			return VR.Camera.Head.TransformDirection(PointingDirection);

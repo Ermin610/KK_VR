@@ -17,7 +17,7 @@ public class AttachmentController : MonoBehaviour
 		//IL_003a: Expected O, but got Unknown
 		IsActive = true;
 		ChangeChildState();
-		if ((Object)(object)InTransition != (Object)null && doTransition)
+		if (InTransition != null && doTransition)
 		{
 			InTransition.OnComplete.AddListener(new UnityAction(ChangeChildState));
 			InTransition.TransitionIn();
@@ -29,7 +29,7 @@ public class AttachmentController : MonoBehaviour
 		//IL_002a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0034: Expected O, but got Unknown
 		IsActive = false;
-		if ((Object)(object)OutTransition != (Object)null && doTransition)
+		if (OutTransition != null && doTransition)
 		{
 			OutTransition.OnComplete.AddListener(new UnityAction(ChangeChildState));
 			OutTransition.TransitionOut();
@@ -46,11 +46,11 @@ public class AttachmentController : MonoBehaviour
 		//IL_002b: Expected O, but got Unknown
 		//IL_004c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0056: Expected O, but got Unknown
-		if ((Object)(object)InTransition != (Object)null)
+		if (InTransition != null)
 		{
 			InTransition.OnComplete.RemoveListener(new UnityAction(ChangeChildState));
 		}
-		if ((Object)(object)OutTransition != (Object)null)
+		if (OutTransition != null)
 		{
 			OutTransition.OnComplete.RemoveListener(new UnityAction(ChangeChildState));
 		}

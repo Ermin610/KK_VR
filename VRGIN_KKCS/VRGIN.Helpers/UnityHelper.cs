@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace VRGIN.Helpers;
@@ -71,8 +72,8 @@ public static class UnityHelper
 			//IL_008c: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0091: Unknown result type (might be due to invalid IL or missing references)
 			base.OnUpdate();
-			Renderer.SetPosition(0, (Vector3.Distance(((Ray)(ref _Ray)).origin, ((Component)VR.Camera).transform.position) < 0.3f) ? (((Ray)(ref _Ray)).origin + ((Ray)(ref _Ray)).direction * 0.3f) : ((Ray)(ref _Ray)).origin);
-			Renderer.SetPosition(1, ((Ray)(ref _Ray)).origin + ((Ray)(ref _Ray)).direction * 100f);
+			Renderer.SetPosition(0, (Vector3.Distance(_Ray.origin, ((Component)VR.Camera).transform.position) < 0.3f) ? (_Ray.origin + _Ray.direction * 0.3f) : _Ray.origin);
+			Renderer.SetPosition(1, _Ray.origin + _Ray.direction * 100f);
 			CheckAge();
 		}
 
@@ -108,7 +109,7 @@ public static class UnityHelper
 		if (!_AssetBundles.ContainsKey(key))
 		{
 			_AssetBundles[key] = LoadAssetBundle(assetBundleBytes);
-			if ((Object)(object)_AssetBundles[key] == (Object)null)
+			if (_AssetBundles[key] == null)
 			{
 				VRLog.Error("Looks like the asset bundle failed to load?");
 			}
@@ -118,7 +119,7 @@ public static class UnityHelper
 			VRLog.Info("Loading: {0} ({1})", name, key);
 			name = name.Replace("Custom/", "");
 			T val = _AssetBundles[key].LoadAsset<T>(name);
-			if (!Object.op_Implicit((Object)(object)val))
+			if (!(val != null))
 			{
 				VRLog.Error("Failed to load {0}", name);
 			}
@@ -166,7 +167,7 @@ public static class UnityHelper
 	{
 		//IL_002a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
-		if (!_DebugBalls.TryGetValue(name, out var value) || !Object.op_Implicit((Object)(object)value))
+		if (!_DebugBalls.TryGetValue(name, out var value) || !(value != null))
 		{
 			value = GameObject.CreatePrimitive((PrimitiveType)0).transform;
 			Transform transform = ((Component)value).transform;
@@ -188,7 +189,7 @@ public static class UnityHelper
 		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0004: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0009: Unknown result type (might be due to invalid IL or missing references)
-		DrawRay(color, new Ray(origin, ((Vector3)(ref direction)).normalized));
+		DrawRay(color, new Ray(origin, direction.normalized));
 	}
 
 	public static void DrawRay(Color color, Ray ray)
@@ -198,7 +199,7 @@ public static class UnityHelper
 		//IL_0018: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0024: Unknown result type (might be due to invalid IL or missing references)
 		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
-		if (!_Rays.TryGetValue(color, out var value) || !Object.op_Implicit((Object)(object)value))
+		if (!_Rays.TryGetValue(color, out var value) || !(value != null))
 		{
 			value = RayDrawer.Create(color, ray);
 			_Rays[color] = value;
@@ -271,7 +272,7 @@ public static class UnityHelper
 		VRLog.Info("Dumping scene...");
 		JSONArray jSONArray = new JSONArray();
 		foreach (GameObject item in from go in Object.FindObjectsOfType<GameObject>()
-			where (Object)(object)go.transform.parent == (Object)null
+			where go.transform.parent == null
 			select go)
 		{
 			jSONArray.Add(AnalyzeNode(item, onlyActive));
@@ -290,7 +291,7 @@ public static class UnityHelper
 	public static IEnumerable<GameObject> GetRootNodes()
 	{
 		return from go in Object.FindObjectsOfType<GameObject>()
-			where (Object)(object)go.transform.parent == (Object)null
+			where go.transform.parent == null
 			select go;
 	}
 
@@ -349,16 +350,16 @@ public static class UnityHelper
 		jSONClass["tag"] = go.tag;
 		jSONClass["layer"] = LayerMask.LayerToName(go.gameObject.layer);
 		Vector3 val = go.transform.localPosition;
-		jSONClass["pos"] = ((object)(Vector3)(ref val)).ToString();
+		jSONClass["pos"] = ((object)val).ToString();
 		val = go.transform.localEulerAngles;
-		jSONClass["rot"] = ((object)(Vector3)(ref val)).ToString();
+		jSONClass["rot"] = ((object)val).ToString();
 		val = go.transform.localScale;
-		jSONClass["scale"] = ((object)(Vector3)(ref val)).ToString();
+		jSONClass["scale"] = ((object)val).ToString();
 		JSONClass jSONClass2 = new JSONClass();
 		Component[] components = go.GetComponents<Component>();
 		foreach (Component val2 in components)
 		{
-			if ((Object)(object)val2 == (Object)null)
+			if (val2 == null)
 			{
 				VRLog.Warn("NULL component: " + val2);
 			}

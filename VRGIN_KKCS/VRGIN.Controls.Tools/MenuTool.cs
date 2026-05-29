@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 using VRGIN.Helpers;
 using VRGIN.Native;
@@ -31,7 +32,7 @@ public class MenuTool : Tool
 	{
 		//IL_0074: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0098: Unknown result type (might be due to invalid IL or missing references)
-		if (Object.op_Implicit((Object)(object)quad) && !Object.op_Implicit((Object)(object)Gui) && !quad.IsOwned)
+		if ((quad != null) && !(Gui != null) && !quad.IsOwned)
 		{
 			Gui = quad;
 			((Component)Gui).transform.parent = ((Component)this).transform;
@@ -44,7 +45,7 @@ public class MenuTool : Tool
 
 	public void AbandonGUI()
 	{
-		if (Object.op_Implicit((Object)(object)Gui))
+		if ((Gui != null))
 		{
 			timeAbandoned = Time.unscaledTime;
 			Gui.IsOwned = false;
@@ -82,7 +83,7 @@ public class MenuTool : Tool
 	protected override void OnDisable()
 	{
 		base.OnDisable();
-		if (Object.op_Implicit((Object)(object)Gui))
+		if ((Gui != null))
 		{
 			((Component)Gui).gameObject.SetActive(false);
 		}
@@ -91,7 +92,7 @@ public class MenuTool : Tool
 	protected override void OnEnable()
 	{
 		base.OnEnable();
-		if (Object.op_Implicit((Object)(object)Gui))
+		if ((Gui != null))
 		{
 			((Component)Gui).gameObject.SetActive(true);
 		}
@@ -121,7 +122,7 @@ public class MenuTool : Tool
 		}
 		if (controller.GetPressUp(4uL))
 		{
-			if (Object.op_Implicit((Object)(object)Gui))
+			if ((Gui != null))
 			{
 				AbandonGUI();
 			}

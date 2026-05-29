@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRGIN.Helpers;
 
@@ -113,6 +114,6 @@ public class KeyStroke
 
 	public override string ToString()
 	{
-		return string.Join("+", modifiers.Select((KeyCode m) => ((object)(KeyCode)(ref m)).ToString()).Union(keys.Select((KeyCode k) => ((object)(KeyCode)(ref k)).ToString())).ToArray());
+		return string.Join("+", modifiers.Select((KeyCode m) => ((object)m).ToString()).Union(keys.Select((KeyCode k) => ((object)k).ToString())).ToArray());
 	}
 }

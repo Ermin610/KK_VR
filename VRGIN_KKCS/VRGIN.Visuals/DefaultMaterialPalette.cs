@@ -23,23 +23,23 @@ public class DefaultMaterialPalette : IMaterialPalette
 		UnlitTransparentCombined = CreateUnlitTransparentCombined();
 		StandardShader = CreateStandardShader();
 		Sprite = CreateSprite();
-		if (!Object.op_Implicit((Object)(object)Unlit) || !Object.op_Implicit((Object)(object)Unlit.shader))
+		if (!(Unlit != null) || !(Unlit.shader != null))
 		{
 			VRLog.Error("Could not load Unlit material!");
 		}
-		if (!Object.op_Implicit((Object)(object)UnlitTransparent) || !Object.op_Implicit((Object)(object)UnlitTransparent.shader))
+		if (!(UnlitTransparent != null) || !(UnlitTransparent.shader != null))
 		{
 			VRLog.Error("Could not load UnlitTransparent material!");
 		}
-		if (!Object.op_Implicit((Object)(object)UnlitTransparentCombined) || !Object.op_Implicit((Object)(object)UnlitTransparentCombined.shader))
+		if (!(UnlitTransparentCombined != null) || !(UnlitTransparentCombined.shader != null))
 		{
 			VRLog.Error("Could not load UnlitTransparentCombined material!");
 		}
-		if (!Object.op_Implicit((Object)(object)StandardShader))
+		if (!(StandardShader != null))
 		{
 			VRLog.Error("Could not load StandardShader material!");
 		}
-		if (!Object.op_Implicit((Object)(object)Sprite) || !Object.op_Implicit((Object)(object)Sprite.shader))
+		if (!(Sprite != null) || !(Sprite.shader != null))
 		{
 			VRLog.Error("Could not load Sprite material!");
 			Sprite = UnlitTransparent;

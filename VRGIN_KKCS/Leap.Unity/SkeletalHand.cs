@@ -13,7 +13,7 @@ public class SkeletalHand : HandModel
 		Utils.IgnoreCollisions(((Component)this).gameObject, ((Component)this).gameObject);
 		for (int i = 0; i < fingers.Length; i++)
 		{
-			if ((Object)(object)fingers[i] != (Object)null)
+			if (fingers[i] != null)
 			{
 				fingers[i].fingerType = (Finger.FingerType)i;
 			}
@@ -50,22 +50,22 @@ public class SkeletalHand : HandModel
 		Debug.Log((object)"SkeletalHand.SetPositions()");
 		for (int i = 0; i < fingers.Length; i++)
 		{
-			if ((Object)(object)fingers[i] != (Object)null)
+			if (fingers[i] != null)
 			{
 				fingers[i].UpdateFinger();
 			}
 		}
-		if ((Object)(object)palm != (Object)null)
+		if (palm != null)
 		{
 			palm.position = GetPalmCenter();
 			palm.rotation = GetPalmRotation();
 		}
-		if ((Object)(object)wristJoint != (Object)null)
+		if (wristJoint != null)
 		{
 			wristJoint.position = GetWristPosition();
 			wristJoint.rotation = GetPalmRotation();
 		}
-		if ((Object)(object)forearm != (Object)null)
+		if (forearm != null)
 		{
 			forearm.position = GetArmCenter();
 			forearm.rotation = GetArmRotation();

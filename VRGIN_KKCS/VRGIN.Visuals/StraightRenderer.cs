@@ -58,12 +58,12 @@ public class StraightRenderer : ArcRenderer
 		Vector3 forward = ((Component)this).transform.forward;
 		List<Vector3> list = new List<Vector3>();
 		Plane val = default(Plane);
-		((Plane)(ref val))._002Ector(Vector3.up, 0f);
+		val = new Plane(Vector3.up, 0f);
 		Vector3 position = ((Component)this).transform.position;
 		Ray val2 = default(Ray);
-		((Ray)(ref val2))._002Ector(position, forward);
+		val2 = new Ray(position, forward);
 		float num = default(float);
-		if (((Plane)(ref val)).Raycast(val2, ref num))
+		if (val.Raycast(val2, out num))
 		{
 			target = position + forward * num;
 			target.y = 0f;

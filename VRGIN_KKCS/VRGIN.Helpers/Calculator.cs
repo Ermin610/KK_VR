@@ -49,7 +49,7 @@ public static class Calculator
 		{
 			Vector3.ProjectOnPlane(val, Vector3.up),
 			Vector3.ProjectOnPlane(rotation * ((val.y > 0f) ? Vector3.down : Vector3.up), Vector3.up)
-		}).OrderByDescending((Vector3 v) => ((Vector3)(ref v)).sqrMagnitude).First();
-		return ((Vector3)(ref val2)).normalized;
+		}).OrderByDescending((Vector3 v) => v.sqrMagnitude).First();
+		return val2.normalized;
 	}
 }

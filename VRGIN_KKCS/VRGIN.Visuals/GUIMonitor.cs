@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
 using UnityEngine;
+using Component = UnityEngine.Component;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace VRGIN.Visuals;
@@ -29,7 +31,7 @@ public class GUIMonitor : GUIQuad
 		base.OnStart();
 		_Plane = ((Component)this).GetComponent<ProceduralPlane>();
 		_Plane.xSegments = 100;
-		if (Object.op_Implicit((Object)(object)_Plane))
+		if ((_Plane != null))
 		{
 			VRLog.Info("Plane was added...");
 		}
@@ -65,7 +67,7 @@ public class GUIMonitor : GUIQuad
 
 	private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
 	{
-		if (Object.op_Implicit((Object)(object)_Plane))
+		if ((_Plane != null))
 		{
 			switch (e.PropertyName)
 			{

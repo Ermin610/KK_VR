@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Leap.Unity;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Leap;
 

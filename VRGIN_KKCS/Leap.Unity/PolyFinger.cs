@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Leap.Unity;
 
@@ -60,8 +61,8 @@ public class PolyFinger : FingerModel
 			cap_mesh_.vertices = cap_vertices_;
 			cap_mesh_.RecalculateNormals();
 			CombineInstance[] array = (CombineInstance[])(object)new CombineInstance[2];
-			((CombineInstance)(ref array[0])).mesh = mesh_;
-			((CombineInstance)(ref array[1])).mesh = cap_mesh_;
+			array[0].mesh = mesh_;
+			array[1].mesh = cap_mesh_;
 			((Component)this).GetComponent<MeshFilter>().sharedMesh.CombineMeshes(array, true, false);
 			((Component)this).GetComponent<MeshFilter>().sharedMesh.RecalculateBounds();
 		}
@@ -301,10 +302,10 @@ public class PolyFinger : FingerModel
 				array2[num3++] = num + 2;
 				array2[num3++] = num + 3;
 				array2[num3++] = num + 1;
-				array[num] = Vector2.op_Implicit(new Vector3(1f * (float)j / (float)sides, 1f * (float)i / 4f));
-				array[num + 1] = Vector2.op_Implicit(new Vector3((1f + (float)j) / (float)sides, 1f * (float)i / 4f));
-				array[num + 2] = Vector2.op_Implicit(new Vector3(1f * (float)j / (float)sides, (1f + (float)i) / 4f));
-				array[num + 3] = Vector2.op_Implicit(new Vector3((1f + (float)j) / (float)sides, (1f + (float)i) / 4f));
+				array[num] = ((Vector2)(new Vector3(1f * (float)j / (float)sides, 1f * (float)i / 4f)));
+				array[num + 1] = ((Vector2)(new Vector3((1f + (float)j) / (float)sides, 1f * (float)i / 4f)));
+				array[num + 2] = ((Vector2)(new Vector3(1f * (float)j / (float)sides, (1f + (float)i) / 4f)));
+				array[num + 3] = ((Vector2)(new Vector3((1f + (float)j) / (float)sides, (1f + (float)i) / 4f)));
 				vertices_[num++] = new Vector3(0f, 0f, 0f);
 				vertices_[num++] = new Vector3(0f, 0f, 0f);
 				vertices_[num++] = new Vector3(0f, 0f, 0f);
@@ -365,10 +366,10 @@ public class PolyFinger : FingerModel
 		{
 			cap_vertices_[i] = new Vector3(0f, 0f, 0f);
 			cap_vertices_[i + sides] = new Vector3(0f, 0f, 0f);
-			array[i] = Vector2.op_Implicit(0.5f * joint_vertices_[i]);
+			array[i] = ((Vector2)(0.5f * joint_vertices_[i]));
 			ref Vector2 reference = ref array[i];
 			reference += new Vector2(0.5f, 0.5f);
-			array[i + sides] = Vector2.op_Implicit(0.5f * joint_vertices_[i]);
+			array[i + sides] = ((Vector2)(0.5f * joint_vertices_[i]));
 			ref Vector2 reference2 = ref array[i + sides];
 			reference2 += new Vector2(0.5f, 0.5f);
 		}

@@ -14,7 +14,7 @@ public class CameraConsumer : IScreenGrabber
 
 	public bool Check(Camera camera)
 	{
-		if (!Object.op_Implicit((Object)(object)((Component)camera).GetComponent("UICamera")) && !((Object)camera).name.Contains("VR") && (Object)(object)camera.targetTexture == (Object)null)
+		if (!(((Component)camera).GetComponent("UICamera") != null) && !((Object)camera).name.Contains("VR") && camera.targetTexture == null)
 		{
 			if (((Component)camera).CompareTag("MainCamera"))
 			{

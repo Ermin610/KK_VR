@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Image = UnityEngine.UI.Image;
 
 namespace Leap.Unity;
 
@@ -34,7 +35,7 @@ public class DisconnectionNotice : MonoBehaviour
 		//IL_0006: Unknown result type (might be due to invalid IL or missing references)
 		//IL_000c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0012: Unknown result type (might be due to invalid IL or missing references)
-		((Graphic)((Component)this).GetComponent<Image>()).color = Color.Lerp(Color.clear, onColor, alpha);
+		((Graphic)((Component)this).GetComponent<UnityEngine.UI.Image>()).color = Color.Lerp(Color.clear, onColor, alpha);
 	}
 
 	private bool IsConnected()
@@ -54,9 +55,9 @@ public class DisconnectionNotice : MonoBehaviour
 
 	private void Update()
 	{
-		if ((Object)(object)embeddedReplacementImage != (Object)null && IsEmbedded())
+		if (embeddedReplacementImage != null && IsEmbedded())
 		{
-			((Component)this).GetComponent<Image>().sprite = embeddedReplacementImage;
+			((Component)this).GetComponent<UnityEngine.UI.Image>().sprite = embeddedReplacementImage;
 		}
 		if (IsConnected())
 		{

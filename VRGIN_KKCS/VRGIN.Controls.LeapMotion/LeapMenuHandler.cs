@@ -59,8 +59,8 @@ public class LeapMenuHandler : ProtectedBehaviour
 		//IL_002c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0031: Unknown result type (might be due to invalid IL or missing references)
 		_Hand = ((Component)this).GetComponent<HandModel>();
-		_ScaleVector = Vector2.op_Implicit(new Vector2((float)VRGUI.Width / (float)Screen.width, (float)VRGUI.Height / (float)Screen.height));
-		if (!Object.op_Implicit((Object)(object)_Hand))
+		_ScaleVector = ((Vector2)(new Vector2((float)VRGUI.Width / (float)Screen.width, (float)VRGUI.Height / (float)Screen.height)));
+		if (!(_Hand != null))
 		{
 			VRLog.Error("Hand not found! Disabling...");
 			((Behaviour)this).enabled = false;
@@ -76,7 +76,7 @@ public class LeapMenuHandler : ProtectedBehaviour
 		//IL_00c3: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00c8: Unknown result type (might be due to invalid IL or missing references)
 		base.OnUpdate();
-		if (!Object.op_Implicit((Object)(object)_Current))
+		if (!(_Current != null))
 		{
 			foreach (GUIQuad quad in GUIQuadRegistry.Quads)
 			{
@@ -93,7 +93,7 @@ public class LeapMenuHandler : ProtectedBehaviour
 		if (analyzationResult.TextureCoords != Vector2.zero)
 		{
 			Vector2 val = default(Vector2);
-			((Vector2)(ref val))._002Ector(analyzationResult.TextureCoords.x * (float)VRGUI.Width, (1f - analyzationResult.TextureCoords.y) * (float)VRGUI.Height);
+			val = new Vector2(analyzationResult.TextureCoords.x * (float)VRGUI.Width, (1f - analyzationResult.TextureCoords.y) * (float)VRGUI.Height);
 			if (!mouseDownPosition.HasValue || Vector2.Distance(mouseDownPosition.Value, val) > 50f)
 			{
 				MouseOperations.SetClientCursorPosition((int)val.x, (int)val.y);
@@ -143,7 +143,7 @@ public class LeapMenuHandler : ProtectedBehaviour
 		switch (_CurrentState)
 		{
 		case State.Press:
-			mouseDownPosition = Vector2.op_Implicit(Vector3.Scale(Vector2.op_Implicit(new Vector2(Input.mousePosition.x, (float)Screen.height - Input.mousePosition.y)), _ScaleVector));
+			mouseDownPosition = ((Vector2)(Vector3.Scale(((Vector2)(new Vector2(Input.mousePosition.x, (float)Screen.height - Input.mousePosition.y))), _ScaleVector)));
 			VR.Input.Mouse.LeftButtonDown();
 			break;
 		case State.None:
@@ -184,7 +184,7 @@ public class LeapMenuHandler : ProtectedBehaviour
 		//IL_00c5: Unknown result type (might be due to invalid IL or missing references)
 		AnalyzationResult analyzationResult = new AnalyzationResult();
 		Collider component = ((Component)quad).GetComponent<Collider>();
-		if ((Object)(object)component == (Object)null)
+		if (component == null)
 		{
 			return analyzationResult;
 		}
@@ -195,14 +195,14 @@ public class LeapMenuHandler : ProtectedBehaviour
 		Vector3 val2 = -val;
 		Vector3 val3 = ((!flag) ? tipPosition : (position + Vector3.Reflect(tipPosition - position, val)));
 		RaycastHit val4 = default(RaycastHit);
-		if (component.Raycast(new Ray(val3, val2), ref val4, 1.5f))
+		if (component.Raycast(new Ray(val3, val2), out val4, 1.5f))
 		{
 			float num = (flag ? 0.1f : 0.05f);
-			if (((RaycastHit)(ref val4)).distance <= num)
+			if (val4.distance <= num)
 			{
 				analyzationResult.Position = ((!flag) ? RelativePosition.Hover : RelativePosition.Behind);
 			}
-			analyzationResult.TextureCoords = ((RaycastHit)(ref val4)).textureCoord;
+			analyzationResult.TextureCoords = val4.textureCoord;
 		}
 		else
 		{

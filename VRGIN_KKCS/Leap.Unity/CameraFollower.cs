@@ -66,13 +66,13 @@ public class CameraFollower : MonoBehaviour
 		//IL_00e6: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0106: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 val = ((Component)Camera.main).transform.position - ((Component)this).transform.position;
-		Vector3 normalized = ((Vector3)(ref val)).normalized;
+		Vector3 normalized = val.normalized;
 		float num = Vector3.Angle(((Component)this).transform.TransformDirection(objectForward), normalized);
 		float num2 = Ease.Evaluate(Speed * num / 360f);
 		Quaternion val2 = Quaternion.LookRotation(normalized);
 		val2 *= offset;
 		((Component)this).transform.rotation = Quaternion.Slerp(((Component)this).transform.rotation, val2, num2);
-		Vector3 eulerAngles = ((Quaternion)(ref startingLocalRotation)).eulerAngles;
+		Vector3 eulerAngles = startingLocalRotation.eulerAngles;
 		Vector3 localEulerAngles = ((Component)this).transform.localEulerAngles;
 		float num3 = ((!FreezeX) ? localEulerAngles.x : eulerAngles.x);
 		float num4 = ((!FreezeY) ? localEulerAngles.y : eulerAngles.y);

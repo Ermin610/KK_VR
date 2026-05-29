@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls.Speech;
 using VRGIN.Core;
 using VRGIN.Visuals;

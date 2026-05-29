@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRGIN.Core;
 

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Rendering;
 using Valve.VR;
 
@@ -132,7 +133,7 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 				config.x = rigidTransform.pos.x;
 				config.y = rigidTransform.pos.y;
 				config.z = rigidTransform.pos.z;
-				Vector3 eulerAngles = ((Quaternion)(ref rigidTransform.rot)).eulerAngles;
+				Vector3 eulerAngles = rigidTransform.rot.eulerAngles;
 				config.rx = eulerAngles.x;
 				config.ry = eulerAngles.y;
 				config.rz = eulerAngles.z;
@@ -173,7 +174,7 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 		//IL_018a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0230: Unknown result type (might be due to invalid IL or missing references)
 		//IL_023a: Unknown result type (might be due to invalid IL or missing references)
-		if (!((Object)(object)target == (Object)(object)vrcam.head))
+		if (!(target == vrcam.head))
 		{
 			target = vrcam.head;
 			Transform parent = ((Component)this).transform.parent;
@@ -242,18 +243,18 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 		//IL_00a8: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00b1: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)target == (Object)null)
+		if (target == null)
 		{
 			return config.near + 0.01f;
 		}
 		Transform transform = ((Component)cam).transform;
 		Vector3 val = new Vector3(transform.forward.x, 0f, transform.forward.z);
-		Vector3 normalized = ((Vector3)(ref val)).normalized;
+		Vector3 normalized = val.normalized;
 		Vector3 position = target.position;
 		val = new Vector3(target.forward.x, 0f, target.forward.z);
-		Vector3 val2 = position + ((Vector3)(ref val)).normalized * config.hmdOffset;
+		Vector3 val2 = position + val.normalized * config.hmdOffset;
 		Plane val3 = new Plane(normalized, val2);
-		return Mathf.Clamp(0f - ((Plane)(ref val3)).GetDistanceToPoint(transform.position), config.near + 0.01f, config.far - 0.01f);
+		return Mathf.Clamp(0f - val3.GetDistanceToPoint(transform.position), config.near + 0.01f, config.far - 0.01f);
 	}
 
 	public void RenderNear()
@@ -276,7 +277,7 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 		//IL_02ef: Unknown result type (might be due to invalid IL or missing references)
 		int num = Screen.width / 2;
 		int num2 = Screen.height / 2;
-		if ((Object)(object)cam.targetTexture == (Object)null || ((Texture)cam.targetTexture).width != num || ((Texture)cam.targetTexture).height != num2)
+		if (cam.targetTexture == null || ((Texture)cam.targetTexture).width != num || ((Texture)cam.targetTexture).height != num2)
 		{
 			RenderTexture val = new RenderTexture(num, num2, 24, (RenderTextureFormat)0);
 			val.antiAliasing = ((QualitySettings.antiAliasing == 0) ? 1 : QualitySettings.antiAliasing);
@@ -313,7 +314,7 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 		Graphics.DrawTexture(new Rect(0f, 0f, (float)num, (float)num2), (Texture)(object)cam.targetTexture, colorMat);
 		Component component = ((Component)cam).gameObject.GetComponent("PostProcessingBehaviour");
 		MonoBehaviour val3 = (MonoBehaviour)(object)((component is MonoBehaviour) ? component : null);
-		if ((Object)(object)val3 != (Object)null && ((Behaviour)val3).enabled)
+		if (val3 != null && ((Behaviour)val3).enabled)
 		{
 			((Behaviour)val3).enabled = false;
 			cam.Render();
@@ -364,7 +365,7 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 			{
 				Camera val = cameras[i];
 				cameraRects[i] = val.rect;
-				if (!((Object)(object)val == (Object)(object)cam) && !((Object)(object)val.targetTexture != (Object)null) && !((Object)(object)((Component)val).GetComponent<SteamVR_Camera>() != (Object)null))
+				if (!(val == cam) && !(val.targetTexture != null) && !((Object)(object)((Component)val).GetComponent<SteamVR_Camera>() != (Object)null))
 				{
 					val.rect = new Rect(0.5f, 0f, 0.5f, 0.5f);
 				}
@@ -386,7 +387,7 @@ public class SteamVR_ExternalCamera : MonoBehaviour
 			for (int i = 0; i < num; i++)
 			{
 				Camera val = cameras[i];
-				if ((Object)(object)val != (Object)null)
+				if (val != null)
 				{
 					val.rect = cameraRects[i];
 				}

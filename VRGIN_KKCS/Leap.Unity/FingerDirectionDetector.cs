@@ -44,7 +44,7 @@ public class FingerDirectionDetector : Detector
 	private void Awake()
 	{
 		watcherCoroutine = fingerPointingWatcher();
-		if ((Object)(object)HandModel == (Object)null)
+		if (HandModel == null)
 		{
 			HandModel = ((Component)this).gameObject.GetComponentInParent<IHandModel>();
 		}
@@ -66,7 +66,7 @@ public class FingerDirectionDetector : Detector
 		int selectedFinger = selectedFingerOrdinal();
 		while (true)
 		{
-			if ((Object)(object)HandModel != (Object)null)
+			if (HandModel != null)
 			{
 				Hand leapHand = HandModel.GetLeapHand();
 				if (leapHand != null)
@@ -108,7 +108,7 @@ public class FingerDirectionDetector : Detector
 		case PointingType.RelativeToHorizon:
 		{
 			Quaternion rotation = ((Component)Camera.main).transform.rotation;
-			return Quaternion.AngleAxis(((Quaternion)(ref rotation)).eulerAngles.y, Vector3.up) * PointingDirection;
+			return Quaternion.AngleAxis(rotation.eulerAngles.y, Vector3.up) * PointingDirection;
 		}
 		case PointingType.RelativeToCamera:
 			return ((Component)Camera.main).transform.TransformDirection(PointingDirection);

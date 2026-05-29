@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Visuals;
 
 namespace VRGIN.Core;

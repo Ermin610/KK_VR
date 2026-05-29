@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Studio;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace KKCharaStudioVR;
 

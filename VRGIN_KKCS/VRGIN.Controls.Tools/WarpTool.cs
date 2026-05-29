@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 using VRGIN.Helpers;
 using VRGIN.Modes;
@@ -146,7 +147,7 @@ public class WarpTool : Tool
 		area.Position = VR.Camera.SteamCam.origin.position;
 		area.Scale = VR.Settings.IPDScale;
 		Quaternion rotation = VR.Camera.SteamCam.origin.rotation;
-		area.Rotation = ((Quaternion)(ref rotation)).eulerAngles.y;
+		area.Rotation = rotation.eulerAngles.y;
 	}
 
 	protected override void OnDisable()
@@ -204,7 +205,7 @@ public class WarpTool : Tool
 		if (State == WarpState.None)
 		{
 			Vector2 axis = base.Controller.GetAxis();
-			if (((Vector2)(ref axis)).magnitude < 0.5f)
+			if (axis.magnitude < 0.5f)
 			{
 				if (base.Controller.GetTouchDown(EVRButtonId.k_EButton_Axis0))
 				{
@@ -292,7 +293,7 @@ public class WarpTool : Tool
 			_InitialControllerDistance = Vector3.Distance(((Component)base.OtherController).transform.position, ((Component)this).transform.position);
 			_InitialIPD = VR.Settings.IPDScale;
 			Vector3 val = ((Component)base.OtherController).transform.position - ((Component)this).transform.position;
-			_PrevFromTo = ((Vector3)(ref val)).normalized;
+			_PrevFromTo = val.normalized;
 			_ScaleInitialized = true;
 		}
 	}
@@ -308,7 +309,7 @@ public class WarpTool : Tool
 		if (!_ScaleInitialized && !_RotationInitialized)
 		{
 			Vector3 val = ((Component)base.OtherController).transform.position - ((Component)this).transform.position;
-			_PrevFromTo = ((Vector3)(ref val)).normalized;
+			_PrevFromTo = val.normalized;
 			_RotationInitialized = true;
 		}
 	}
@@ -398,7 +399,7 @@ public class WarpTool : Tool
 			if (HasLock() && (base.OtherController.Input.GetPress(EVRButtonId.k_EButton_Grip) || base.OtherController.Input.GetPress(EVRButtonId.k_EButton_Axis1)))
 			{
 				val = ((Component)base.OtherController).transform.position - ((Component)this).transform.position;
-				Vector3 normalized = ((Vector3)(ref val)).normalized;
+				Vector3 normalized = val.normalized;
 				if (base.OtherController.Input.GetPress(EVRButtonId.k_EButton_Axis1))
 				{
 					InitializeScaleIfNeeded();
@@ -414,13 +415,13 @@ public class WarpTool : Tool
 					_ProspectedPlayArea.Rotation += num2;
 				}
 				val = ((Component)base.OtherController).transform.position - ((Component)this).transform.position;
-				_PrevFromTo = ((Vector3)(ref val)).normalized;
+				_PrevFromTo = val.normalized;
 			}
 			else
 			{
 				Vector3 val2 = ((Component)this).transform.position - _PrevControllerPos;
 				Quaternion val3 = Quaternion.Inverse(_PrevControllerRot * Quaternion.Inverse(((Component)this).transform.rotation)) * (((Component)this).transform.rotation * Quaternion.Inverse(((Component)this).transform.rotation));
-				if (Time.unscaledTime - _GripStartTime > 0.1f || Calculator.Distance(((Vector3)(ref val2)).magnitude) > 0.01f)
+				if (Time.unscaledTime - _GripStartTime > 0.1f || Calculator.Distance(val2.magnitude) > 0.01f)
 				{
 					Vector3 forward = Vector3.forward;
 					Vector3 v = val3 * Vector3.forward;
@@ -450,9 +451,9 @@ public class WarpTool : Tool
 		if (VR.Settings.GrabRotationImmediateMode && base.Controller.GetPressUp(12884901888uL))
 		{
 			val = Vector3.ProjectOnPlane(((Component)this).transform.position - VR.Camera.Head.position, Vector3.up);
-			Vector3 normalized2 = ((Vector3)(ref val)).normalized;
+			Vector3 normalized2 = val.normalized;
 			val = Vector3.ProjectOnPlane(VR.Camera.Head.forward, Vector3.up);
-			Vector3 normalized3 = ((Vector3)(ref val)).normalized;
+			Vector3 normalized3 = val.normalized;
 			float num4 = Calculator.Angle(normalized2, normalized3);
 			((Component)VR.Camera.SteamCam.origin).transform.RotateAround(VR.Camera.Head.position, Vector3.up, num4);
 			_ProspectedPlayArea.Rotation = num4;
@@ -481,7 +482,7 @@ public class WarpTool : Tool
 		foreach (Vector2 point in _Points)
 		{
 			Vector2 current = point;
-			float magnitude = ((Vector2)(ref current)).magnitude;
+			float magnitude = current.magnitude;
 			num = Math.Max(num ?? magnitude, magnitude);
 			num2 = Math.Max(num2 ?? magnitude, magnitude);
 			num3 += magnitude;

@@ -13,7 +13,7 @@ public abstract class HandTransitionBehavior : MonoBehaviour
 	protected virtual void Awake()
 	{
 		iHandModel = ((Component)this).GetComponent<IHandModel>();
-		if ((Object)(object)iHandModel == (Object)null)
+		if (iHandModel == null)
 		{
 			Debug.LogWarning((object)"HandTransitionBehavior components require an IHandModel component attached to the same GameObject");
 			return;
@@ -25,7 +25,7 @@ public abstract class HandTransitionBehavior : MonoBehaviour
 	protected virtual void OnDestroy()
 	{
 		IHandModel component = ((Component)this).GetComponent<IHandModel>();
-		if ((Object)(object)component == (Object)null)
+		if (component == null)
 		{
 			Debug.LogWarning((object)"HandTransitionBehavior components require an IHandModel component attached to the same GameObject");
 			return;

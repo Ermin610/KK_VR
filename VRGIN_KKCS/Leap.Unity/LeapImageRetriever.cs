@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Serialization;
 
 namespace Leap.Unity;
@@ -20,7 +21,7 @@ public class LeapImageRetriever : MonoBehaviour
 		{
 			//IL_0048: Unknown result type (might be due to invalid IL or missing references)
 			//IL_004f: Unknown result type (might be due to invalid IL or missing references)
-			if ((Object)(object)_combinedTexture == (Object)null || _intermediateArray == null)
+			if (_combinedTexture == null || _intermediateArray == null)
 			{
 				return true;
 			}
@@ -48,7 +49,7 @@ public class LeapImageRetriever : MonoBehaviour
 			int width = image.Width;
 			int num = image.Height * 2;
 			TextureFormat textureFormat = getTextureFormat(image);
-			if ((Object)(object)_combinedTexture != (Object)null)
+			if (_combinedTexture != null)
 			{
 				Object.DestroyImmediate((Object)(object)_combinedTexture);
 			}
@@ -59,7 +60,7 @@ public class LeapImageRetriever : MonoBehaviour
 			((Object)_combinedTexture).hideFlags = (HideFlags)52;
 			_intermediateArray = new byte[width * num * bytesPerPixel(textureFormat)];
 			Shader.SetGlobalTexture(globalShaderName, (Texture)(object)_combinedTexture);
-			Shader.SetGlobalVector(pixelSizeName, Vector4.op_Implicit(new Vector2(1f / (float)image.Width, 1f / (float)image.Height)));
+			Shader.SetGlobalVector(pixelSizeName, ((Vector4)(new Vector2(1f / (float)image.Width, 1f / (float)image.Height))));
 		}
 
 		public void UpdateTexture(Image image)
@@ -91,7 +92,7 @@ public class LeapImageRetriever : MonoBehaviour
 			//IL_002c: Unknown result type (might be due to invalid IL or missing references)
 			//IL_001c: Unknown result type (might be due to invalid IL or missing references)
 			//IL_001f: Invalid comparison between Unknown and I4
-			switch (format - 1)
+			switch ((int)format - 1)
 			{
 			default:
 				if ((int)format != 14)
@@ -120,7 +121,7 @@ public class LeapImageRetriever : MonoBehaviour
 
 		public bool CheckStale()
 		{
-			return (Object)(object)_combinedTexture == (Object)null;
+			return _combinedTexture == null;
 		}
 
 		public void Reconstruct(Image image, string shaderName)
@@ -129,7 +130,7 @@ public class LeapImageRetriever : MonoBehaviour
 			//IL_0044: Expected O, but got Unknown
 			int num = image.DistortionWidth / 2;
 			int num2 = image.DistortionHeight * 2;
-			if ((Object)(object)_combinedTexture != (Object)null)
+			if (_combinedTexture != null)
 			{
 				Object.DestroyImmediate((Object)(object)_combinedTexture);
 			}
@@ -294,7 +295,7 @@ public class LeapImageRetriever : MonoBehaviour
 
 	private void Start()
 	{
-		if ((Object)(object)_provider == (Object)null)
+		if (_provider == null)
 		{
 			Debug.LogWarning((object)"Cannot use LeapImageRetriever if there is no LeapProvider!");
 			((Behaviour)this).enabled = false;
@@ -440,12 +441,12 @@ public class LeapImageRetriever : MonoBehaviour
 		//IL_005e: Unknown result type (might be due to invalid IL or missing references)
 		Vector4 val = default(Vector4);
 		Matrix4x4 projectionMatrix = camera.projectionMatrix;
-		val.x = ((Matrix4x4)(ref projectionMatrix))[0, 2];
+		val.x = projectionMatrix[0, 2];
 		val.y = 0f;
 		projectionMatrix = camera.projectionMatrix;
-		val.z = ((Matrix4x4)(ref projectionMatrix))[0, 0];
+		val.z = projectionMatrix[0, 0];
 		projectionMatrix = camera.projectionMatrix;
-		val.w = ((Matrix4x4)(ref projectionMatrix))[1, 1];
+		val.w = projectionMatrix[1, 1];
 		Shader.SetGlobalVector("_LeapGlobalProjection", val);
 	}
 

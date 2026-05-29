@@ -103,8 +103,8 @@ public class HelpText : ProtectedBehaviour
 		Canvas val = new GameObject().AddComponent<Canvas>();
 		((Component)val).transform.SetParent(((Component)this).transform, false);
 		val.renderMode = (RenderMode)2;
-		((Component)val).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((Axis)0, 300f);
-		((Component)val).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((Axis)1, 70f);
+		((Component)val).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((RectTransform.Axis)0, 300f);
+		((Component)val).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((RectTransform.Axis)1, 70f);
 		((Component)this).transform.rotation = _Target.parent.rotation;
 		((Component)val).transform.localScale = new Vector3(0.0001549628f, 0.0001549627f, 0f);
 		((Component)val).transform.localPosition = _TextOffset;
@@ -138,7 +138,7 @@ public class HelpText : ProtectedBehaviour
 		obj2.transform.localPosition = _TextOffset - Vector3.up * 0.001f;
 		obj2.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 		obj2.transform.localScale = new Vector3(0.05539737f, 0.009849964f, 0f);
-		if (!Object.op_Implicit((Object)(object)S_Material))
+		if (!(S_Material != null))
 		{
 			S_Material = VRManager.Instance.Context.Materials.Unlit;
 			S_Material.color = Color.white;

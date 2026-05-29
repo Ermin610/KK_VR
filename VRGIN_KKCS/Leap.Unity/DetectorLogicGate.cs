@@ -44,7 +44,7 @@ public class DetectorLogicGate : Detector
 		Detector[] components = ((Component)this).GetComponents<Detector>();
 		for (int i = 0; i < components.Length; i++)
 		{
-			if ((Object)(object)components[i] != (Object)(object)this && ((Behaviour)components[i]).enabled)
+			if (components[i] != this && ((Behaviour)components[i]).enabled)
 			{
 				AddDetector(components[i]);
 			}

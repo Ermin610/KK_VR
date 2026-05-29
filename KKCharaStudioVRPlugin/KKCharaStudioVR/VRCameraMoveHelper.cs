@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using Studio;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using VRGIN.Core;
@@ -54,6 +56,74 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	private void Start()
 	{
+		StartCoroutine(StartupAlignCo());
+	}
+
+	private IEnumerator StartupAlignCo()
+	{
+		VRLog.Info("StartupAlignCo: Waiting for game to initialize...");
+		
+		// Wait a few seconds for SteamVR headset tracking to fully stabilize
+		yield return new WaitForSeconds(3.0f);
+		
+		// Wait until the initial main scene loading is completely finished
+		var sceneManager = Singleton<Manager.Scene>.Instance;
+		if (sceneManager != null)
+		{
+			while (sceneManager.IsNowLoading || sceneManager.IsNowLoadingFade)
+			{
+				yield return null;
+			}
+		}
+
+		// Wait an extra second to make sure VRGIN camera rigs are fully active and settled
+		yield return new WaitForSeconds(1.0f);
+
+		VRLog.Info("StartupAlignCo: Game initialized. Aligning VR camera and UI.");
+		
+		// Teleport player VR head to the initial scene camera position
+		MoveToCurrent();
+		
+		// Reposition the main floating studio UI quad directly in front of the player's eyes
+		float dist = 2.0f;
+		var settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+		if (settings != null)
+		{
+			dist = settings.UISpawnDistance;
+		}
+		RepositionMainUI(dist);
+	}
+
+	public static void RepositionMainUI(float dist)
+	{
+		try
+		{
+			Transform head = VR.Camera.Head;
+			if (head == null) return;
+
+			Type toolType = typeof(VRCameraMoveHelper).Assembly.GetType("KKCharaStudioVR.GripMoveKKCharaStudioTool");
+			if (toolType != null)
+			{
+				var guiField = toolType.GetField("internalGui", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+				if (guiField != null)
+				{
+					var internalGui = guiField.GetValue(null) as VRGIN.Visuals.GUIQuad;
+					if (internalGui != null)
+					{
+						VRLog.Info("RepositionMainUI: Repositioning internalGui directly!");
+						((Component)internalGui).gameObject.SetActive(true);
+						((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, dist));
+						((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
+						((Component)internalGui).transform.localScale = Vector3.one * 0.8f;
+						internalGui.UpdateAspect();
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			VRLog.Error($"RepositionMainUI failed: {ex}");
+		}
 	}
 
 	private void OnLevelWasLoaded(int level)
@@ -233,24 +303,29 @@ public class VRCameraMoveHelper : MonoBehaviour
 
 	public void MoveTo(Vector3 tobeHeadPos, Quaternion tobeHeadRot)
 	{
-		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0053: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0058: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0083: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0094: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_00b7: Unknown result type (might be due to invalid IL or missing references)
-		Transform val = null;
-		GameObject vROrigin = GetVROrigin();
-		if (!(vROrigin == null))
+		if (VR.Camera == null || VR.Camera.Head == null)
 		{
-			val = vROrigin.transform.parent;
+			VRLog.Warn("VR.Camera or VR.Camera.Head is null, cannot MoveTo");
+			return;
+		}
+
+		GameObject vROrigin = GetVROrigin();
+		if (vROrigin != null)
+		{
+			if (moveDummy == null)
+			{
+				moveDummy = new GameObject("MoveDummy");
+				UnityEngine.Object.DontDestroyOnLoad(moveDummy);
+				moveDummy.transform.parent = ((Component)this).gameObject.transform;
+			}
+
+			Transform parent = vROrigin.transform.parent;
 			moveDummy.transform.position = VR.Camera.Head.position;
 			moveDummy.transform.rotation = GripMoveKKCharaStudioTool.RemoveXZRot(VR.Camera.Head.rotation);
 			vROrigin.transform.parent = moveDummy.transform;
 			moveDummy.transform.position = tobeHeadPos;
 			moveDummy.transform.rotation = tobeHeadRot;
-			vROrigin.transform.parent = val;
+			vROrigin.transform.parent = parent;
 			vROrigin.transform.rotation = GripMoveKKCharaStudioTool.RemoveXZRot(vROrigin.transform.rotation);
 		}
 	}

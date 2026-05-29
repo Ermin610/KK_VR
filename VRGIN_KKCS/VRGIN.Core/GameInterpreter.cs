@@ -46,7 +46,7 @@ public class GameInterpreter : ProtectedBehaviour
 			//IL_0022: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0036: Unknown result type (might be due to invalid IL or missing references)
 			Vector3 val = actor.Eyes.position - ((Component)VR.Camera).transform.position;
-			return Vector3.Dot(((Vector3)(ref val)).normalized, VR.Camera.SteamCam.head.forward);
+			return Vector3.Dot(val.normalized, VR.Camera.SteamCam.head.forward);
 		}).FirstOrDefault();
 	}
 
@@ -57,7 +57,7 @@ public class GameInterpreter : ProtectedBehaviour
 
 	public virtual IEnumerable<Camera> FindSubCameras()
 	{
-		return Camera.allCameras.Where((Camera c) => (Object)(object)c.targetTexture == (Object)null).Except((IEnumerable<Camera>)(object)new Camera[1] { Camera.main });
+		return Camera.allCameras.Where((Camera c) => c.targetTexture == null).Except((IEnumerable<Camera>)(object)new Camera[1] { Camera.main });
 	}
 
 	public CameraJudgement JudgeCamera(Camera camera)
@@ -72,7 +72,7 @@ public class GameInterpreter : ProtectedBehaviour
 	protected virtual CameraJudgement JudgeCameraInternal(Camera camera)
 	{
 		bool flag = VR.GUI.IsInterested(camera);
-		if ((Object)(object)camera.targetTexture == (Object)null)
+		if (camera.targetTexture == null)
 		{
 			if (flag)
 			{
@@ -113,6 +113,6 @@ public class GameInterpreter : ProtectedBehaviour
 
 	public virtual bool IsUICamera(Camera camera)
 	{
-		return Object.op_Implicit((Object)(object)((Component)camera).GetComponent("UICamera"));
+		return (((Component)camera).GetComponent("UICamera") != null);
 	}
 }

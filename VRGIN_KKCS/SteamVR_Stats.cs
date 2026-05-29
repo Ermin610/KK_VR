@@ -16,7 +16,7 @@ public class SteamVR_Stats : MonoBehaviour
 	{
 		//IL_0034: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0044: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)text == (Object)null)
+		if (text == null)
 		{
 			text = ((Component)this).GetComponent<GUIText>();
 			((Behaviour)text).enabled = false;
@@ -30,7 +30,7 @@ public class SteamVR_Stats : MonoBehaviour
 
 	private void Update()
 	{
-		if (!((Object)(object)text != (Object)null))
+		if (!(text != null))
 		{
 			return;
 		}

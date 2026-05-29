@@ -115,7 +115,7 @@ public class PinchDetector : Detector
 
 	protected virtual void OnValidate()
 	{
-		if ((Object)(object)_handModel == (Object)null)
+		if (_handModel == null)
 		{
 			_handModel = ((Component)this).GetComponentInParent<IHandModel>();
 		}
@@ -133,7 +133,7 @@ public class PinchDetector : Detector
 		{
 			VRLog.Warn("LeapPinchDetector should not be attached to the IHandModel's transform. It should be attached to its own transform.");
 		}
-		if ((Object)(object)_handModel == (Object)null)
+		if (_handModel == null)
 		{
 			VRLog.Warn("The HandModel field of LeapPinchDetector was unassigned and the detector has been disabled.");
 			((Behaviour)this).enabled = false;

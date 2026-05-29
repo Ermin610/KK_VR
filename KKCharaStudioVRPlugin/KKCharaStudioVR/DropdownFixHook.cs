@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using Harmony;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using VRGIN.Core;
 

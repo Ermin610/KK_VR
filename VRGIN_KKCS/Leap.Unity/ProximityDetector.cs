@@ -50,7 +50,7 @@ public class ProximityDetector : Detector
 		{
 			float num = OnDistance * OnDistance;
 			float num2 = OffDistance * OffDistance;
-			if ((Object)(object)_currentObj != (Object)null)
+			if (_currentObj != null)
 			{
 				if (distanceSquared(_currentObj) > num2)
 				{
@@ -96,8 +96,8 @@ public class ProximityDetector : Detector
 		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
 		Collider component = target.GetComponent<Collider>();
-		Vector3 val = ((!((Object)(object)component != (Object)null)) ? target.transform.position : component.ClosestPointOnBounds(((Component)this).transform.position));
+		Vector3 val = ((!(component != null)) ? target.transform.position : component.ClosestPointOnBounds(((Component)this).transform.position));
 		Vector3 val2 = val - ((Component)this).transform.position;
-		return ((Vector3)(ref val2)).sqrMagnitude;
+		return val2.sqrMagnitude;
 	}
 }

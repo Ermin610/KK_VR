@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 public static class SteamVR_Utils
@@ -73,18 +75,18 @@ public static class SteamVR_Utils
 			//IL_00cd: Unknown result type (might be due to invalid IL or missing references)
 			//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
 			Matrix4x4 matrix = Matrix4x4.identity;
-			((Matrix4x4)(ref matrix))[0, 0] = pose.m0;
-			((Matrix4x4)(ref matrix))[0, 1] = pose.m1;
-			((Matrix4x4)(ref matrix))[0, 2] = 0f - pose.m2;
-			((Matrix4x4)(ref matrix))[0, 3] = pose.m3;
-			((Matrix4x4)(ref matrix))[1, 0] = pose.m4;
-			((Matrix4x4)(ref matrix))[1, 1] = pose.m5;
-			((Matrix4x4)(ref matrix))[1, 2] = 0f - pose.m6;
-			((Matrix4x4)(ref matrix))[1, 3] = pose.m7;
-			((Matrix4x4)(ref matrix))[2, 0] = 0f - pose.m8;
-			((Matrix4x4)(ref matrix))[2, 1] = 0f - pose.m9;
-			((Matrix4x4)(ref matrix))[2, 2] = pose.m10;
-			((Matrix4x4)(ref matrix))[2, 3] = 0f - pose.m11;
+			matrix[0, 0] = pose.m0;
+			matrix[0, 1] = pose.m1;
+			matrix[0, 2] = 0f - pose.m2;
+			matrix[0, 3] = pose.m3;
+			matrix[1, 0] = pose.m4;
+			matrix[1, 1] = pose.m5;
+			matrix[1, 2] = 0f - pose.m6;
+			matrix[1, 3] = pose.m7;
+			matrix[2, 0] = 0f - pose.m8;
+			matrix[2, 1] = 0f - pose.m9;
+			matrix[2, 2] = pose.m10;
+			matrix[2, 3] = 0f - pose.m11;
 			pos = matrix.GetPosition();
 			rot = matrix.GetRotation();
 		}
@@ -100,22 +102,22 @@ public static class SteamVR_Utils
 			//IL_010a: Unknown result type (might be due to invalid IL or missing references)
 			//IL_010f: Unknown result type (might be due to invalid IL or missing references)
 			Matrix4x4 matrix = Matrix4x4.identity;
-			((Matrix4x4)(ref matrix))[0, 0] = pose.m0;
-			((Matrix4x4)(ref matrix))[0, 1] = pose.m1;
-			((Matrix4x4)(ref matrix))[0, 2] = 0f - pose.m2;
-			((Matrix4x4)(ref matrix))[0, 3] = pose.m3;
-			((Matrix4x4)(ref matrix))[1, 0] = pose.m4;
-			((Matrix4x4)(ref matrix))[1, 1] = pose.m5;
-			((Matrix4x4)(ref matrix))[1, 2] = 0f - pose.m6;
-			((Matrix4x4)(ref matrix))[1, 3] = pose.m7;
-			((Matrix4x4)(ref matrix))[2, 0] = 0f - pose.m8;
-			((Matrix4x4)(ref matrix))[2, 1] = 0f - pose.m9;
-			((Matrix4x4)(ref matrix))[2, 2] = pose.m10;
-			((Matrix4x4)(ref matrix))[2, 3] = 0f - pose.m11;
-			((Matrix4x4)(ref matrix))[3, 0] = pose.m12;
-			((Matrix4x4)(ref matrix))[3, 1] = pose.m13;
-			((Matrix4x4)(ref matrix))[3, 2] = 0f - pose.m14;
-			((Matrix4x4)(ref matrix))[3, 3] = pose.m15;
+			matrix[0, 0] = pose.m0;
+			matrix[0, 1] = pose.m1;
+			matrix[0, 2] = 0f - pose.m2;
+			matrix[0, 3] = pose.m3;
+			matrix[1, 0] = pose.m4;
+			matrix[1, 1] = pose.m5;
+			matrix[1, 2] = 0f - pose.m6;
+			matrix[1, 3] = pose.m7;
+			matrix[2, 0] = 0f - pose.m8;
+			matrix[2, 1] = 0f - pose.m9;
+			matrix[2, 2] = pose.m10;
+			matrix[2, 3] = 0f - pose.m11;
+			matrix[3, 0] = pose.m12;
+			matrix[3, 1] = pose.m13;
+			matrix[3, 2] = 0f - pose.m14;
+			matrix[3, 3] = pose.m15;
 			pos = matrix.GetPosition();
 			rot = matrix.GetRotation();
 		}
@@ -129,22 +131,22 @@ public static class SteamVR_Utils
 			//IL_0016: Unknown result type (might be due to invalid IL or missing references)
 			Matrix4x4 val = Matrix4x4.TRS(pos, rot, Vector3.one);
 			HmdMatrix44_t result = default(HmdMatrix44_t);
-			result.m0 = ((Matrix4x4)(ref val))[0, 0];
-			result.m1 = ((Matrix4x4)(ref val))[0, 1];
-			result.m2 = 0f - ((Matrix4x4)(ref val))[0, 2];
-			result.m3 = ((Matrix4x4)(ref val))[0, 3];
-			result.m4 = ((Matrix4x4)(ref val))[1, 0];
-			result.m5 = ((Matrix4x4)(ref val))[1, 1];
-			result.m6 = 0f - ((Matrix4x4)(ref val))[1, 2];
-			result.m7 = ((Matrix4x4)(ref val))[1, 3];
-			result.m8 = 0f - ((Matrix4x4)(ref val))[2, 0];
-			result.m9 = 0f - ((Matrix4x4)(ref val))[2, 1];
-			result.m10 = ((Matrix4x4)(ref val))[2, 2];
-			result.m11 = 0f - ((Matrix4x4)(ref val))[2, 3];
-			result.m12 = ((Matrix4x4)(ref val))[3, 0];
-			result.m13 = ((Matrix4x4)(ref val))[3, 1];
-			result.m14 = 0f - ((Matrix4x4)(ref val))[3, 2];
-			result.m15 = ((Matrix4x4)(ref val))[3, 3];
+			result.m0 = val[0, 0];
+			result.m1 = val[0, 1];
+			result.m2 = 0f - val[0, 2];
+			result.m3 = val[0, 3];
+			result.m4 = val[1, 0];
+			result.m5 = val[1, 1];
+			result.m6 = 0f - val[1, 2];
+			result.m7 = val[1, 3];
+			result.m8 = 0f - val[2, 0];
+			result.m9 = 0f - val[2, 1];
+			result.m10 = val[2, 2];
+			result.m11 = 0f - val[2, 3];
+			result.m12 = val[3, 0];
+			result.m13 = val[3, 1];
+			result.m14 = 0f - val[3, 2];
+			result.m15 = val[3, 3];
 			return result;
 		}
 
@@ -157,18 +159,18 @@ public static class SteamVR_Utils
 			//IL_0016: Unknown result type (might be due to invalid IL or missing references)
 			Matrix4x4 val = Matrix4x4.TRS(pos, rot, Vector3.one);
 			HmdMatrix34_t result = default(HmdMatrix34_t);
-			result.m0 = ((Matrix4x4)(ref val))[0, 0];
-			result.m1 = ((Matrix4x4)(ref val))[0, 1];
-			result.m2 = 0f - ((Matrix4x4)(ref val))[0, 2];
-			result.m3 = ((Matrix4x4)(ref val))[0, 3];
-			result.m4 = ((Matrix4x4)(ref val))[1, 0];
-			result.m5 = ((Matrix4x4)(ref val))[1, 1];
-			result.m6 = 0f - ((Matrix4x4)(ref val))[1, 2];
-			result.m7 = ((Matrix4x4)(ref val))[1, 3];
-			result.m8 = 0f - ((Matrix4x4)(ref val))[2, 0];
-			result.m9 = 0f - ((Matrix4x4)(ref val))[2, 1];
-			result.m10 = ((Matrix4x4)(ref val))[2, 2];
-			result.m11 = 0f - ((Matrix4x4)(ref val))[2, 3];
+			result.m0 = val[0, 0];
+			result.m1 = val[0, 1];
+			result.m2 = 0f - val[0, 2];
+			result.m3 = val[0, 3];
+			result.m4 = val[1, 0];
+			result.m5 = val[1, 1];
+			result.m6 = 0f - val[1, 2];
+			result.m7 = val[1, 3];
+			result.m8 = 0f - val[2, 0];
+			result.m9 = 0f - val[2, 1];
+			result.m10 = val[2, 2];
+			result.m11 = 0f - val[2, 3];
 			return result;
 		}
 
@@ -191,7 +193,7 @@ public static class SteamVR_Utils
 
 		public override int GetHashCode()
 		{
-			return ((object)(Vector3)(ref pos)).GetHashCode() ^ ((object)(Quaternion)(ref rot)).GetHashCode();
+			return ((object)pos).GetHashCode() ^ ((object)rot).GetHashCode();
 		}
 
 		public static bool operator ==(RigidTransform a, RigidTransform b)
@@ -359,7 +361,7 @@ public static class SteamVR_Utils
 		float num = Mathf.Clamp(A.x * B.x + A.y * B.y + A.z * B.z + A.w * B.w, -1f, 1f);
 		if (num < 0f)
 		{
-			((Quaternion)(ref B))._002Ector(0f - B.x, 0f - B.y, 0f - B.z, 0f - B.w);
+			B = new Quaternion(0f - B.x, 0f - B.y, 0f - B.z, 0f - B.w);
 			num = 0f - num;
 		}
 		float num4;
@@ -664,9 +666,9 @@ public static class SteamVR_Utils
 		Camera val2 = null;
 		stopwatch.Start();
 		Camera val3 = target.GetComponent<Camera>();
-		if ((Object)(object)val3 == (Object)null)
+		if (val3 == null)
 		{
-			if ((Object)(object)val2 == (Object)null)
+			if (val2 == null)
 			{
 				val2 = new GameObject().AddComponent<Camera>();
 			}
@@ -695,7 +697,7 @@ public static class SteamVR_Utils
 		Quaternion localRotation = target.transform.localRotation;
 		Vector3 position = target.transform.position;
 		Quaternion rotation = target.transform.rotation;
-		Quaternion val6 = Quaternion.Euler(0f, ((Quaternion)(ref rotation)).eulerAngles.y, 0f);
+		Quaternion val6 = Quaternion.Euler(0f, rotation.eulerAngles.y, 0f);
 		Transform transform = ((Component)val3).transform;
 		int num = 1024 / cellSize;
 		float num2 = 90f / (float)num;
@@ -756,8 +758,8 @@ public static class SteamVR_Utils
 						Vector3 val18 = val14 / Vector3.Dot(val14, val10);
 						Vector3 val19 = val16 - val15;
 						Vector3 val20 = val18 - val17;
-						float magnitude = ((Vector3)(ref val19)).magnitude;
-						float magnitude2 = ((Vector3)(ref val20)).magnitude;
+						float magnitude = val19.magnitude;
+						float magnitude2 = val20.magnitude;
 						float num19 = 1f / magnitude;
 						float num20 = 1f / magnitude2;
 						Vector3 uAxis = val19 * num19;
@@ -781,7 +783,7 @@ public static class SteamVR_Utils
 		File.WriteAllBytes(previewFilename, val4.EncodeToPNG());
 		val.Apply();
 		File.WriteAllBytes(VRFilename, val.EncodeToPNG());
-		if ((Object)(object)val3 != (Object)(object)val2)
+		if (val3 != val2)
 		{
 			val3.targetTexture = targetTexture;
 			val3.orthographic = orthographic;
@@ -799,7 +801,7 @@ public static class SteamVR_Utils
 		Object.DestroyImmediate((Object)(object)steamVR_SphericalProjection);
 		stopwatch.Stop();
 		Debug.Log((object)$"Screenshot took {stopwatch.Elapsed} seconds.");
-		if ((Object)(object)val2 != (Object)null)
+		if (val2 != null)
 		{
 			Object.DestroyImmediate((Object)(object)((Component)val2).gameObject);
 		}

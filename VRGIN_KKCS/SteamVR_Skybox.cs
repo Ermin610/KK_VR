@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 public class SteamVR_Skybox : MonoBehaviour
@@ -79,7 +80,7 @@ public class SteamVR_Skybox : MonoBehaviour
 		Texture_t[] array2 = new Texture_t[6];
 		for (int i = 0; i < 6; i++)
 		{
-			array2[i].handle = (((Object)(object)array[i] != (Object)null) ? array[i].GetNativeTexturePtr() : IntPtr.Zero);
+			array2[i].handle = ((array[i] != null) ? array[i].GetNativeTexturePtr() : IntPtr.Zero);
 			array2[i].eType = SteamVR.instance.textureType;
 			array2[i].eColorSpace = EColorSpace.Auto;
 		}

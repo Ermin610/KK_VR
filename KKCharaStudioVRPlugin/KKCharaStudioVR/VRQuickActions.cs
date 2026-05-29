@@ -38,10 +38,27 @@ public class VRQuickActions : MonoBehaviour
             ToggleIKVisibility();
         }
 
-        // 左摇杆按下 —— 召唤主菜单到面前（替代之前冲突的 Menu 键）
+        // 左摇杆按下逻辑分支
         if (leftController != null && leftController.GetPressDown(EVRButtonId.k_EButton_Axis0))
         {
-            SummonMainGUI();
+            bool isGripPressed = leftController.GetPress(EVRButtonId.k_EButton_Grip);
+            bool isTriggerPressed = leftController.GetPress(EVRButtonId.k_EButton_Axis1);
+
+            if (isGripPressed && isTriggerPressed)
+            {
+                // 左摇杆按下 + 中指 Grip + 扳机 Trigger —— 切换 ReShade (模拟 Home 键)
+                ToggleReShade();
+            }
+            else if (isGripPressed)
+            {
+                // 左摇杆按下 + 中指 Grip (未按扳机) —— 召唤主菜单到面前
+                SummonMainGUI();
+            }
+            else
+            {
+                // 左摇杆按下 (且未握住 Grip 和 Trigger) —— 切换 MMDD 播放/暂停
+                ToggleMMDDPlayPause();
+            }
         }
 
         // 右摇杆按下 —— 撤销上一步操作
@@ -110,7 +127,7 @@ public class VRQuickActions : MonoBehaviour
             {
                 settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
             }
-            float guiDistance = settings != null ? settings.UISpawnDistance : 0.5f;
+            float guiDistance = settings != null ? settings.UISpawnDistance : 2.0f;
             float guiDrop = 0.05f;
 
             foreach (var kvp in new Dictionary<GUIQuad, bool>(previousStates))
@@ -228,7 +245,7 @@ public class VRQuickActions : MonoBehaviour
                 {
                     settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
                 }
-                float guiDistance = settings != null ? settings.UISpawnDistance : 0.5f;
+                float guiDistance = settings != null ? settings.UISpawnDistance : 2.0f;
 
                 Vector3 forward = head.forward;
                 forward.y = 0f;
@@ -336,5 +353,113 @@ public class VRQuickActions : MonoBehaviour
             }
         }
         VRLog.Info($"Toggled IK Controls visibility to: {ikVisible}");
+    }
+
+    private static object _mainEngine;
+    private static System.Reflection.MethodInfo _createScriptSourceMethod;
+    private static System.Reflection.MethodInfo _compileMethod;
+    private static System.Reflection.MethodInfo _executeMethod;
+    private static bool _pythonInitialized = false;
+
+    private void InitPython()
+    {
+        if (_pythonInitialized) return;
+        try
+        {
+            System.Reflection.Assembly consoleAssembly = null;
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.GetName().Name == "Unity.Console")
+                {
+                    consoleAssembly = assembly;
+                    break;
+                }
+            }
+
+            if (consoleAssembly != null)
+            {
+                Type programType = consoleAssembly.GetType("Unity.Console.Program");
+                if (programType != null)
+                {
+                    var getMainEngine = programType.GetMethod("get_MainEngine", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                    if (getMainEngine != null)
+                    {
+                        _mainEngine = getMainEngine.Invoke(null, null);
+                        if (_mainEngine != null)
+                        {
+                            Type engineType = _mainEngine.GetType();
+                            _createScriptSourceMethod = engineType.GetMethod("CreateScriptSourceFromString", new Type[] { typeof(string) });
+                            
+                            if (_createScriptSourceMethod != null)
+                            {
+                                VRLog.Info("Successfully resolved CreateScriptSourceFromString method on Python Engine!");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            VRLog.Error($"InitPython failed: {ex}");
+        }
+        _pythonInitialized = true;
+    }
+
+    private void ExecutePythonCode(string code)
+    {
+        InitPython();
+        if (_mainEngine == null || _createScriptSourceMethod == null)
+        {
+            VRLog.Warn("Python engine not found or not initialized. Cannot execute python code.");
+            return;
+        }
+
+        try
+        {
+            object scriptSource = _createScriptSourceMethod.Invoke(_mainEngine, new object[] { code });
+            if (scriptSource != null)
+            {
+                if (_compileMethod == null)
+                {
+                    _compileMethod = scriptSource.GetType().GetMethod("Compile", new Type[] { });
+                }
+
+                if (_compileMethod != null)
+                {
+                    object compiledCode = _compileMethod.Invoke(scriptSource, null);
+                    if (compiledCode != null)
+                    {
+                        if (_executeMethod == null)
+                        {
+                            _executeMethod = compiledCode.GetType().GetMethod("Execute", new Type[] { });
+                        }
+
+                        if (_executeMethod != null)
+                        {
+                            _executeMethod.Invoke(compiledCode, null);
+                            VRLog.Info("Executed MMDD Play/Pause Python code successfully!");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            VRLog.Error($"ExecutePythonCode failed: {ex}");
+        }
+    }
+
+    private void ToggleMMDDPlayPause()
+    {
+        VRLog.Info("Left controller ApplicationMenu (Y button) pressed! Toggling MMDD playback...");
+        string code = "from vngameengine import vnge_game\nif hasattr(vnge_game.gdata, 'mmdd') and vnge_game.gdata.mmdd is not None:\n    vnge_game.gdata.mmdd.startStop()";
+        ExecutePythonCode(code);
+    }
+
+    private void ToggleReShade()
+    {
+        VRLog.Info("Left controller Left Joystick Click + Grip + Trigger pressed! Toggling ReShade (End key)...");
+        KeyboradSimulatorUtil.PressEndKey();
     }
 }

@@ -411,7 +411,7 @@ public class SteamVR_Controller
 				default:
 				{
 					Vector3 val2 = new Vector3(val.x, 0f, val.z);
-					Vector3 normalized = ((Vector3)(ref val2)).normalized;
+					Vector3 normalized = val2.normalized;
 					float num2 = Vector3.Dot(normalized, Vector3.forward);
 					Vector3 val3 = Vector3.Cross(normalized, Vector3.forward);
 					num3 = ((relation != DeviceRelation.Leftmost) ? ((val3.y < 0f) ? (2f - num2) : num2) : ((val3.y > 0f) ? (2f - num2) : num2));

@@ -20,7 +20,7 @@ public abstract class Tool : ProtectedBehaviour
 	{
 		get
 		{
-			if (Object.op_Implicit((Object)(object)Tracking))
+			if ((Tracking != null))
 			{
 				return Tracking.isValid;
 			}
@@ -37,8 +37,8 @@ public abstract class Tool : ProtectedBehaviour
 		base.OnStart();
 		Tracking = ((Component)this).GetComponent<SteamVR_TrackedObject>();
 		Owner = ((Component)this).GetComponent<Controller>();
-		Neighbor = (((Object)(object)VR.Mode.Left == (Object)(object)Owner) ? VR.Mode.Right : VR.Mode.Left);
-		VRLog.Info(Object.op_Implicit((Object)(object)Neighbor) ? "Got my neighbor!" : "No neighbor");
+		Neighbor = ((VR.Mode.Left == Owner) ? VR.Mode.Right : VR.Mode.Left);
+		VRLog.Info((Neighbor != null) ? "Got my neighbor!" : "No neighbor");
 	}
 
 	protected abstract void OnDestroy();
@@ -46,7 +46,7 @@ public abstract class Tool : ProtectedBehaviour
 	protected virtual void OnEnable()
 	{
 		VRLog.Info("On Enable: {0}", ((object)this).GetType().Name);
-		if (Object.op_Implicit((Object)(object)Icon))
+		if ((Icon != null))
 		{
 			Icon.SetActive(true);
 		}
@@ -59,7 +59,7 @@ public abstract class Tool : ProtectedBehaviour
 	protected virtual void OnDisable()
 	{
 		VRLog.Info("On Disable: {0}", ((object)this).GetType().Name);
-		if (Object.op_Implicit((Object)(object)Icon))
+		if ((Icon != null))
 		{
 			Icon.SetActive(false);
 		}

@@ -55,7 +55,7 @@ namespace KKCharaStudioVR
         private void OnTriggerStay(Collider other)
         {
             if (_settings == null || !_settings.HapticFeedbackEnabled) return;
-            if (trackedObject == null || !trackedObject.isValid) return;
+            if (trackedObject == null || trackedObject.index == SteamVR_TrackedObject.EIndex.None) return;
 
             if (other == null) return;
 

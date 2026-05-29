@@ -83,7 +83,7 @@ public class SteamVR_Overlay : MonoBehaviour
 		{
 			return;
 		}
-		if ((Object)(object)texture != (Object)null)
+		if (texture != null)
 		{
 			EVROverlayError eVROverlayError = overlay.ShowOverlay(handle);
 			if ((eVROverlayError != EVROverlayError.InvalidHandle && eVROverlayError != EVROverlayError.UnknownOverlay) || overlay.FindOverlay(key, ref handle) == EVROverlayError.None)
@@ -107,7 +107,7 @@ public class SteamVR_Overlay : MonoBehaviour
 				pvecMouseScale.v1 = mouseScale.y;
 				overlay.SetOverlayMouseScale(handle, ref pvecMouseScale);
 				SteamVR_Camera steamVR_Camera = SteamVR_Render.Top();
-				if ((Object)(object)steamVR_Camera != (Object)null && (Object)(object)steamVR_Camera.origin != (Object)null)
+				if (steamVR_Camera != null && steamVR_Camera.origin != null)
 				{
 					SteamVR_Utils.RigidTransform rigidTransform = new SteamVR_Utils.RigidTransform(steamVR_Camera.origin, ((Component)this).transform);
 					rigidTransform.pos.x /= steamVR_Camera.origin.localScale.x;

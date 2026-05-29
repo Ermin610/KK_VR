@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 [ExecuteInEditMode]
@@ -112,7 +113,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 	private void OnHideRenderModels(bool hidden)
 	{
 		MeshRenderer component = ((Component)this).GetComponent<MeshRenderer>();
-		if ((Object)(object)component != (Object)null)
+		if (component != null)
 		{
 			((Renderer)component).enabled = !hidden;
 		}
@@ -172,7 +173,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 			string[] renderModelNames;
 			if (componentCount == 0)
 			{
-				renderModelNames = ((models[renderModelName] is RenderModel renderModel && !((Object)(object)renderModel.mesh == (Object)null)) ? new string[0] : new string[1] { renderModelName });
+				renderModelNames = ((models[renderModelName] is RenderModel renderModel && !(renderModel.mesh == null)) ? new string[0] : new string[1] { renderModelName });
 			}
 			else
 			{
@@ -198,7 +199,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 					if (renderModels.GetComponentRenderModelName(renderModelName, stringBuilder.ToString(), stringBuilder2, componentName) != 0)
 					{
 						string text = stringBuilder2.ToString();
-						if (!(models[text] is RenderModel renderModel2) || (Object)(object)renderModel2.mesh == (Object)null)
+						if (!(models[text] is RenderModel renderModel2) || renderModel2.mesh == null)
 						{
 							renderModelNames[i] = text;
 						}
@@ -226,7 +227,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 						RenderModel_t renderModel_t = MarshalRenderModel(ppRenderModel);
 						object obj = materials[renderModel_t.diffuseTextureId];
 						Material val = (Material)((obj is Material) ? obj : null);
-						if ((Object)(object)val == (Object)null || (Object)(object)val.mainTexture == (Object)null)
+						if (val == null || val.mainTexture == null)
 						{
 							IntPtr ppTexture = IntPtr.Zero;
 							EVRRenderModelError eVRRenderModelError = renderModels.LoadTexture_Async(renderModel_t.diffuseTextureId, ref ppTexture);
@@ -267,7 +268,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 			if (!string.IsNullOrEmpty(renderModelName))
 			{
 				RenderModel renderModel = models[renderModelName] as RenderModel;
-				if (renderModel == null || (Object)(object)renderModel.mesh == (Object)null)
+				if (renderModel == null || renderModel.mesh == null)
 				{
 					CVRRenderModels instance = renderModelInterfaceHolder.instance;
 					if (instance == null)
@@ -353,7 +354,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 				val.triangles = array5;
 				object obj = materials[renderModel_t.diffuseTextureId];
 				Material val2 = (Material)((obj is Material) ? obj : null);
-				if ((Object)(object)val2 == (Object)null || (Object)(object)val2.mainTexture == (Object)null)
+				if (val2 == null || val2.mainTexture == null)
 				{
 					IntPtr ppTexture = IntPtr.Zero;
 					while (true)
@@ -399,7 +400,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 								val3.SetPixels32(array7);
 								val3.Apply();
 							}
-							val2 = new Material(((Object)(object)shader != (Object)null) ? shader : Shader.Find("Standard"));
+							val2 = new Material((shader != null) ? shader : Shader.Find("Standard"));
 							val2.mainTexture = (Texture)(object)val3;
 							materials[renderModel_t.diffuseTextureId] = val2;
 							renderModels.FreeTexture(ppTexture);
@@ -446,12 +447,12 @@ public class SteamVR_RenderModel : MonoBehaviour
 	private void StripMesh(GameObject go)
 	{
 		MeshRenderer component = go.GetComponent<MeshRenderer>();
-		if ((Object)(object)component != (Object)null)
+		if (component != null)
 		{
 			Object.DestroyImmediate((Object)(object)component);
 		}
 		MeshFilter component2 = go.GetComponent<MeshFilter>();
-		if ((Object)(object)component2 != (Object)null)
+		if (component2 != null)
 		{
 			Object.DestroyImmediate((Object)(object)component2);
 		}
@@ -501,7 +502,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 				continue;
 			}
 			transform = FindComponent(stringBuilder.ToString());
-			if ((Object)(object)transform != (Object)null)
+			if (transform != null)
 			{
 				((Component)transform).gameObject.SetActive(true);
 			}
@@ -531,7 +532,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 				continue;
 			}
 			RenderModel renderModel = models[stringBuilder2] as RenderModel;
-			if (renderModel == null || (Object)(object)renderModel.mesh == (Object)null)
+			if (renderModel == null || renderModel.mesh == null)
 			{
 				if (verbose)
 				{
@@ -628,7 +629,7 @@ public class SteamVR_RenderModel : MonoBehaviour
 				child.localPosition = rigidTransform.pos;
 				child.localRotation = rigidTransform.rot;
 				Transform val = child.Find("attach");
-				if ((Object)(object)val != (Object)null)
+				if (val != null)
 				{
 					SteamVR_Utils.RigidTransform rigidTransform2 = new SteamVR_Utils.RigidTransform(pComponentState.mTrackingToComponentLocal);
 					val.position = transform.TransformPoint(rigidTransform2.pos);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using VRGIN.Controls.Handlers;
 using VRGIN.Controls.Tools;
@@ -111,7 +112,7 @@ public abstract class Controller : ProtectedBehaviour
 	{
 		get
 		{
-			if ((Object)(object)ActiveTool != (Object)null)
+			if (ActiveTool != null)
 			{
 				return ((Behaviour)ActiveTool).enabled;
 			}
@@ -119,7 +120,7 @@ public abstract class Controller : ProtectedBehaviour
 		}
 		set
 		{
-			if ((Object)(object)ActiveTool != (Object)null)
+			if (ActiveTool != null)
 			{
 				((Behaviour)ActiveTool).enabled = value;
 				if (!value)
@@ -134,7 +135,7 @@ public abstract class Controller : ProtectedBehaviour
 	{
 		get
 		{
-			if (Object.op_Implicit((Object)(object)Tracking))
+			if ((Tracking != null))
 			{
 				return Tracking.isValid;
 			}
@@ -210,7 +211,7 @@ public abstract class Controller : ProtectedBehaviour
 		((Component)this).gameObject.AddComponent<MenuHandler>();
 		Model = new GameObject("Model").AddComponent<SteamVR_RenderModel>();
 		Model.shader = VRManager.Instance.Context.Materials.StandardShader;
-		if (!Object.op_Implicit((Object)(object)Model.shader))
+		if (!(Model.shader != null))
 		{
 			VRLog.Warn("Shader not found");
 		}
@@ -228,7 +229,7 @@ public abstract class Controller : ProtectedBehaviour
 	{
 		try
 		{
-			if (Object.op_Implicit((Object)(object)model) && ((Component)model).transform.IsChildOf(((Component)this).transform))
+			if ((model != null) && ((Component)model).transform.IsChildOf(((Component)this).transform))
 			{
 				VRLog.Info("Render model loaded!");
 				((Component)this).gameObject.SendMessageToAll("OnRenderModelLoaded");
@@ -272,7 +273,7 @@ public abstract class Controller : ProtectedBehaviour
 		int num = 0;
 		foreach (Tool tool in Tools)
 		{
-			if (num++ != ToolIndex && Object.op_Implicit((Object)(object)tool))
+			if (num++ != ToolIndex && (tool != null))
 			{
 				((Behaviour)tool).enabled = false;
 				VRLog.Info("Disable tool #{0} ({1})", num - 1, ToolIndex);
@@ -319,12 +320,12 @@ public abstract class Controller : ProtectedBehaviour
 		}
 		else
 		{
-			if (Object.op_Implicit((Object)(object)ActiveTool))
+			if ((ActiveTool != null))
 			{
 				((Behaviour)ActiveTool).enabled = false;
 			}
 			ToolIndex = (ToolIndex + 1) % Tools.Count;
-			if (Object.op_Implicit((Object)(object)ActiveTool))
+			if ((ActiveTool != null))
 			{
 				((Behaviour)ActiveTool).enabled = true;
 			}
@@ -369,7 +370,7 @@ public abstract class Controller : ProtectedBehaviour
 
 	private void ShowHelp()
 	{
-		if ((Object)(object)ActiveTool != (Object)null)
+		if (ActiveTool != null)
 		{
 			helpTexts = ActiveTool.GetHelpTexts();
 			helpShown = true;
@@ -388,8 +389,8 @@ public abstract class Controller : ProtectedBehaviour
 		Canvas obj = (_Canvas = new GameObject().AddComponent<Canvas>());
 		obj.renderMode = (RenderMode)2;
 		((Component)obj).transform.SetParent(((Component)this).transform, false);
-		((Component)obj).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((Axis)0, 950f);
-		((Component)obj).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((Axis)1, 950f);
+		((Component)obj).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((RectTransform.Axis)0, 950f);
+		((Component)obj).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((RectTransform.Axis)1, 950f);
 		((Component)obj).transform.localPosition = new Vector3(0f, -0.02725995f, 0.0279f);
 		((Component)obj).transform.localRotation = Quaternion.Euler(30f, 180f, 180f);
 		((Component)obj).transform.localScale = new Vector3(4.930151E-05f, 4.930148E-05f, 0f);
@@ -427,7 +428,7 @@ public abstract class Controller : ProtectedBehaviour
 		Transform val = (from t in ((Component)((Component)this).transform).GetComponentsInChildren<Transform>()
 			where names.Contains(((Object)t).name)
 			select t).FirstOrDefault();
-		if ((Object)(object)val == (Object)null)
+		if (val == null)
 		{
 			return null;
 		}
@@ -436,7 +437,7 @@ public abstract class Controller : ProtectedBehaviour
 
 	public void SetRenderModelVisible(bool visible)
 	{
-		if ((Object)(object)Model != (Object)null)
+		if (Model != null)
 		{
 			Renderer[] componentsInChildren = ((Component)Model).GetComponentsInChildren<Renderer>(true);
 			foreach (Renderer val in componentsInChildren)

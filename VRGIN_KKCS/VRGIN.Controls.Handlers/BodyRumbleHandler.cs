@@ -64,7 +64,7 @@ public class BodyRumbleHandler : ProtectedBehaviour
 	protected void OnStop()
 	{
 		_TouchCounter = 0;
-		if (Object.op_Implicit((Object)(object)_Controller))
+		if ((_Controller != null))
 		{
 			_Controller.StopRumble(_Rumble);
 		}

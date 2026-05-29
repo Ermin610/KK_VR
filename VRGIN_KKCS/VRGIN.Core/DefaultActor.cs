@@ -6,7 +6,7 @@ public abstract class DefaultActor<T> : IActor where T : MonoBehaviour
 {
 	public T Actor { get; protected set; }
 
-	public virtual bool IsValid => Object.op_Implicit((Object)(object)Actor);
+	public virtual bool IsValid => (Actor != null);
 
 	public abstract Transform Eyes { get; }
 
@@ -25,6 +25,6 @@ public abstract class DefaultActor<T> : IActor where T : MonoBehaviour
 
 	public static bool IsAlreadyMapped(T nativeActor)
 	{
-		return Object.op_Implicit((Object)(object)((Component)(object)nativeActor).GetComponent<Marker>());
+		return (((Component)(object)nativeActor).GetComponent<Marker>() != null);
 	}
 }

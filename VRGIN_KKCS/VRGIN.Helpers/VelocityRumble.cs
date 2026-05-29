@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRGIN.Helpers;
 
@@ -25,7 +26,7 @@ public class VelocityRumble : IRumbleSession, IComparable<IRumbleSession>
 			//IL_0012: Unknown result type (might be due to invalid IL or missing references)
 			float num = (int)_MicroDuration;
 			Vector3 velocity = Device.velocity;
-			return (ushort)(num + ((Vector3)(ref velocity)).magnitude / _MaxVelocity * (float)(_MaxMicroDuration - _MicroDuration));
+			return (ushort)(num + velocity.magnitude / _MaxVelocity * (float)(_MaxMicroDuration - _MicroDuration));
 		}
 	}
 
@@ -38,7 +39,7 @@ public class VelocityRumble : IRumbleSession, IComparable<IRumbleSession>
 			float milliInterval = _MilliInterval;
 			float maxMilliInterval = _MaxMilliInterval;
 			Vector3 velocity = Device.velocity;
-			return Mathf.Lerp(milliInterval, maxMilliInterval, ((Vector3)(ref velocity)).magnitude / _MaxVelocity);
+			return Mathf.Lerp(milliInterval, maxMilliInterval, velocity.magnitude / _MaxVelocity);
 		}
 	}
 

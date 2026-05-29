@@ -32,7 +32,7 @@ public class RiggedFinger : FingerModel
 		//IL_0045: Unknown result type (might be due to invalid IL or missing references)
 		for (int i = 0; i < bones.Length; i++)
 		{
-			if ((Object)(object)bones[i] != (Object)null)
+			if (bones[i] != null)
 			{
 				bones[i].rotation = GetBoneRotation(i) * Reorientation();
 				if (deformPosition)

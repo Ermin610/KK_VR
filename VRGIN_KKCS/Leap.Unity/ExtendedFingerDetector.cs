@@ -26,7 +26,7 @@ public class ExtendedFingerDetector : Detector
 	private void Awake()
 	{
 		watcherCoroutine = extendedFingerWatcher();
-		if ((Object)(object)HandModel == (Object)null)
+		if (HandModel == null)
 		{
 			HandModel = ((Component)this).gameObject.GetComponentInParent<IHandModel>();
 		}
@@ -47,7 +47,7 @@ public class ExtendedFingerDetector : Detector
 	{
 		while (true)
 		{
-			if ((Object)(object)HandModel != (Object)null && HandModel.IsTracked)
+			if (HandModel != null && HandModel.IsTracked)
 			{
 				Hand leapHand = HandModel.GetLeapHand();
 				if (leapHand != null)

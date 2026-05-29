@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRGIN.Visuals;
 
@@ -111,7 +112,7 @@ public class ProceduralPlane : MonoBehaviour
 		{
 			for (int j = 0; j < numVertexColumns; j++)
 			{
-				((Vector3)(ref val))._002Ector((float)j * num4 + num8 + bottomLeftOffset.x * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + bottomRightOffset.x * (float)j / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + topLeftOffset.x * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1) + topRightOffset.x * (float)j / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1), (float)i * num5 + num9 + bottomLeftOffset.y * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + bottomRightOffset.y * (float)j / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + topLeftOffset.y * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1) + topRightOffset.y * (float)j / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1) - (height - 1f) / 2f, distance);
+				val = new Vector3((float)j * num4 + num8 + bottomLeftOffset.x * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + bottomRightOffset.x * (float)j / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + topLeftOffset.x * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1) + topRightOffset.x * (float)j / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1), (float)i * num5 + num9 + bottomLeftOffset.y * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + bottomRightOffset.y * (float)j / (float)(numVertexColumns - 1) * (float)(numVertexRows - 1 - i) / (float)(numVertexRows - 1) + topLeftOffset.y * (float)(numVertexColumns - 1 - j) / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1) + topRightOffset.y * (float)j / (float)(numVertexColumns - 1) * (float)i / (float)(numVertexRows - 1) - (height - 1f) / 2f, distance);
 				float num14 = Mathf.Lerp(num12 * height * val.x, Mathf.Cos((float)Math.PI / 2f - val.x * num13) * distance, Mathf.Clamp01(curviness));
 				float num15 = Mathf.Sin((float)Math.PI / 2f - val.x * num13 * Mathf.Clamp01(curviness));
 				int num16 = i * numVertexColumns + j;
@@ -119,7 +120,7 @@ public class ProceduralPlane : MonoBehaviour
 				if (curviness > 1f)
 				{
 					float num17 = curviness - 1f;
-					array[num16] = Vector3.Lerp(array[num16], ((Vector3)(ref array[num16])).normalized * distance, Mathf.Clamp01(num17));
+					array[num16] = Vector3.Lerp(array[num16], array[num16].normalized * distance, Mathf.Clamp01(num17));
 				}
 				array2[num16] = new Vector2((float)j * num6, (float)i * num7);
 				if (i != 0 && j < numVertexColumns - 1)

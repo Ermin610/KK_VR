@@ -19,7 +19,7 @@ public class TemporalWarpingStatus : MonoBehaviour
 	private void Start()
 	{
 		textField = ((Component)this).GetComponent<Text>();
-		if ((Object)(object)textField == (Object)null)
+		if (textField == null)
 		{
 			((Component)this).gameObject.SetActive(false);
 		}

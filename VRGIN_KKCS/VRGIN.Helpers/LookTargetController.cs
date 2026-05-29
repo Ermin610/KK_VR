@@ -44,11 +44,11 @@ public class LookTargetController : ProtectedBehaviour
 		//IL_007a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_007f: Unknown result type (might be due to invalid IL or missing references)
 		base.OnUpdate();
-		if (Object.op_Implicit((Object)(object)_RootNode) && Object.op_Implicit((Object)(object)((Component)VR.Camera.SteamCam.head).transform))
+		if ((_RootNode != null) && (((Component)VR.Camera.SteamCam.head).transform != null))
 		{
 			Transform transform = ((Component)VR.Camera.SteamCam.head).transform;
 			Vector3 val = transform.position - _RootNode.position;
-			Vector3 normalized = ((Vector3)(ref val)).normalized;
+			Vector3 normalized = val.normalized;
 			((Component)Target).transform.position = transform.position + normalized * Offset;
 		}
 	}

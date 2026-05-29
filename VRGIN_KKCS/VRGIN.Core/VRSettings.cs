@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Visuals;
 
 namespace VRGIN.Core;

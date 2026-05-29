@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 [ExecuteInEditMode]
@@ -110,7 +111,7 @@ public class SteamVR_Frustum : MonoBehaviour
 			Vector3 val2 = array[array2[i * 3 + 1]];
 			Vector3 val3 = array[array2[i * 3 + 2]];
 			Vector3 val4 = Vector3.Cross(val2 - val, val3 - val);
-			array4[i * 3 + 2] = (array4[i * 3 + 1] = (array4[i * 3] = ((Vector3)(ref val4)).normalized));
+			array4[i * 3 + 2] = (array4[i * 3 + 1] = (array4[i * 3] = val4.normalized));
 			array3[i * 3] = val;
 			array3[i * 3 + 1] = val2;
 			array3[i * 3 + 2] = val3;

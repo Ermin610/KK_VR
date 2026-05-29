@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Reflection;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.VR;
+using VRSettings = UnityEngine.VR.VRSettings;
 using VRGIN.Core;
 
 [RequireComponent(typeof(Camera))]
@@ -80,7 +82,7 @@ public class SteamVR_Camera : MonoBehaviour
 		//IL_00ac: Unknown result type (might be due to invalid IL or missing references)
 		if (SteamVR.instance == null)
 		{
-			if ((Object)(object)head != (Object)null)
+			if (head != null)
 			{
 				((Behaviour)((Component)head).GetComponent<SteamVR_TrackedObject>()).enabled = false;
 			}
@@ -88,7 +90,7 @@ public class SteamVR_Camera : MonoBehaviour
 			return;
 		}
 		Transform transform = ((Component)this).transform;
-		if ((Object)(object)head != (Object)(object)transform)
+		if (head != transform)
 		{
 			Expand();
 			transform.parent = origin;
@@ -103,15 +105,15 @@ public class SteamVR_Camera : MonoBehaviour
 			((Component)head).gameObject.SetActive(false);
 			_head = transform;
 		}
-		if ((Object)(object)ears == (Object)null)
+		if (ears == null)
 		{
 			SteamVR_Ears componentInChildren = ((Component)((Component)this).transform).GetComponentInChildren<SteamVR_Ears>();
-			if ((Object)(object)componentInChildren != (Object)null)
+			if (componentInChildren != null)
 			{
 				_ears = ((Component)componentInChildren).transform;
 			}
 		}
-		if ((Object)(object)ears != (Object)null)
+		if (ears != null)
 		{
 			((Component)ears).GetComponent<SteamVR_Ears>().vrcam = this;
 		}
@@ -139,13 +141,13 @@ public class SteamVR_Camera : MonoBehaviour
 		for (int i = 0; i < components.Length; i++)
 		{
 			SteamVR_Camera steamVR_Camera = components[i] as SteamVR_Camera;
-			if ((Object)(object)steamVR_Camera != (Object)null && (Object)(object)steamVR_Camera != (Object)(object)this)
+			if (steamVR_Camera != null && steamVR_Camera != this)
 			{
 				Object.DestroyImmediate((Object)(object)steamVR_Camera);
 			}
 		}
 		components = ((Component)this).GetComponents<Component>();
-		if (!((Object)(object)this != (Object)(object)components[components.Length - 1]))
+		if (!(this != components[components.Length - 1]))
 		{
 			return;
 		}
@@ -181,14 +183,14 @@ public class SteamVR_Camera : MonoBehaviour
 		//IL_022a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_023a: Unknown result type (might be due to invalid IL or missing references)
 		Transform val = ((Component)this).transform.parent;
-		if ((Object)(object)val == (Object)null)
+		if (val == null)
 		{
 			val = new GameObject(((Object)this).name + " (origin)").transform;
 			val.localPosition = ((Component)this).transform.localPosition;
 			val.localRotation = ((Component)this).transform.localRotation;
 			val.localScale = ((Component)this).transform.localScale;
 		}
-		if ((Object)(object)head == (Object)null)
+		if (head == null)
 		{
 			_head = new GameObject(((Object)this).name + " (head)", new Type[1] { typeof(SteamVR_TrackedObject) }).transform;
 			head.parent = val;
@@ -209,13 +211,13 @@ public class SteamVR_Camera : MonoBehaviour
 			}
 			((Component)this).transform.GetChild(0).parent = head;
 			GUILayer component = ((Component)this).GetComponent<GUILayer>();
-			if ((Object)(object)component != (Object)null)
+			if (component != null)
 			{
 				Object.DestroyImmediate((Object)(object)component);
 				((Component)head).gameObject.AddComponent<GUILayer>();
 			}
 			AudioListener component2 = ((Component)this).GetComponent<AudioListener>();
-			if ((Object)(object)component2 != (Object)null)
+			if (component2 != null)
 			{
 				Object.DestroyImmediate((Object)(object)component2);
 				_ears = new GameObject(((Object)this).name + " (ears)", new Type[1] { typeof(SteamVR_Ears) }).transform;
@@ -239,12 +241,12 @@ public class SteamVR_Camera : MonoBehaviour
 			head.GetChild(0).parent = ((Component)this).transform;
 		}
 		GUILayer component = ((Component)head).GetComponent<GUILayer>();
-		if ((Object)(object)component != (Object)null)
+		if (component != null)
 		{
 			Object.DestroyImmediate((Object)(object)component);
 			((Component)this).gameObject.AddComponent<GUILayer>();
 		}
-		if ((Object)(object)ears != (Object)null)
+		if (ears != null)
 		{
 			while (ears.childCount > 0)
 			{
@@ -254,7 +256,7 @@ public class SteamVR_Camera : MonoBehaviour
 			_ears = null;
 			((Component)this).gameObject.AddComponent(typeof(AudioListener));
 		}
-		if ((Object)(object)origin != (Object)null)
+		if (origin != null)
 		{
 			if (((Object)origin).name.EndsWith(" (origin)"))
 			{

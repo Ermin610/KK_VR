@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Leap;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls;
 using VRGIN.Controls.Tools;
 using VRGIN.Core;
@@ -66,7 +67,7 @@ public class SeatedMode : ControlMode
 		//IL_008f: Unknown result type (might be due to invalid IL or missing references)
 		//IL_009e: Unknown result type (might be due to invalid IL or missing references)
 		base.OnUpdate();
-		if (!VR.Camera.HasValidBlueprint || !Object.op_Implicit((Object)(object)VR.Camera.Blueprint))
+		if (!VR.Camera.HasValidBlueprint || !(VR.Camera.Blueprint != null))
 		{
 			return;
 		}

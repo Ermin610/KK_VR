@@ -74,7 +74,7 @@ public class WarpHandler : ProtectedBehaviour
 			_Hand.GetLeapHand();
 			Vector3 position = _Hand.Palm.position;
 			Vector3 val = position - _PrevPosition;
-			if (((Vector3)(ref val)).magnitude < 0.1f)
+			if (val.magnitude < 0.1f)
 			{
 				float num = 0f;
 				PlayArea area = _Visualization.Area;
@@ -102,7 +102,7 @@ public class WarpHandler : ProtectedBehaviour
 		_PalmDownwardsDetector.HandModel = _Hand;
 		PalmDirectionDetector palmDownwardsDetector = _PalmDownwardsDetector;
 		Vector3 val = new Vector3(0f, -1f, 0.5f);
-		palmDownwardsDetector.PointingDirection = ((Vector3)(ref val)).normalized;
+		palmDownwardsDetector.PointingDirection = val.normalized;
 		_PalmDownwardsDetector.OnAngle = 10f;
 		_ExtendedFingerDetector = ((Component)UnityHelper.CreateGameObjectAsChild("_ExtendedFingerDetector", gameObject.transform)).gameObject.AddComponent<ExtendedFingerDetector>();
 		_ExtendedFingerDetector.HandModel = _Hand;
@@ -170,18 +170,18 @@ public class WarpHandler : ProtectedBehaviour
 			Hand leapHand = _Hand.GetLeapHand();
 			_Visualization.Area.Height = VR.Camera.Origin.position.y;
 			Plane val = default(Plane);
-			((Plane)(ref val))._002Ector(Vector3.up, _Visualization.Area.Position);
+			val = new Plane(Vector3.up, _Visualization.Area.Position);
 			_Visualization.Enable();
 			_Showing = true;
 			_MoveHeight = false;
 			_HeightChange = 0f;
 			_PrevPosition = _Hand.Palm.position;
 			Ray val2 = default(Ray);
-			((Ray)(ref val2))._002Ector(leapHand.StabilizedPalmPosition.ToVector3(), leapHand.PalmNormal.ToVector3());
+			val2 = new Ray(leapHand.StabilizedPalmPosition.ToVector3(), leapHand.PalmNormal.ToVector3());
 			float num = default(float);
-			if (((Plane)(ref val)).Raycast(val2, ref num) && num < 5f)
+			if (val.Raycast(val2, out num) && num < 5f)
 			{
-				_Visualization.Area.Position = ((Ray)(ref val2)).origin + ((Ray)(ref val2)).direction * num;
+				_Visualization.Area.Position = val2.origin + val2.direction * num;
 			}
 		}
 	}

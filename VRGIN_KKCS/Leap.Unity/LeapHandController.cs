@@ -121,7 +121,7 @@ public class LeapHandController : MonoBehaviour
 	private T requireComponent<T>() where T : Component
 	{
 		T component = ((Component)this).GetComponent<T>();
-		if ((Object)(object)component == (Object)null)
+		if (component == null)
 		{
 			string name = typeof(T).Name;
 			Debug.LogError((object)("LeapHandController could not find a " + name + " and has been disabled.  Make sure there is a " + name + " on the same gameObject."));

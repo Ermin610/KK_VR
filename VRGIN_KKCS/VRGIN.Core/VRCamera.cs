@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Helpers;
 
 namespace VRGIN.Core;
@@ -24,7 +25,7 @@ public class VRCamera : ProtectedBehaviour
 	{
 		get
 		{
-			if (!Object.op_Implicit((Object)(object)_Blueprint) || !((Behaviour)_Blueprint).isActiveAndEnabled)
+			if (!(_Blueprint != null) || !((Behaviour)_Blueprint).isActiveAndEnabled)
 			{
 				return Slaves.Select((CameraSlave s) => s.Camera).FirstOrDefault((Camera c) => !VR.GUI.Owns(c));
 			}
@@ -45,7 +46,7 @@ public class VRCamera : ProtectedBehaviour
 		get
 		{
 			//IL_0012: Unknown result type (might be due to invalid IL or missing references)
-			if ((Object)(object)_Instance == (Object)null)
+			if (_Instance == null)
 			{
 				_Instance = ((Component)new GameObject("VRGIN_Camera").AddComponent<AudioListener>()).gameObject.AddComponent<VRCamera>();
 			}
@@ -81,8 +82,8 @@ public class VRCamera : ProtectedBehaviour
 
 	public void Copy(Camera blueprint, bool master = false, bool hasOtherConsumers = false)
 	{
-		VRLog.Info("Copying camera: {0}", Object.op_Implicit((Object)(object)blueprint) ? ((Object)blueprint).name : "NULL");
-		if (Object.op_Implicit((Object)(object)blueprint) && Object.op_Implicit((Object)(object)((Component)blueprint).GetComponent<CameraSlave>()))
+		VRLog.Info("Copying camera: {0}", (blueprint != null) ? ((Object)blueprint).name : "NULL");
+		if ((blueprint != null) && (((Component)blueprint).GetComponent<CameraSlave>() != null))
 		{
 			VRLog.Warn("Is already slave -- NOOP");
 			return;
@@ -109,10 +110,10 @@ public class VRCamera : ProtectedBehaviour
 				targetCamera.allowHDR = Blueprint.allowHDR;
 				targetCamera.backgroundColor = Blueprint.backgroundColor;
 				Skybox component2 = ((Component)Blueprint).GetComponent<Skybox>();
-				if ((Object)(object)component2 != (Object)null)
+				if (component2 != null)
 				{
 					Skybox val = ((Component)targetCamera).gameObject.GetComponent<Skybox>();
-					if ((Object)(object)val == (Object)null)
+					if (val == null)
 					{
 						val = ((Component)val).gameObject.AddComponent<Skybox>();
 					}
@@ -120,15 +121,15 @@ public class VRCamera : ProtectedBehaviour
 				}
 			});
 		}
-		if (Object.op_Implicit((Object)(object)blueprint))
+		if ((blueprint != null))
 		{
 			((Component)blueprint).gameObject.AddComponent<CameraSlave>();
 			AudioListener component = ((Component)blueprint).GetComponent<AudioListener>();
-			if (Object.op_Implicit((Object)(object)component))
+			if ((component != null))
 			{
 				Object.Destroy((Object)(object)component);
 			}
-			if (!hasOtherConsumers && (Object)(object)blueprint.targetTexture == (Object)null && VR.Interpreter.IsIrrelevantCamera(blueprint))
+			if (!hasOtherConsumers && blueprint.targetTexture == null && VR.Interpreter.IsIrrelevantCamera(blueprint))
 			{
 				((Component)blueprint).gameObject.AddComponent<CameraKiller>();
 			}
@@ -142,7 +143,7 @@ public class VRCamera : ProtectedBehaviour
 
 	private bool UseNewCamera(Camera blueprint)
 	{
-		if (Object.op_Implicit((Object)(object)_Blueprint) && (Object)(object)_Blueprint != (Object)(object)_Camera && (Object)(object)_Blueprint != (Object)(object)blueprint && ((Object)_Blueprint).name == "Main Camera")
+		if ((_Blueprint != null) && _Blueprint != _Camera && _Blueprint != blueprint && ((Object)_Blueprint).name == "Main Camera")
 		{
 			VRLog.Info("Using {0} over {1} as main camera", ((Object)_Blueprint).name, ((Object)blueprint).name);
 			return false;
@@ -172,7 +173,7 @@ public class VRCamera : ProtectedBehaviour
 
 	public void FixEffectOrder()
 	{
-		if (!Object.op_Implicit((Object)(object)SteamCam))
+		if (!(SteamCam != null))
 		{
 			SteamCam = ((Component)this).GetComponent<SteamVR_Camera>();
 		}
@@ -194,7 +195,7 @@ public class VRCamera : ProtectedBehaviour
 			{
 				VRLog.Info("Copy FX: {0} (enabled={1})", ((object)cameraEffect2).GetType().Name, ((Behaviour)cameraEffect2).enabled);
 				MonoBehaviour val = target.CopyComponentFrom<MonoBehaviour>(cameraEffect2);
-				if (Object.op_Implicit((Object)(object)val))
+				if ((val != null))
 				{
 					VRLog.Info("Attached!");
 				}
@@ -222,7 +223,7 @@ public class VRCamera : ProtectedBehaviour
 		//IL_0023: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0032: Unknown result type (might be due to invalid IL or missing references)
 		base.OnUpdate();
-		if (Object.op_Implicit((Object)(object)SteamCam.origin))
+		if ((SteamCam.origin != null))
 		{
 			SteamCam.origin.localScale = Vector3.one * VR.Settings.IPDScale;
 		}

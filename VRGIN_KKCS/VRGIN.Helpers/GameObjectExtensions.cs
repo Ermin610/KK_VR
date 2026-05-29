@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRGIN.Helpers;
 
@@ -21,7 +22,7 @@ public static class GameObjectExtensions
 
 	public static int Level(this GameObject go)
 	{
-		if (!Object.op_Implicit((Object)(object)go.transform.parent))
+		if (!(go.transform.parent != null))
 		{
 			return 0;
 		}
@@ -68,7 +69,7 @@ public static class GameObjectExtensions
 
 	public static string GetPath(this Component component)
 	{
-		if (!Object.op_Implicit((Object)(object)component.transform.parent))
+		if (!(component.transform.parent != null))
 		{
 			return ((Object)component).name;
 		}
@@ -94,7 +95,7 @@ public static class GameObjectExtensions
 	public static IEnumerable<Transform> Ancestors(this Transform transform)
 	{
 		Transform t = transform;
-		while (Object.op_Implicit((Object)(object)t.parent))
+		while ((t.parent != null))
 		{
 			t = t.parent;
 			yield return t;

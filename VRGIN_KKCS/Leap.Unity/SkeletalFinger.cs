@@ -23,7 +23,7 @@ public class SkeletalFinger : FingerModel
 		//IL_0095: Unknown result type (might be due to invalid IL or missing references)
 		for (int i = 0; i < bones.Length; i++)
 		{
-			if ((Object)(object)bones[i] != (Object)null)
+			if (bones[i] != null)
 			{
 				((Component)bones[i]).transform.position = GetBoneCenter(i);
 				((Component)bones[i]).transform.rotation = GetBoneRotation(i);
@@ -31,7 +31,7 @@ public class SkeletalFinger : FingerModel
 		}
 		for (int j = 0; j < joints.Length; j++)
 		{
-			if ((Object)(object)joints[j] != (Object)null)
+			if (joints[j] != null)
 			{
 				((Component)joints[j]).transform.position = GetJointPosition(j + 1);
 				((Component)joints[j]).transform.rotation = GetBoneRotation(j + 1);

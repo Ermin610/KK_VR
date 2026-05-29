@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.VR;
 
 namespace Leap.Unity;
@@ -204,14 +205,14 @@ public class LeapVRTemporalWarping : MonoBehaviour
 		//IL_015f: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0164: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0169: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)_headTransform == (Object)null)
+		if (_headTransform == null)
 		{
 			rewoundPosition = Vector3.one;
 			rewoundRotation = Quaternion.identity;
 			return false;
 		}
 		TransformData transformData = transformAtTime(leapTime - warpingAdjustment * 1000);
-		if ((Object)(object)_trackingAnchor == (Object)null)
+		if (_trackingAnchor == null)
 		{
 			rewoundRotation = transformData.localRotation;
 			rewoundPosition = transformData.localPosition + rewoundRotation * Vector3.forward * deviceInfo.focalPlaneOffset;
@@ -265,7 +266,7 @@ public class LeapVRTemporalWarping : MonoBehaviour
 		//IL_0020: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0031: Unknown result type (might be due to invalid IL or missing references)
 		//IL_003c: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)_trackingAnchor == (Object)null)
+		if (_trackingAnchor == null)
 		{
 			updateHistory(_headTransform.position, _headTransform.rotation);
 			updateTemporalWarping(_headTransform.position, _headTransform.rotation);
@@ -384,7 +385,7 @@ public class LeapVRTemporalWarping : MonoBehaviour
 		_projectionMatrix = cameraParams.ProjectionMatrix;
 		if (VRSettings.enabled)
 		{
-			if ((Object)(object)provider != (Object)null)
+			if (provider != null)
 			{
 				updateHistory(InputTracking.GetLocalPosition((VRNode)2), InputTracking.GetLocalRotation((VRNode)2));
 			}
@@ -459,7 +460,7 @@ public class LeapVRTemporalWarping : MonoBehaviour
 		//IL_012a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_013a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_013f: Unknown result type (might be due to invalid IL or missing references)
-		if (!((Object)(object)_trackingAnchor == (Object)null) && provider.GetLeapController() != null)
+		if (!(_trackingAnchor == null) && provider.GetLeapController() != null)
 		{
 			Vector3 val = _trackingAnchor.TransformPoint(currLocalPosition);
 			Quaternion val2 = _trackingAnchor.rotation * currLocalRotation;
@@ -469,7 +470,7 @@ public class LeapVRTemporalWarping : MonoBehaviour
 			Quaternion val4 = _trackingAnchor.rotation * transformData.localRotation;
 			Quaternion val5 = Quaternion.Slerp(val2, val4, tweenImageWarping);
 			Quaternion val6 = Quaternion.Inverse(val2) * val5;
-			Matrix4x4 val7 = _projectionMatrix * Matrix4x4.TRS(Vector3.zero, val6, Vector3.one) * ((Matrix4x4)(ref _projectionMatrix)).inverse;
+			Matrix4x4 val7 = _projectionMatrix * Matrix4x4.TRS(Vector3.zero, val6, Vector3.one) * _projectionMatrix.inverse;
 			Shader.SetGlobalMatrix("_LeapGlobalWarpedOffset", val7);
 			((Component)this).transform.position = Vector3.Lerp(val, val3, tweenPositionalWarping);
 			((Component)this).transform.rotation = Quaternion.Slerp(val2, val4, tweenRotationalWarping);

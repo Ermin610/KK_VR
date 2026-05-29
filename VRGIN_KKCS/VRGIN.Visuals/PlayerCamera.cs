@@ -116,7 +116,7 @@ public class PlayerCamera : ProtectedBehaviour
 		//IL_00f4: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00fa: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00ff: Unknown result type (might be due to invalid IL or missing references)
-		if (!Object.op_Implicit((Object)(object)controller))
+		if (!(controller != null))
 		{
 			return;
 		}

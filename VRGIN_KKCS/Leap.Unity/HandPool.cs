@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace Leap.Unity;
@@ -142,7 +143,7 @@ public class HandPool : HandFactory
 			try
 			{
 				IHandModel handModel = modelGroup.TryGetModel(chirality, modelType);
-				if ((Object)(object)handModel != (Object)null)
+				if (handModel != null)
 				{
 					VRLog.Info("Model found");
 					handRepresentation.AddModel(handModel);
@@ -182,7 +183,7 @@ public class HandPool : HandFactory
 			{
 				HandRepresentation handRepresentation = activeHandReps[j];
 				IHandModel handModel = modelGroup.TryGetModel(handRepresentation.RepChirality, handRepresentation.RepType);
-				if ((Object)(object)handModel != (Object)null)
+				if (handModel != null)
 				{
 					handRepresentation.AddModel(handModel);
 					modelToHandRepMapping.Add(handModel, handRepresentation);

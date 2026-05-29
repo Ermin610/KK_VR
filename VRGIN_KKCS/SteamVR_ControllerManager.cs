@@ -37,7 +37,7 @@ public class SteamVR_ControllerManager : MonoBehaviour
 	{
 		for (int i = 0; i < index; i++)
 		{
-			if ((Object)(object)objects[i] == (Object)(object)o)
+			if (objects[i] == o)
 			{
 				return;
 			}
@@ -80,7 +80,7 @@ public class SteamVR_ControllerManager : MonoBehaviour
 		for (int i = 0; i < objects.Length; i++)
 		{
 			GameObject val = objects[i];
-			if ((Object)(object)val != (Object)null)
+			if (val != null)
 			{
 				val.SetActive(false);
 			}
@@ -113,7 +113,7 @@ public class SteamVR_ControllerManager : MonoBehaviour
 			for (int i = 0; i < objects.Length; i++)
 			{
 				GameObject val = objects[i];
-				if ((Object)(object)val != (Object)null)
+				if (val != null)
 				{
 					string text = ((i < 2) ? labels[i] : (i - 1).ToString());
 					ShowObject(val.transform, hiddenPrefix + text + hiddenPostfix);
@@ -124,7 +124,7 @@ public class SteamVR_ControllerManager : MonoBehaviour
 		for (int j = 0; j < objects.Length; j++)
 		{
 			GameObject val2 = objects[j];
-			if ((Object)(object)val2 != (Object)null)
+			if (val2 != null)
 			{
 				string text2 = ((j < 2) ? labels[j] : (j - 1).ToString());
 				HideObject(val2.transform, hiddenPrefix + text2 + hiddenPostfix);
@@ -165,7 +165,7 @@ public class SteamVR_ControllerManager : MonoBehaviour
 				if (i != objectIndex && indices[i] == trackedDeviceIndex)
 				{
 					GameObject val = objects[i];
-					if ((Object)(object)val != (Object)null)
+					if (val != null)
 					{
 						val.SetActive(false);
 					}
@@ -179,7 +179,7 @@ public class SteamVR_ControllerManager : MonoBehaviour
 		}
 		indices[objectIndex] = trackedDeviceIndex;
 		GameObject val2 = objects[objectIndex];
-		if ((Object)(object)val2 != (Object)null)
+		if (val2 != null)
 		{
 			if (trackedDeviceIndex == uint.MaxValue)
 			{

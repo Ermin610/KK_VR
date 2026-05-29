@@ -5,6 +5,7 @@ using BepInEx4;
 using Harmony;
 using Studio;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 using Logger = BepInEx4.Logger;
 

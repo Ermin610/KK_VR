@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VRGIN.Core;
 
@@ -37,7 +38,7 @@ public class CameraSlave : ProtectedBehaviour
 		//IL_00a3: Unknown result type (might be due to invalid IL or missing references)
 		base.OnAwake();
 		Camera camera = Camera;
-		if (!Object.op_Implicit((Object)(object)camera))
+		if (!(camera != null))
 		{
 			VRLog.Error("No camera found! {0}", ((Object)this).name);
 			Object.Destroy((Object)(object)this);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace Leap.Unity;
@@ -121,7 +122,7 @@ public class CapsuleHand : IHandModel
 	{
 		//IL_0015: Unknown result type (might be due to invalid IL or missing references)
 		//IL_001f: Expected O, but got Unknown
-		if ((Object)(object)_material != (Object)null)
+		if (_material != null)
 		{
 			jointMat = new Material(_material);
 		}
@@ -130,7 +131,7 @@ public class CapsuleHand : IHandModel
 			for (int i = 0; i < _serializedTransforms.Count; i++)
 			{
 				Transform val = _serializedTransforms[i];
-				if ((Object)(object)val != (Object)null)
+				if (val != null)
 				{
 					Object.DestroyImmediate((Object)(object)((Component)val).gameObject);
 				}
@@ -271,10 +272,10 @@ public class CapsuleHand : IHandModel
 			Vector3 val4 = val2.position - val3.position;
 			if (!_hasGeneratedMeshes)
 			{
-				((Component)val).GetComponent<MeshFilter>().sharedMesh = generateCylinderMesh(((Vector3)(ref val4)).magnitude / ((Component)this).transform.lossyScale.x);
+				((Component)val).GetComponent<MeshFilter>().sharedMesh = generateCylinderMesh(val4.magnitude / ((Component)this).transform.lossyScale.x);
 			}
 			val.position = val2.position;
-			if (!(((Vector3)(ref val4)).sqrMagnitude <= Mathf.Epsilon))
+			if (!(val4.sqrMagnitude <= Mathf.Epsilon))
 			{
 				val.LookAt(val3);
 			}
@@ -420,7 +421,7 @@ public class CapsuleHand : IHandModel
 			float num = (float)Math.PI * 2f * (float)i / (float)_cylinderResolution;
 			float num2 = 0.006f * Mathf.Cos(num);
 			float num3 = 0.006f * Mathf.Sin(num);
-			((Vector3)(ref val3))._002Ector(num2, num3, 0f);
+			val3 = new Vector3(num2, num3, 0f);
 			list.Add(zero + val3);
 			list.Add(val2 + val3);
 			list2.Add(Color.white);

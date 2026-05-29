@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Leap.Unity;
 
@@ -7,7 +8,7 @@ public static class Utils
 {
 	public static void IgnoreCollisions(GameObject first, GameObject second, bool ignore = true)
 	{
-		if ((Object)(object)first == (Object)null || (Object)(object)second == (Object)null)
+		if (first == null || second == null)
 		{
 			return;
 		}
@@ -17,7 +18,7 @@ public static class Utils
 		{
 			for (int j = 0; j < componentsInChildren2.Length; j++)
 			{
-				if ((Object)(object)componentsInChildren[i] != (Object)(object)componentsInChildren2[j] && componentsInChildren[i].enabled && componentsInChildren2[j].enabled)
+				if (componentsInChildren[i] != componentsInChildren2[j] && componentsInChildren[i].enabled && componentsInChildren2[j].enabled)
 				{
 					Physics.IgnoreCollision(componentsInChildren[i], componentsInChildren2[j], ignore);
 				}
@@ -69,7 +70,7 @@ public static class Utils
 		//IL_00d1: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 val = Vector3.Cross(normal, forward);
-		Vector3 normalized = ((Vector3)(ref val)).normalized;
+		Vector3 normalized = val.normalized;
 		float num = arc / (float)quality;
 		Vector3 val2 = center + forward * radius;
 		Vector3 val3 = default(Vector3);

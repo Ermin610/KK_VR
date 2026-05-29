@@ -44,7 +44,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.Basis.CalculateRotation();
 		}
-		if (Object.op_Implicit((Object)(object)palm))
+		if ((palm != null))
 		{
 			return palm.rotation;
 		}
@@ -60,7 +60,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.Direction.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)palm))
+		if ((palm != null))
 		{
 			return palm.forward;
 		}
@@ -78,7 +78,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.PalmNormal.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)palm))
+		if ((palm != null))
 		{
 			return -palm.up;
 		}
@@ -94,7 +94,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.Arm.Direction.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)forearm))
+		if ((forearm != null))
 		{
 			return forearm.forward;
 		}
@@ -110,7 +110,7 @@ public abstract class HandModel : IHandModel
 		{
 			return (0.5f * (hand_.Arm.WristPosition + hand_.Arm.ElbowPosition)).ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)forearm))
+		if ((forearm != null))
 		{
 			return forearm.position;
 		}
@@ -136,7 +136,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.Arm.ElbowPosition.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)elbowJoint))
+		if ((elbowJoint != null))
 		{
 			return elbowJoint.position;
 		}
@@ -152,7 +152,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.Arm.WristPosition.ToVector3();
 		}
-		if (Object.op_Implicit((Object)(object)wristJoint))
+		if ((wristJoint != null))
 		{
 			return wristJoint.position;
 		}
@@ -168,7 +168,7 @@ public abstract class HandModel : IHandModel
 		{
 			return hand_.Arm.Rotation.ToQuaternion();
 		}
-		if (Object.op_Implicit((Object)(object)forearm))
+		if ((forearm != null))
 		{
 			return forearm.rotation;
 		}
@@ -185,7 +185,7 @@ public abstract class HandModel : IHandModel
 		hand_ = hand;
 		for (int i = 0; i < fingers.Length; i++)
 		{
-			if ((Object)(object)fingers[i] != (Object)null)
+			if (fingers[i] != null)
 			{
 				fingers[i].SetLeapHand(hand_);
 			}
@@ -196,7 +196,7 @@ public abstract class HandModel : IHandModel
 	{
 		for (int i = 0; i < fingers.Length; i++)
 		{
-			if ((Object)(object)fingers[i] != (Object)null)
+			if (fingers[i] != null)
 			{
 				fingers[i].fingerType = (Finger.FingerType)i;
 				fingers[i].InitFinger();

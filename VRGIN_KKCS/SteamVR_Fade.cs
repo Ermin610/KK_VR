@@ -56,7 +56,7 @@ public class SteamVR_Fade : MonoBehaviour
 	{
 		//IL_0017: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0021: Expected O, but got Unknown
-		if ((Object)(object)fadeMaterial == (Object)null)
+		if (fadeMaterial == null)
 		{
 			fadeMaterial = new Material(Shader.Find("Custom/SteamVR_Fade"));
 			fadeMaterialColorID = Shader.PropertyToID("fadeColor");
@@ -98,13 +98,13 @@ public class SteamVR_Fade : MonoBehaviour
 			if (fadeOverlay)
 			{
 				SteamVR_Overlay instance = SteamVR_Overlay.instance;
-				if ((Object)(object)instance != (Object)null)
+				if (instance != null)
 				{
 					instance.alpha = 1f - currentColor.a;
 				}
 			}
 		}
-		if (currentColor.a > 0f && Object.op_Implicit((Object)(object)fadeMaterial))
+		if (currentColor.a > 0f && (fadeMaterial != null))
 		{
 			fadeMaterial.SetColor(fadeMaterialColorID, currentColor);
 			fadeMaterial.SetPass(0);

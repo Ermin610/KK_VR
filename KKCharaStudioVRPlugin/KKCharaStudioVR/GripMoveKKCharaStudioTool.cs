@@ -67,10 +67,10 @@ internal class GripMoveKKCharaStudioTool : Tool
 	{
 		Transform head = VR.Camera.Head;
 		((Component)internalGui).transform.parent = ((Component)this).transform;
-		((Component)internalGui).transform.localScale = Vector3.one * 0.4f;
+		((Component)internalGui).transform.localScale = Vector3.one * 0.8f;
 		if (head != null)
 		{
-			float dist = _settings != null ? _settings.UISpawnDistance : 1.2f;
+			float dist = _settings != null ? _settings.UISpawnDistance : 2.0f;
 			((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, dist));
 			((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
 		}
@@ -157,8 +157,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 		if (gripMenuHandler != null)
 			((Behaviour)gripMenuHandler).enabled = false;
 		// Keep VRGIN MenuHandler disabled (was permanently disabled in OnStart)
-		if ((internalGui != null))
-			((Component)internalGui).gameObject.SetActive(false);
+		// if ((internalGui != null))
+		// 	((Component)internalGui).gameObject.SetActive(false);
 
 		// Don't hide hand models during tool switching — keep them visible
 		// Only hide if settings explicitly disable hand models

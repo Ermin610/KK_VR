@@ -4,6 +4,7 @@ using System.Linq;
 using Leap;
 using Leap.Unity;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Controls;
 using VRGIN.Controls.LeapMotion;
 using VRGIN.Controls.Speech;
@@ -103,9 +104,9 @@ public abstract class ControlMode : ProtectedBehaviour
 		origin.rotation *= Quaternion.FromToRotation(forwardVector2, forwardVector);
 		float num = (ignoreHeight ? 0f : targetPosition.y);
 		float num2 = (ignoreHeight ? 0f : VR.Camera.SteamCam.head.position.y);
-		((Vector3)(ref targetPosition))._002Ector(targetPosition.x, num, targetPosition.z);
+		targetPosition = new Vector3(targetPosition.x, num, targetPosition.z);
 		Vector3 val = default(Vector3);
-		((Vector3)(ref val))._002Ector(VR.Camera.SteamCam.head.position.x, num2, VR.Camera.SteamCam.head.position.z);
+		val = new Vector3(VR.Camera.SteamCam.head.position.x, num2, VR.Camera.SteamCam.head.position.z);
 		Transform origin2 = VR.Camera.SteamCam.origin;
 		origin2.position += targetPosition - val;
 	}
@@ -231,7 +232,7 @@ public abstract class ControlMode : ProtectedBehaviour
 		//IL_0444: Unknown result type (might be due to invalid IL or missing references)
 		//IL_049d: Unknown result type (might be due to invalid IL or missing references)
 		RiggedHand component = handObj.GetComponent<RiggedHand>();
-		if (Object.op_Implicit((Object)(object)component))
+		if ((component != null))
 		{
 			((Component)component).gameObject.AddComponent<LeapMenuHandler>();
 			return component;
@@ -322,11 +323,11 @@ public abstract class ControlMode : ProtectedBehaviour
 		Object.Destroy((Object)(object)ControllerManager);
 		Object.Destroy((Object)(object)Left);
 		Object.Destroy((Object)(object)Right);
-		if (Object.op_Implicit((Object)(object)_CapturePanorama))
+		if ((_CapturePanorama != null))
 		{
 			Object.Destroy((Object)(object)_CapturePanorama);
 		}
-		if (Object.op_Implicit((Object)(object)LeapMotion))
+		if ((LeapMotion != null))
 		{
 			Object.DestroyImmediate((Object)(object)((Component)LeapMotion).gameObject);
 		}

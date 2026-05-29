@@ -181,9 +181,9 @@ public class SteamVR_PlayArea : MonoBehaviour
 			int num = (j + 1) % array.Length;
 			int num2 = (j + array.Length - 1) % array.Length;
 			Vector3 val = vertices[num] - vertices[j];
-			Vector3 normalized = ((Vector3)(ref val)).normalized;
+			Vector3 normalized = val.normalized;
 			val = vertices[num2] - vertices[j];
-			Vector3 normalized2 = ((Vector3)(ref val)).normalized;
+			Vector3 normalized2 = val.normalized;
 			Vector3 val2 = vertices[j];
 			val2 += Vector3.Cross(normalized, Vector3.up) * borderThickness;
 			val2 += Vector3.Cross(normalized2, Vector3.down) * borderThickness;

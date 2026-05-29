@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Rendering;
 using UnityEngine.VR;
 using Valve.VR;

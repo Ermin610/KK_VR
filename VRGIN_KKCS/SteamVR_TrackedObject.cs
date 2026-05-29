@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 public class SteamVR_TrackedObject : MonoBehaviour
@@ -53,7 +54,7 @@ public class SteamVR_TrackedObject : MonoBehaviour
 		{
 			isValid = true;
 			SteamVR_Utils.RigidTransform rigidTransform = new SteamVR_Utils.RigidTransform(poses[num].mDeviceToAbsoluteTracking);
-			if ((Object)(object)origin != (Object)null)
+			if (origin != null)
 			{
 				((Component)this).transform.position = ((Component)origin).transform.TransformPoint(rigidTransform.pos);
 				((Component)this).transform.rotation = origin.rotation * rigidTransform.rot;
@@ -73,7 +74,7 @@ public class SteamVR_TrackedObject : MonoBehaviour
 
 	private void OnEnable()
 	{
-		if ((Object)(object)SteamVR_Render.instance == (Object)null)
+		if (SteamVR_Render.instance == null)
 		{
 			((Behaviour)this).enabled = false;
 		}

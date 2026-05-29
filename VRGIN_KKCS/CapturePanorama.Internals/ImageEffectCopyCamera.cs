@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace CapturePanorama.Internals;
 
@@ -47,7 +48,7 @@ internal class ImageEffectCopyCamera : MonoBehaviour
 	{
 		for (int i = 0; i < temp.Length; i++)
 		{
-			if ((Object)(object)temp[i] != (Object)null)
+			if (temp[i] != null)
 			{
 				Object.Destroy((Object)(object)temp[i]);
 			}
@@ -67,12 +68,12 @@ internal class ImageEffectCopyCamera : MonoBehaviour
 		{
 			if (onRenderImageMethods.Count > i + 1)
 			{
-				if ((Object)(object)temp[i] != (Object)null && (((Texture)temp[i]).width != ((Texture)dest).width || ((Texture)temp[i]).height != ((Texture)dest).height || temp[i].depth != num || temp[i].format != dest.format))
+				if (temp[i] != null && (((Texture)temp[i]).width != ((Texture)dest).width || ((Texture)temp[i]).height != ((Texture)dest).height || temp[i].depth != num || temp[i].format != dest.format))
 				{
 					Object.Destroy((Object)(object)temp[i]);
 					temp[i] = null;
 				}
-				if ((Object)(object)temp[i] == (Object)null)
+				if (temp[i] == null)
 				{
 					temp[i] = new RenderTexture(((Texture)dest).width, ((Texture)dest).height, num, dest.format);
 				}

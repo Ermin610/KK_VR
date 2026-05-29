@@ -10,7 +10,7 @@ public class RigidFinger : SkeletalFinger
 	{
 		for (int i = 0; i < bones.Length; i++)
 		{
-			if ((Object)(object)bones[i] != (Object)null)
+			if (bones[i] != null)
 			{
 				((Component)bones[i]).GetComponent<Rigidbody>().maxAngularVelocity = float.PositiveInfinity;
 			}
@@ -29,10 +29,10 @@ public class RigidFinger : SkeletalFinger
 		//IL_00dd: Unknown result type (might be due to invalid IL or missing references)
 		for (int i = 0; i < bones.Length; i++)
 		{
-			if ((Object)(object)bones[i] != (Object)null)
+			if (bones[i] != null)
 			{
 				CapsuleCollider component = ((Component)bones[i]).GetComponent<CapsuleCollider>();
-				if ((Object)(object)component != (Object)null)
+				if (component != null)
 				{
 					component.direction = 2;
 					bones[i].localScale = new Vector3(1f / ((Component)this).transform.lossyScale.x, 1f / ((Component)this).transform.lossyScale.y, 1f / ((Component)this).transform.lossyScale.z);
@@ -40,7 +40,7 @@ public class RigidFinger : SkeletalFinger
 					component.height = GetBoneLength(i) + GetBoneWidth(i);
 				}
 				Rigidbody component2 = ((Component)bones[i]).GetComponent<Rigidbody>();
-				if (Object.op_Implicit((Object)(object)component2))
+				if ((component2 != null))
 				{
 					component2.MovePosition(GetBoneCenter(i));
 					component2.MoveRotation(GetBoneRotation(i));

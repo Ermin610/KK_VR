@@ -75,42 +75,42 @@ public class HandAttachments : IHandModel
 		//IL_045a: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0461: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0466: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)Palm != (Object)null)
+		if (Palm != null)
 		{
 			Palm.position = _hand.PalmPosition.ToVector3();
 			Palm.rotation = _hand.Basis.rotation.ToQuaternion();
 		}
-		if ((Object)(object)Arm != (Object)null)
+		if (Arm != null)
 		{
 			Arm.position = _hand.Arm.Center.ToVector3();
 			Arm.rotation = _hand.Arm.Basis.rotation.ToQuaternion();
 		}
-		if ((Object)(object)Thumb != (Object)null)
+		if (Thumb != null)
 		{
 			Thumb.position = _hand.Fingers[0].Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
 			Thumb.rotation = _hand.Fingers[0].Bone(Bone.BoneType.TYPE_DISTAL).Rotation.ToQuaternion();
 		}
-		if ((Object)(object)Index != (Object)null)
+		if (Index != null)
 		{
 			Index.position = _hand.Fingers[1].Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
 			Index.rotation = _hand.Fingers[1].Bone(Bone.BoneType.TYPE_DISTAL).Rotation.ToQuaternion();
 		}
-		if ((Object)(object)Middle != (Object)null)
+		if (Middle != null)
 		{
 			Middle.position = _hand.Fingers[2].Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
 			Middle.rotation = _hand.Fingers[2].Bone(Bone.BoneType.TYPE_DISTAL).Rotation.ToQuaternion();
 		}
-		if ((Object)(object)Ring != (Object)null)
+		if (Ring != null)
 		{
 			Ring.position = _hand.Fingers[3].Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
 			Ring.rotation = _hand.Fingers[3].Bone(Bone.BoneType.TYPE_DISTAL).Rotation.ToQuaternion();
 		}
-		if ((Object)(object)Pinky != (Object)null)
+		if (Pinky != null)
 		{
 			Pinky.position = _hand.Fingers[4].Bone(Bone.BoneType.TYPE_DISTAL).NextJoint.ToVector3();
 			Pinky.rotation = _hand.Fingers[4].Bone(Bone.BoneType.TYPE_DISTAL).Rotation.ToQuaternion();
 		}
-		if ((Object)(object)PinchPoint != (Object)null)
+		if (PinchPoint != null)
 		{
 			Vector tipPosition = _hand.Fingers[0].TipPosition;
 			Vector tipPosition2 = _hand.Fingers[1].TipPosition;
@@ -120,7 +120,7 @@ public class HandAttachments : IHandModel
 			Vector vector3 = _hand.Fingers[1].Bone(Bone.BoneType.TYPE_PROXIMAL).Direction.Cross(vector2);
 			PinchPoint.rotation = Quaternion.LookRotation(vector2.ToVector3(), vector3.ToVector3());
 		}
-		if ((Object)(object)GrabPoint != (Object)null)
+		if (GrabPoint != null)
 		{
 			Vector zero = Vector.Zero;
 			for (int i = 0; i < _hand.Fingers.Count; i++)

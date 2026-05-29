@@ -63,6 +63,6 @@ public class PlayArea
 		Position = new Vector3(VR.Camera.Head.position.x, VR.Camera.Origin.position.y, VR.Camera.Head.position.z);
 		Scale = VR.Settings.IPDScale;
 		Quaternion rotation = VR.Camera.Origin.rotation;
-		Rotation = ((Quaternion)(ref rotation)).eulerAngles.y;
+		Rotation = rotation.eulerAngles.y;
 	}
 }

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using Valve.VR;
 
 public class SteamVR_Menu : MonoBehaviour
@@ -40,7 +41,7 @@ public class SteamVR_Menu : MonoBehaviour
 	{
 		get
 		{
-			if (!Object.op_Implicit((Object)(object)overlay))
+			if (!(overlay != null))
 			{
 				return null;
 			}
@@ -59,7 +60,7 @@ public class SteamVR_Menu : MonoBehaviour
 		scaleLimitY = $"{scaleLimits.y:N1}";
 		scaleRateText = $"{scaleRate:N1}";
 		SteamVR_Overlay instance = SteamVR_Overlay.instance;
-		if ((Object)(object)instance != (Object)null)
+		if (instance != null)
 		{
 			uvOffset = instance.uvOffset;
 			distance = instance.distance;
@@ -76,7 +77,7 @@ public class SteamVR_Menu : MonoBehaviour
 		//IL_05a0: Unknown result type (might be due to invalid IL or missing references)
 		//IL_05b0: Unknown result type (might be due to invalid IL or missing references)
 		//IL_05df: Unknown result type (might be due to invalid IL or missing references)
-		if ((Object)(object)overlay == (Object)null)
+		if (overlay == null)
 		{
 			return;
 		}
@@ -89,28 +90,28 @@ public class SteamVR_Menu : MonoBehaviour
 			GL.Clear(false, true, Color.clear);
 		}
 		Rect val2 = default(Rect);
-		((Rect)(ref val2))._002Ector(0f, 0f, (float)((Texture)val).width, (float)((Texture)val).height);
+		val2 = new Rect(0f, 0f, (float)((Texture)val).width, (float)((Texture)val).height);
 		if (Screen.width < ((Texture)val).width)
 		{
-			((Rect)(ref val2)).width = Screen.width;
+			val2.width = Screen.width;
 			overlay.uvOffset.x = (0f - (float)(((Texture)val).width - Screen.width)) / (float)(2 * ((Texture)val).width);
 		}
 		if (Screen.height < ((Texture)val).height)
 		{
-			((Rect)(ref val2)).height = Screen.height;
+			val2.height = Screen.height;
 			overlay.uvOffset.y = (float)(((Texture)val).height - Screen.height) / (float)(2 * ((Texture)val).height);
 		}
 		GUILayout.BeginArea(val2);
-		if ((Object)(object)background != (Object)null)
+		if (background != null)
 		{
-			GUI.DrawTexture(new Rect((((Rect)(ref val2)).width - (float)background.width) / 2f, (((Rect)(ref val2)).height - (float)background.height) / 2f, (float)background.width, (float)background.height), background);
+			GUI.DrawTexture(new Rect((val2.width - (float)background.width) / 2f, (val2.height - (float)background.height) / 2f, (float)background.width, (float)background.height), background);
 		}
 		GUILayout.BeginHorizontal((GUILayoutOption[])(object)new GUILayoutOption[0]);
 		GUILayout.FlexibleSpace();
 		GUILayout.BeginVertical((GUILayoutOption[])(object)new GUILayoutOption[0]);
-		if ((Object)(object)logo != (Object)null)
+		if (logo != null)
 		{
-			GUILayout.Space(((Rect)(ref val2)).height / 2f - logoHeight);
+			GUILayout.Space(val2.height / 2f - logoHeight);
 			GUILayout.Box(logo, (GUILayoutOption[])(object)new GUILayoutOption[0]);
 		}
 		GUILayout.Space(menuOffset);
@@ -172,7 +173,7 @@ public class SteamVR_Menu : MonoBehaviour
 			overlay.antialias = false;
 		}
 		SteamVR_Camera steamVR_Camera = SteamVR_Render.Top();
-		if ((Object)(object)steamVR_Camera != (Object)null)
+		if (steamVR_Camera != null)
 		{
 			steamVR_Camera.wireframe = GUILayout.Toggle(steamVR_Camera.wireframe, "Wireframe", (GUILayoutOption[])(object)new GUILayoutOption[0]);
 			SteamVR_Render instance2 = SteamVR_Render.instance;
@@ -207,7 +208,7 @@ public class SteamVR_Menu : MonoBehaviour
 		GUILayout.FlexibleSpace();
 		GUILayout.EndHorizontal();
 		GUILayout.EndArea();
-		if ((Object)(object)cursor != (Object)null)
+		if (cursor != null)
 		{
 			float x = Input.mousePosition.x;
 			float num6 = (float)Screen.height - Input.mousePosition.y;
@@ -228,13 +229,13 @@ public class SteamVR_Menu : MonoBehaviour
 		//IL_0050: Unknown result type (might be due to invalid IL or missing references)
 		//IL_00d2: Unknown result type (might be due to invalid IL or missing references)
 		SteamVR_Overlay instance = SteamVR_Overlay.instance;
-		if ((Object)(object)instance == (Object)null)
+		if (instance == null)
 		{
 			return;
 		}
 		Texture obj = instance.texture;
 		RenderTexture val = (RenderTexture)(object)((obj is RenderTexture) ? obj : null);
-		if ((Object)(object)val == (Object)null)
+		if (val == null)
 		{
 			Debug.LogError((object)"Menu requires overlay texture to be a render texture.");
 			return;
@@ -248,7 +249,7 @@ public class SteamVR_Menu : MonoBehaviour
 		Camera[] array = Object.FindObjectsOfType(typeof(Camera)) as Camera[];
 		foreach (Camera val2 in array)
 		{
-			if (((Behaviour)val2).enabled && (Object)(object)val2.targetTexture == (Object)(object)val)
+			if (((Behaviour)val2).enabled && val2.targetTexture == val)
 			{
 				overlayCam = val2;
 				((Behaviour)overlayCam).enabled = false;
@@ -256,7 +257,7 @@ public class SteamVR_Menu : MonoBehaviour
 			}
 		}
 		SteamVR_Camera steamVR_Camera = SteamVR_Render.Top();
-		if ((Object)(object)steamVR_Camera != (Object)null)
+		if (steamVR_Camera != null)
 		{
 			scale = steamVR_Camera.origin.localScale.x;
 		}
@@ -267,11 +268,11 @@ public class SteamVR_Menu : MonoBehaviour
 		//IL_0035: Unknown result type (might be due to invalid IL or missing references)
 		//IL_003a: Unknown result type (might be due to invalid IL or missing references)
 		RestoreCursorState();
-		if ((Object)(object)overlayCam != (Object)null)
+		if (overlayCam != null)
 		{
 			((Behaviour)overlayCam).enabled = true;
 		}
-		if ((Object)(object)overlay != (Object)null)
+		if (overlay != null)
 		{
 			overlay.uvOffset = uvOffset;
 			overlay.distance = distance;
@@ -283,7 +284,7 @@ public class SteamVR_Menu : MonoBehaviour
 	{
 		if (Input.GetKeyDown((KeyCode)27) || Input.GetKeyDown((KeyCode)357))
 		{
-			if ((Object)(object)overlay == (Object)null)
+			if (overlay == null)
 			{
 				ShowMenu();
 			}
@@ -311,7 +312,7 @@ public class SteamVR_Menu : MonoBehaviour
 		//IL_001f: Unknown result type (might be due to invalid IL or missing references)
 		this.scale = scale;
 		SteamVR_Camera steamVR_Camera = SteamVR_Render.Top();
-		if ((Object)(object)steamVR_Camera != (Object)null)
+		if (steamVR_Camera != null)
 		{
 			steamVR_Camera.origin.localScale = new Vector3(scale, scale, scale);
 		}

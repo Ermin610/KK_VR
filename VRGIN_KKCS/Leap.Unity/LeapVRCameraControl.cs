@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using UnityEngine.Rendering;
 
 namespace Leap.Unity;
@@ -37,11 +38,11 @@ public class LeapVRCameraControl : MonoBehaviour
 			{
 				for (int i = 0; i < 4; i++)
 				{
-					((Matrix4x4)(ref ProjectionMatrix))[1, i] = 0f - ((Matrix4x4)(ref ProjectionMatrix))[1, i];
+					ProjectionMatrix[1, i] = 0f - ProjectionMatrix[1, i];
 				}
 				for (int j = 0; j < 4; j++)
 				{
-					((Matrix4x4)(ref ProjectionMatrix))[2, j] = ((Matrix4x4)(ref ProjectionMatrix))[2, j] * 0.5f + ((Matrix4x4)(ref ProjectionMatrix))[3, j] * 0.5f;
+					ProjectionMatrix[2, j] = ProjectionMatrix[2, j] * 0.5f + ProjectionMatrix[3, j] * 0.5f;
 				}
 			}
 			Width = camera.pixelWidth;
@@ -85,7 +86,7 @@ public class LeapVRCameraControl : MonoBehaviour
 	{
 		get
 		{
-			if ((Object)(object)_cachedCamera == (Object)null)
+			if (_cachedCamera == null)
 			{
 				_cachedCamera = ((Component)this).GetComponent<Camera>();
 			}
@@ -158,7 +159,7 @@ public class LeapVRCameraControl : MonoBehaviour
 		_eyeType.BeginCamera();
 		if (_eyeType.IsLeftEye)
 		{
-			Shader.SetGlobalVector("_LeapGlobalStereoUVOffset", Vector4.op_Implicit(LEFT_EYE_UV_OFFSET));
+			Shader.SetGlobalVector("_LeapGlobalStereoUVOffset", ((Vector4)(LEFT_EYE_UV_OFFSET)));
 			if (LeapVRCameraControl.OnLeftPreRender != null)
 			{
 				LeapVRCameraControl.OnLeftPreRender(_cachedCamera);
@@ -166,7 +167,7 @@ public class LeapVRCameraControl : MonoBehaviour
 		}
 		else
 		{
-			Shader.SetGlobalVector("_LeapGlobalStereoUVOffset", Vector4.op_Implicit(RIGHT_EYE_UV_OFFSET));
+			Shader.SetGlobalVector("_LeapGlobalStereoUVOffset", ((Vector4)(RIGHT_EYE_UV_OFFSET)));
 			if (LeapVRCameraControl.OnRightPreRender != null)
 			{
 				LeapVRCameraControl.OnRightPreRender(_cachedCamera);

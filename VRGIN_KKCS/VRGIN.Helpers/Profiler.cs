@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using VRGIN.Core;
 
 namespace VRGIN.Helpers;
@@ -22,7 +23,7 @@ public class Profiler : ProtectedBehaviour
 	public static void FindHotPaths(Callback callback)
 	{
 		//IL_0016: Unknown result type (might be due to invalid IL or missing references)
-		if (!Object.op_Implicit((Object)(object)GameObject.Find("Profiler")))
+		if (!(GameObject.Find("Profiler") != null))
 		{
 			new GameObject("Profiler").AddComponent<Profiler>()._Callback = callback;
 		}

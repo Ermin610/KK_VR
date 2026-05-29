@@ -48,9 +48,9 @@ public class GuiScaler
 			//IL_003f: Unknown result type (might be due to invalid IL or missing references)
 			//IL_0049: Unknown result type (might be due to invalid IL or missing references)
 			Vector3 val = VR.Camera.Head.position - TopLeft;
-			Vector3 normalized = ((Vector3)(ref val)).normalized;
+			Vector3 normalized = val.normalized;
 			val = VR.Camera.Head.position - BottomRight;
-			return Vector3.Lerp(normalized, ((Vector3)(ref val)).normalized, 0.5f);
+			return Vector3.Lerp(normalized, val.normalized, 0.5f);
 		}
 	}
 
@@ -134,7 +134,7 @@ public class GuiScaler
 		//IL_0139: Unknown result type (might be due to invalid IL or missing references)
 		//IL_013e: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0143: Unknown result type (might be due to invalid IL or missing references)
-		if (Object.op_Implicit((Object)(object)_Left) && Object.op_Implicit((Object)(object)_Right))
+		if ((_Left != null) && (_Right != null))
 		{
 			float num = Vector3.Distance(_Left.position, _Right.position);
 			float num2 = Vector3.Distance(_StartLeft.Value, _StartRight.Value);
@@ -167,9 +167,9 @@ public class GuiScaler
 		//IL_0052: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0053: Unknown result type (might be due to invalid IL or missing references)
 		Vector3 val = _Right.position - _Left.position;
-		Vector3 normalized = ((Vector3)(ref val)).normalized;
+		Vector3 normalized = val.normalized;
 		Vector3 val2 = Vector3.Lerp(_Left.forward, _Right.forward, 0.5f);
 		val = Vector3.Cross(normalized, val2);
-		return Quaternion.LookRotation(((Vector3)(ref val)).normalized, val2);
+		return Quaternion.LookRotation(val.normalized, val2);
 	}
 }

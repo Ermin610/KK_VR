@@ -1,6 +1,7 @@
 using System;
 using SpeechTransport;
 using UnityEngine;
+using Object = UnityEngine.Object;
 using VRGIN.Core;
 
 namespace VRGIN.Controls.Speech;
@@ -19,7 +20,7 @@ public class VoiceShortcut : IShortcut, IDisposable
 	{
 		_Action = action;
 		_Command = command;
-		if (Object.op_Implicit((Object)(object)VR.Speech))
+		if ((VR.Speech != null))
 		{
 			VR.Speech.SpeechRecognized += OnRecognized;
 		}
@@ -35,7 +36,7 @@ public class VoiceShortcut : IShortcut, IDisposable
 
 	public void Dispose()
 	{
-		if (Object.op_Implicit((Object)(object)VR.Speech))
+		if ((VR.Speech != null))
 		{
 			VR.Speech.SpeechRecognized -= OnRecognized;
 		}

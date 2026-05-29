@@ -41,7 +41,7 @@ public static class MessengerExtensions
 	public static void SendMessageUpwardsToAll(this GameObject gameobject, string methodName, params object[] parameters)
 	{
 		Transform val = gameobject.transform;
-		while ((Object)(object)val != (Object)null)
+		while (val != null)
 		{
 			((Component)val).gameObject.BroadcastToAll(methodName, parameters);
 			val = val.parent;

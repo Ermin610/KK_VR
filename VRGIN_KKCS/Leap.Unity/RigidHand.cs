@@ -34,15 +34,15 @@ public class RigidHand : SkeletalHand
 		//IL_0154: Unknown result type (might be due to invalid IL or missing references)
 		for (int i = 0; i < fingers.Length; i++)
 		{
-			if ((Object)(object)fingers[i] != (Object)null)
+			if (fingers[i] != null)
 			{
 				fingers[i].UpdateFinger();
 			}
 		}
-		if ((Object)(object)palm != (Object)null)
+		if (palm != null)
 		{
 			Rigidbody component = ((Component)palm).GetComponent<Rigidbody>();
-			if (Object.op_Implicit((Object)(object)component))
+			if ((component != null))
 			{
 				component.MovePosition(GetPalmCenter());
 				component.MoveRotation(GetPalmRotation());
@@ -53,10 +53,10 @@ public class RigidHand : SkeletalHand
 				palm.rotation = GetPalmRotation();
 			}
 		}
-		if ((Object)(object)forearm != (Object)null)
+		if (forearm != null)
 		{
 			CapsuleCollider component2 = ((Component)forearm).GetComponent<CapsuleCollider>();
-			if ((Object)(object)component2 != (Object)null)
+			if (component2 != null)
 			{
 				component2.direction = 2;
 				forearm.localScale = new Vector3(1f / ((Component)this).transform.lossyScale.x, 1f / ((Component)this).transform.lossyScale.y, 1f / ((Component)this).transform.lossyScale.z);
@@ -64,7 +64,7 @@ public class RigidHand : SkeletalHand
 				component2.height = GetArmLength() + GetArmWidth();
 			}
 			Rigidbody component3 = ((Component)forearm).GetComponent<Rigidbody>();
-			if (Object.op_Implicit((Object)(object)component3))
+			if ((component3 != null))
 			{
 				component3.MovePosition(GetArmCenter());
 				component3.MoveRotation(GetArmRotation());

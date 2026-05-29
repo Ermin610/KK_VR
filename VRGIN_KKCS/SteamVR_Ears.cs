@@ -20,7 +20,7 @@ public class SteamVR_Ears : MonoBehaviour
 		//IL_002b: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0030: Unknown result type (might be due to invalid IL or missing references)
 		Transform origin = vrcam.origin;
-		Quaternion val = (((Object)(object)origin != (Object)null) ? origin.rotation : Quaternion.identity);
+		Quaternion val = ((origin != null) ? origin.rotation : Quaternion.identity);
 		((Component)this).transform.rotation = val * offset;
 	}
 

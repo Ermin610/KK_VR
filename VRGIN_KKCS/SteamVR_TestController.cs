@@ -69,7 +69,7 @@ public class SteamVR_TestController : MonoBehaviour
 		Debug.Log((object)("uninitialized: " + device.uninitialized));
 		Debug.Log((object)("pos: " + device.transform.pos));
 		SteamVR_Utils.RigidTransform transform = device.transform;
-		Debug.Log((object)("rot: " + ((Quaternion)(ref transform.rot)).eulerAngles));
+		Debug.Log((object)("rot: " + transform.rot.eulerAngles));
 		Debug.Log((object)("velocity: " + device.velocity));
 		Debug.Log((object)("angularVelocity: " + device.angularVelocity));
 		int deviceIndex = SteamVR_Controller.GetDeviceIndex(SteamVR_Controller.DeviceRelation.Leftmost);
@@ -94,7 +94,7 @@ public class SteamVR_TestController : MonoBehaviour
 		foreach (int controllerIndex in controllerIndices)
 		{
 			SteamVR_Overlay instance = SteamVR_Overlay.instance;
-			if (Object.op_Implicit((Object)(object)instance) && Object.op_Implicit((Object)(object)point) && Object.op_Implicit((Object)(object)pointer))
+			if ((instance != null) && (point != null) && (pointer != null))
 			{
 				SteamVR_Utils.RigidTransform transform = SteamVR_Controller.Input(controllerIndex).transform;
 				((Component)pointer).transform.localPosition = transform.pos;
