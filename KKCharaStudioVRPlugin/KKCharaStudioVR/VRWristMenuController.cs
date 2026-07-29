@@ -12,15 +12,28 @@ public sealed class VRWristMenuController : MonoBehaviour
     private const float MenuPressMaxDuration = 0.45f;
     private const float ConfirmationDuration = 4f;
     private const float BaseMenuScale = 0.00045f;
+    private const float MenuWidth = 560f;
+    private const float MenuHeight = 500f;
+
+    private enum WristMenuPage
+    {
+        Root,
+        Clothing
+    }
 
     public static VRWristMenuController Instance { get; private set; }
     public static bool IsOpen => Instance != null && Instance._isOpen;
 
     private KKCharaStudioVRSettings _settings;
     private GameObject _menuRoot;
+    private GameObject _rootPage;
+    private GameObject _clothingPage;
     private RectTransform _menuRect;
     private Text _statusText;
+    private Text _clothingCharacterText;
     private VRWristMenuButtonTarget _loadSceneButton;
+    private readonly VRWristMenuButtonTarget[] _clothingPartButtons =
+        new VRWristMenuButtonTarget[VRCharacterClothingService.PartCount];
     private VRWristMenuButtonTarget _hoveredButton;
     private Font _font;
     private LineRenderer _laser;
@@ -37,6 +50,8 @@ public sealed class VRWristMenuController : MonoBehaviour
     private float _menuPressStarted;
     private float _confirmationUntil;
     private float _statusUntil;
+    private float _nextClothingRefresh;
+    private WristMenuPage _page;
 
     private void Awake()
     {
@@ -148,7 +163,10 @@ public sealed class VRWristMenuController : MonoBehaviour
         if (_menuRoot != null)
             _menuRoot.SetActive(open);
         if (open)
+        {
+            ShowPage(WristMenuPage.Root);
             SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+        }
 
         VRLog.Info("Wrist menu " + (open ? "opened." : "closed."));
     }
@@ -173,7 +191,7 @@ public sealed class VRWristMenuController : MonoBehaviour
         _menuRoot.layer = _visibleLayer;
         _menuRoot.transform.SetParent(transform, false);
         _menuRect = _menuRoot.GetComponent<RectTransform>();
-        _menuRect.sizeDelta = new Vector2(560f, 430f);
+        _menuRect.sizeDelta = new Vector2(MenuWidth, MenuHeight);
         _menuRect.localScale = Vector3.one * BaseMenuScale;
 
         Canvas canvas = _menuRoot.GetComponent<Canvas>();
@@ -186,55 +204,185 @@ public sealed class VRWristMenuController : MonoBehaviour
         CanvasScaler scaler = _menuRoot.GetComponent<CanvasScaler>();
         scaler.dynamicPixelsPerUnit = 10f;
 
-        CreateImage("Background", _menuRect, 0f, 0f, 560f, 430f, new Color(0.035f, 0.04f, 0.045f, 0.97f));
-        CreateImage("Header", _menuRect, 0f, 0f, 560f, 58f, new Color(0.075f, 0.09f, 0.105f, 1f));
-        CreateText("Title", _menuRect, "KK VR 快捷菜单", 22f, 10f, 516f, 40f, 28,
+        CreateImage("Background", _menuRect, 0f, 0f, MenuWidth, MenuHeight, new Color(0.035f, 0.04f, 0.045f, 0.97f));
+        CreateImage("Header", _menuRect, 0f, 0f, MenuWidth, 58f, new Color(0.075f, 0.09f, 0.105f, 1f));
+
+        _rootPage = CreateRectObject("RootPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _clothingPage = CreateRectObject("ClothingPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+
+        CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 516f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
 
-        CreateText("SceneSection", _menuRect, "场景  SCENE", 24f, 70f, 512f, 28f, 20,
+        CreateText("SceneSection", _rootPage.transform, "场景  SCENE", 24f, 68f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
         _loadSceneButton = CreateButton(
             "LoadScene",
             "读取场景\nLOAD SCENE",
             24f,
-            104f,
+            98f,
             new Color(0.05f, 0.19f, 0.23f, 1f),
             new Color(0.08f, 0.38f, 0.45f, 1f),
-            HandleLoadScene);
+            HandleLoadScene,
+            _rootPage.transform,
+            248f,
+            68f,
+            20);
         CreateButton(
             "SaveScene",
             "保存场景\nSAVE SCENE",
             288f,
-            104f,
+            98f,
             new Color(0.05f, 0.19f, 0.23f, 1f),
             new Color(0.08f, 0.38f, 0.45f, 1f),
-            HandleSaveScene);
+            HandleSaveScene,
+            _rootPage.transform,
+            248f,
+            68f,
+            20);
 
-        CreateText("MmdSection", _menuRect, "MMD", 24f, 198f, 512f, 28f, 20,
+        CreateText("MmdSection", _rootPage.transform, "MMD", 24f, 178f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
         CreateButton(
             "ToggleMmd",
             "播放 / 暂停\nPLAY / PAUSE",
             24f,
-            232f,
+            208f,
             new Color(0.22f, 0.15f, 0.045f, 1f),
             new Color(0.46f, 0.29f, 0.06f, 1f),
-            HandleToggleMmd);
+            HandleToggleMmd,
+            _rootPage.transform,
+            248f,
+            68f,
+            20);
         CreateButton(
             "LoadVmd",
             "读取 VMD\nLOAD VMD",
             288f,
-            232f,
+            208f,
             new Color(0.22f, 0.15f, 0.045f, 1f),
             new Color(0.46f, 0.29f, 0.06f, 1f),
-            HandleLoadVmd);
+            HandleLoadVmd,
+            _rootPage.transform,
+            248f,
+            68f,
+            20);
 
-        CreateImage("StatusBackground", _menuRect, 24f, 326f, 512f, 76f, new Color(0.07f, 0.08f, 0.085f, 1f));
-        _statusText = CreateText("Status", _menuRect, "就绪", 38f, 336f, 484f, 56f, 18,
+        CreateText("CharacterSection", _rootPage.transform, "角色  CHARACTER", 24f, 290f, 512f, 24f, 20,
+            TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
+        CreateButton(
+            "OpenClothing",
+            "角色换装  >\nCHARACTER CLOTHING",
+            24f,
+            320f,
+            new Color(0.055f, 0.2f, 0.115f, 1f),
+            new Color(0.09f, 0.4f, 0.2f, 1f),
+            HandleOpenClothing,
+            _rootPage.transform,
+            512f,
+            62f,
+            20);
+
+        BuildClothingPage();
+
+        CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, new Color(0.07f, 0.08f, 0.085f, 1f));
+        _statusText = CreateText("Status", _menuRect, "就绪", 38f, 420f, 484f, 50f, 18,
             TextAnchor.MiddleLeft, new Color(0.78f, 0.86f, 0.9f, 1f));
 
+        _clothingPage.SetActive(false);
         _menuRoot.SetActive(false);
         return true;
+    }
+
+    private void BuildClothingPage()
+    {
+        CreateButton(
+            "ClothingBack",
+            "<",
+            18f,
+            10f,
+            new Color(0.14f, 0.16f, 0.18f, 1f),
+            new Color(0.28f, 0.32f, 0.35f, 1f),
+            HandleBackToRoot,
+            _clothingPage.transform,
+            58f,
+            38f,
+            28);
+        CreateText("ClothingTitle", _clothingPage.transform, "角色换装", 92f, 10f, 444f, 40f, 28,
+            TextAnchor.MiddleLeft, Color.white);
+
+        CreateImage("SelectedCharacterBackground", _clothingPage.transform, 24f, 66f, 512f, 38f,
+            new Color(0.075f, 0.1f, 0.085f, 1f));
+        _clothingCharacterText = CreateText(
+            "SelectedCharacter",
+            _clothingPage.transform,
+            "未选择角色",
+            38f,
+            69f,
+            484f,
+            32f,
+            18,
+            TextAnchor.MiddleLeft,
+            new Color(0.7f, 0.8f, 0.74f, 1f));
+
+        CreateText("ClothingPresetSection", _clothingPage.transform, "整套预设  PRESET", 24f, 112f, 512f, 24f, 18,
+            TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
+        CreateButton(
+            "ClothingDressed",
+            "穿好\nDRESSED",
+            24f,
+            140f,
+            new Color(0.055f, 0.2f, 0.115f, 1f),
+            new Color(0.09f, 0.4f, 0.2f, 1f),
+            () => HandleClothingPreset(0),
+            _clothingPage.transform,
+            165f,
+            48f,
+            17);
+        CreateButton(
+            "ClothingHalf",
+            "半脱\nHALF",
+            198f,
+            140f,
+            new Color(0.18f, 0.14f, 0.055f, 1f),
+            new Color(0.4f, 0.29f, 0.08f, 1f),
+            () => HandleClothingPreset(1),
+            _clothingPage.transform,
+            164f,
+            48f,
+            17);
+        CreateButton(
+            "ClothingUndressed",
+            "脱下\nUNDRESS",
+            371f,
+            140f,
+            new Color(0.22f, 0.08f, 0.09f, 1f),
+            new Color(0.46f, 0.13f, 0.16f, 1f),
+            () => HandleClothingPreset(3),
+            _clothingPage.transform,
+            165f,
+            48f,
+            17);
+
+        CreateText("ClothingPartsSection", _clothingPage.transform, "单独部位  PARTS", 24f, 198f, 512f, 24f, 18,
+            TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
+        for (int i = 0; i < _clothingPartButtons.Length; i++)
+        {
+            int partId = i;
+            float x = i % 2 == 0 ? 24f : 288f;
+            float y = 226f + i / 2 * 45f;
+            _clothingPartButtons[i] = CreateButton(
+                "ClothingPart" + i,
+                VRCharacterClothingService.GetPartName(i) + "  -",
+                x,
+                y,
+                new Color(0.07f, 0.115f, 0.14f, 1f),
+                new Color(0.11f, 0.27f, 0.34f, 1f),
+                () => HandleCycleClothingPart(partId),
+                _clothingPage.transform,
+                248f,
+                39f,
+                17);
+        }
     }
 
     private Image CreateImage(string name, Transform parent, float x, float y, float width, float height, Color color)
@@ -282,12 +430,15 @@ public sealed class VRWristMenuController : MonoBehaviour
         float y,
         Color normalColor,
         Color hoverColor,
-        Action onClick)
+        Action onClick,
+        Transform parent = null,
+        float width = 248f,
+        float height = 78f,
+        int fontSize = 21)
     {
-        const float width = 248f;
-        const float height = 78f;
-        Image background = CreateImage(name, _menuRect, x, y, width, height, normalColor);
-        Text buttonText = CreateText(name + "Label", background.transform, label, 10f, 8f, width - 20f, height - 16f, 21,
+        Transform buttonParent = parent ?? _menuRect;
+        Image background = CreateImage(name, buttonParent, x, y, width, height, normalColor);
+        Text buttonText = CreateText(name + "Label", background.transform, label, 10f, 5f, width - 20f, height - 10f, fontSize,
             TextAnchor.MiddleCenter, Color.white);
 
         GameObject hitbox = new GameObject(name + "Hitbox");
@@ -467,6 +618,83 @@ public sealed class VRWristMenuController : MonoBehaviour
             _hoveredButton.SetHovered(true);
     }
 
+    private void ShowPage(WristMenuPage page)
+    {
+        _page = page;
+        ResetConfirmation();
+        SetHoveredButton(null);
+
+        if (_rootPage != null)
+            _rootPage.SetActive(page == WristMenuPage.Root);
+        if (_clothingPage != null)
+            _clothingPage.SetActive(page == WristMenuPage.Clothing);
+
+        if (page == WristMenuPage.Clothing)
+        {
+            RefreshClothingPage();
+            _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
+    }
+
+    private void RefreshClothingPage()
+    {
+        if (_clothingCharacterText == null)
+            return;
+
+        Studio.OCIChar character;
+        string selectionStatus;
+        bool hasCharacter = VRCharacterClothingService.TryGetSelectedCharacter(out character, out selectionStatus);
+        _clothingCharacterText.text = hasCharacter ? "当前角色  " + selectionStatus : selectionStatus;
+        _clothingCharacterText.color = hasCharacter
+            ? new Color(0.62f, 1f, 0.72f, 1f)
+            : new Color(1f, 0.45f, 0.4f, 1f);
+
+        for (int i = 0; i < _clothingPartButtons.Length; i++)
+        {
+            if (_clothingPartButtons[i] == null)
+                continue;
+            string state = hasCharacter
+                ? VRCharacterClothingService.GetPartStateLabel(character, i)
+                : "-";
+            _clothingPartButtons[i].SetLabel(
+                VRCharacterClothingService.GetPartName(i) + "  " + state);
+        }
+    }
+
+    private void HandleOpenClothing()
+    {
+        ShowPage(WristMenuPage.Clothing);
+        SetStatus("角色换装", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+    }
+
+    private void HandleBackToRoot()
+    {
+        ShowPage(WristMenuPage.Root);
+        SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+    }
+
+    private void HandleClothingPreset(byte state)
+    {
+        string status;
+        bool success = VRCharacterClothingService.TrySetAll(state, out status);
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            4f);
+        RefreshClothingPage();
+    }
+
+    private void HandleCycleClothingPart(int partId)
+    {
+        string status;
+        bool success = VRCharacterClothingService.TryCyclePart(partId, out status);
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            4f);
+        RefreshClothingPage();
+    }
+
     private void HandleLoadScene()
     {
         if (_confirmationUntil <= Time.unscaledTime)
@@ -551,6 +779,11 @@ public sealed class VRWristMenuController : MonoBehaviour
             ResetConfirmation();
         if (_statusUntil > 0f && Time.unscaledTime > _statusUntil && _confirmationUntil <= 0f)
             SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+        if (_page == WristMenuPage.Clothing && Time.unscaledTime >= _nextClothingRefresh)
+        {
+            RefreshClothingPage();
+            _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
     }
 
     private void ResetConfirmation()
