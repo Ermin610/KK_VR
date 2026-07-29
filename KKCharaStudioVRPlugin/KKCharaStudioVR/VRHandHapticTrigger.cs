@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
-using Object = UnityEngine.Object;
 using Valve.VR;
 using VRGIN.Core;
 
@@ -8,20 +8,35 @@ namespace KKCharaStudioVR
 {
     public class VRHandHapticTrigger : MonoBehaviour
     {
+        private struct TargetInfo
+        {
+            public bool isValid;
+            public bool isBreast;
+
+            public TargetInfo(bool valid, bool breast)
+            {
+                isValid = valid;
+                isBreast = breast;
+            }
+        }
+
+        private const float PulseCooldown = 0.05f;
+        private const int MaxCachedColliders = 512;
+        private static readonly Dictionary<Collider, TargetInfo> TargetCache = new Dictionary<Collider, TargetInfo>();
+        private static readonly Dictionary<int, float> LastPulseByDevice = new Dictionary<int, float>();
+
         public SteamVR_TrackedObject trackedObject;
         public bool isLeftHand;
         private KKCharaStudioVRSettings _settings;
-        private float _lastPulseTime;
 
         private void Start()
         {
             if (trackedObject == null)
-            {
                 trackedObject = GetComponentInParent<SteamVR_TrackedObject>();
-            }
+
             if (trackedObject == null)
             {
-                var left = GetComponentInParent<VRGIN.Controls.LeftController>();
+                VRGIN.Controls.LeftController left = GetComponentInParent<VRGIN.Controls.LeftController>();
                 if (left != null)
                 {
                     trackedObject = left.Tracking;
@@ -29,7 +44,7 @@ namespace KKCharaStudioVR
                 }
                 else
                 {
-                    var right = GetComponentInParent<VRGIN.Controls.RightController>();
+                    VRGIN.Controls.RightController right = GetComponentInParent<VRGIN.Controls.RightController>();
                     if (right != null)
                     {
                         trackedObject = right.Tracking;
@@ -39,111 +54,112 @@ namespace KKCharaStudioVR
             }
             else
             {
-                var left = GetComponentInParent<VRGIN.Controls.LeftController>() ?? trackedObject.GetComponent<VRGIN.Controls.LeftController>();
-                if (left != null)
-                {
-                    isLeftHand = true;
-                }
+                VRGIN.Controls.LeftController left = GetComponentInParent<VRGIN.Controls.LeftController>()
+                    ?? trackedObject.GetComponent<VRGIN.Controls.LeftController>();
+                if (left != null) isLeftHand = true;
             }
 
+            ResolveSettings();
+        }
+
+        private void ResolveSettings()
+        {
             if (VR.Manager != null && VR.Manager.Context != null)
-            {
                 _settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
-            }
         }
 
         private void OnTriggerStay(Collider other)
         {
+            if (_settings == null) ResolveSettings();
             if (_settings == null || !_settings.HapticFeedbackEnabled) return;
-            if (trackedObject == null || trackedObject.index == SteamVR_TrackedObject.EIndex.None) return;
+            if (trackedObject == null || trackedObject.index == SteamVR_TrackedObject.EIndex.None || other == null) return;
 
-            if (other == null) return;
+            int deviceIndex = (int)trackedObject.index;
+            float lastPulse;
+            if (LastPulseByDevice.TryGetValue(deviceIndex, out lastPulse) &&
+                Time.time - lastPulse <= PulseCooldown)
+                return;
 
-            // Prevent self-vibration by ignoring any collider that is part of the VR controller or VR hands
-            var t = other.transform;
-            while (t != null)
-            {
-                string lowerName = t.name.ToLower();
-                if (lowerName.Contains("vrhand") || 
-                    lowerName.Contains("controller") || 
-                    lowerName.Contains("trackedobject") ||
-                    lowerName.Contains("steamvr") ||
-                    lowerName.StartsWith("l_") && lowerName.EndsWith("_col") ||
-                    lowerName.StartsWith("r_") && lowerName.EndsWith("_col"))
-                {
-                    return;
-                }
-                t = t.parent;
-            }
-            var smr = other.GetComponentInParent<SkinnedMeshRenderer>();
-            if (smr != null)
-            {
-                string smrName = smr.name;
-                if (smrName.Contains("o_hand") || smrName.Contains("silhouette") || smrName.Contains("VRHand"))
-                {
-                    smr = null;
-                }
-            }
-            
-            // Check for any version of DynamicBone in parent using runtime class name checks
+            TargetInfo target = GetTargetInfo(other);
+            if (!target.isValid) return;
+            if (_settings.VibrateOnlyOnBreasts && !target.isBreast) return;
+
+            SteamVR_Controller.Device device = SteamVR_Controller.Input(deviceIndex);
+            if (device == null) return;
+
+            ushort duration = (ushort)Mathf.Clamp(_settings.HapticFeedbackIntensity * 2000f, 100f, 3999f);
+            device.TriggerHapticPulse(duration, EVRButtonId.k_EButton_Axis0);
+            LastPulseByDevice[deviceIndex] = Time.time;
+
+            if (VRHandModelManager.Instance != null)
+                VRHandModelManager.Instance.NotifyTouch(isLeftHand);
+        }
+
+        private static TargetInfo GetTargetInfo(Collider collider)
+        {
+            TargetInfo cached;
+            if (TargetCache.TryGetValue(collider, out cached)) return cached;
+            if (TargetCache.Count >= MaxCachedColliders) TargetCache.Clear();
+
+            bool isBreast = false;
             bool hasDynamicBone = false;
-            var parent = other.transform;
-            while (parent != null)
+            Transform current = collider.transform;
+            while (current != null)
             {
-                var behaviours = parent.GetComponents<MonoBehaviour>();
-                foreach (var b in behaviours)
+                string objectName = current.name ?? string.Empty;
+                if (ContainsIgnoreCase(objectName, "vrhand") ||
+                    ContainsIgnoreCase(objectName, "controller") ||
+                    ContainsIgnoreCase(objectName, "trackedobject") ||
+                    ContainsIgnoreCase(objectName, "steamvr") ||
+                    (objectName.StartsWith("l_", StringComparison.OrdinalIgnoreCase) && objectName.EndsWith("_col", StringComparison.OrdinalIgnoreCase)) ||
+                    (objectName.StartsWith("r_", StringComparison.OrdinalIgnoreCase) && objectName.EndsWith("_col", StringComparison.OrdinalIgnoreCase)))
                 {
-                    if (b != null)
+                    cached = new TargetInfo(false, false);
+                    TargetCache[collider] = cached;
+                    return cached;
+                }
+
+                if (ContainsIgnoreCase(objectName, "mune") ||
+                    ContainsIgnoreCase(objectName, "glands") ||
+                    ContainsIgnoreCase(objectName, "breast"))
+                    isBreast = true;
+
+                if (!hasDynamicBone)
+                {
+                    MonoBehaviour[] behaviours = current.GetComponents<MonoBehaviour>();
+                    foreach (MonoBehaviour behaviour in behaviours)
                     {
-                        string name = b.GetType().Name;
-                        if (name.Contains("DynamicBone") && !name.Contains("Collider"))
+                        if (behaviour == null) continue;
+                        string typeName = behaviour.GetType().Name;
+                        if (typeName.IndexOf("DynamicBone", StringComparison.Ordinal) >= 0 &&
+                            typeName.IndexOf("Collider", StringComparison.Ordinal) < 0)
                         {
                             hasDynamicBone = true;
                             break;
                         }
                     }
                 }
-                if (hasDynamicBone) break;
-                parent = parent.parent;
+                current = current.parent;
             }
 
-            // Only fire haptics if touching character meshes or dynamic bones
-            if (smr == null && !hasDynamicBone) return;
-
-            // Only vibrate on breasts if setting is enabled
-            if (_settings != null && _settings.VibrateOnlyOnBreasts)
+            bool hasCharacterMesh = false;
+            SkinnedMeshRenderer skinnedMesh = collider.GetComponentInParent<SkinnedMeshRenderer>();
+            if (skinnedMesh != null)
             {
-                bool isBreast = false;
-                var curr = other.transform;
-                while (curr != null)
-                {
-                    string currName = curr.name.ToLower();
-                    if (currName.Contains("mune") || currName.Contains("glands") || currName.Contains("breast"))
-                    {
-                        isBreast = true;
-                        break;
-                    }
-                    curr = curr.parent;
-                }
-                if (!isBreast) return;
+                string rendererName = skinnedMesh.name ?? string.Empty;
+                hasCharacterMesh = !ContainsIgnoreCase(rendererName, "o_hand") &&
+                    !ContainsIgnoreCase(rendererName, "silhouette") &&
+                    !ContainsIgnoreCase(rendererName, "vrhand");
             }
 
-            // Cooldown to prevent rapid continuous firing
-            if (Time.time - _lastPulseTime > 0.05f)
-            {
-                int deviceIndex = (int)trackedObject.index;
-                var device = SteamVR_Controller.Input(deviceIndex);
-                if (device != null)
-                {
-                    ushort duration = (ushort)Mathf.Clamp(_settings.HapticFeedbackIntensity * 2000f, 100f, 3999f);
-                    device.TriggerHapticPulse(duration, EVRButtonId.k_EButton_Axis0);
-                    _lastPulseTime = Time.time;
+            cached = new TargetInfo(hasCharacterMesh || hasDynamicBone, isBreast);
+            TargetCache[collider] = cached;
+            return cached;
+        }
 
-                    // 通知手部模型变色
-                    if (VRHandModelManager.Instance != null)
-                        VRHandModelManager.Instance.NotifyTouch(isLeftHand);
-                }
-            }
+        private static bool ContainsIgnoreCase(string value, string fragment)
+        {
+            return value.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }

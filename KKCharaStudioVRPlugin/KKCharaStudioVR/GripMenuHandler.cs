@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Object = UnityEngine.Object;
 using VRGIN.Controls;
 using VRGIN.Core;
 using VRGIN.Native;
@@ -215,7 +217,24 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private GameObject _clickOverrideTarget;
 
-	protected SteamVR_Controller.Device Device => SteamVR_Controller.Input((int)_Controller.Tracking.index);
+	private PointerEventData _clickPointerData;
+
+	private bool _pointerDownActive;
+
+	private bool _win32MouseDown;
+
+	protected SteamVR_Controller.Device Device
+	{
+		get
+		{
+			if (_Controller == null || _Controller.Tracking == null ||
+				_Controller.Tracking.index == SteamVR_TrackedObject.EIndex.None)
+			{
+				return null;
+			}
+			return SteamVR_Controller.Input((int)_Controller.Tracking.index);
+		}
+	}
 
 	private bool IsResizing
 	{
@@ -294,8 +313,9 @@ public class GripMenuHandler : ProtectedBehaviour
 	protected override void OnUpdate()
 	{
 		base.OnUpdate();
-		if (!((Component)VR.Camera).gameObject.activeInHierarchy)
+		if (VR.Camera == null || !((Component)VR.Camera).gameObject.activeInHierarchy)
 		{
+			ReleasePointer(false);
 			return;
 		}
 
@@ -320,6 +340,16 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private void OnDisable()
 	{
+		ReleasePointer(false);
+		if (ActiveMouseHandler == this)
+		{
+			ActiveMouseHandler = null;
+		}
+	}
+
+	private void OnDestroy()
+	{
+		ReleasePointer(false);
 		if (ActiveMouseHandler == this)
 		{
 			ActiveMouseHandler = null;
@@ -397,69 +427,111 @@ public class GripMenuHandler : ProtectedBehaviour
 	protected void CheckInput()
 	{
 		IsPressing = false;
+		SteamVR_Controller.Device device = Device;
+		if (device == null)
+		{
+			ReleasePointer(false);
+			return;
+		}
+
+		bool triggerPressed = device.GetPress(EVRButtonId.k_EButton_Axis1);
+		bool triggerReleased = device.GetPressUp(EVRButtonId.k_EButton_Axis1);
+
+		// A press can outlive the laser hit. Always release it even if the UI moved,
+		// the controller lost focus, or this handler was disabled between frames.
+		if (_pointerDownActive)
+		{
+			IsPressing = triggerPressed;
+			if (triggerReleased || !triggerPressed)
+			{
+				ReleasePointer(triggerReleased);
+			}
+			return;
+		}
+
 		if (LaserVisible && (_Target != null) && !IsResizing)
 		{
-			if (Device.GetPressDown(EVRButtonId.k_EButton_Axis1))
+			if (device.GetPressDown(EVRButtonId.k_EButton_Axis1))
 			{
 				IsPressing = true;
-				// Re-assert the cursor to the exact laser hit point BEFORE the click.
 				if (_hasValidHit)
 				{
 					MouseOperations.SetClientCursorPosition((int)_lastHitScreenPos.x, (int)_lastHitScreenPos.y);
 				}
 
-				// Detect the broken-sorting case (e.g. Load/Import/Cancel/Delete popup
-				// over the scene-card grid) and remember the correct target.
 				_clickOverrideTarget = FindClickOverrideTarget();
-
 				if (_clickOverrideTarget != null)
 				{
-					// Dispatch pointer-down directly to the correct top element,
-					// bypassing the EventSystem's wrong results[0] pick.
-					var down = new PointerEventData(EventSystem.current);
-					down.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
-					down.button = PointerEventData.InputButton.Left;
-					ExecuteEvents.Execute(_clickOverrideTarget, down, ExecuteEvents.pointerDownHandler);
+					_clickPointerData = new PointerEventData(EventSystem.current);
+					_clickPointerData.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+					_clickPointerData.button = PointerEventData.InputButton.Left;
+					_pointerDownActive = true;
+					_win32MouseDown = false;
+					ExecuteEvents.Execute(_clickOverrideTarget, _clickPointerData, ExecuteEvents.pointerDownHandler);
 				}
 				else
 				{
-					// Normal path: Win32 mouse event for IMGUI/uGUI that sorts correctly.
+					_pointerDownActive = true;
+					_win32MouseDown = true;
 					MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftDown);
 				}
 				mouseDownPosition = new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
 				PulseHaptic(800);
 			}
-			if (Device.GetPress(EVRButtonId.k_EButton_Axis1))
+
+			if (triggerPressed)
 			{
 				IsPressing = true;
-			}
-			if (Device.GetPressUp(EVRButtonId.k_EButton_Axis1))
-			{
-				IsPressing = true;
-				if (_clickOverrideTarget != null)
-				{
-					// Fire pointer-up + click on the same correct target.
-					var up = new PointerEventData(EventSystem.current);
-					up.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
-					up.button = PointerEventData.InputButton.Left;
-					ExecuteEvents.Execute(_clickOverrideTarget, up, ExecuteEvents.pointerUpHandler);
-					ExecuteEvents.Execute(_clickOverrideTarget, up, ExecuteEvents.pointerClickHandler);
-					_clickOverrideTarget = null;
-				}
-				else
-				{
-					MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftUp);
-				}
-				mouseDownPosition = null;
 			}
 
-			float thumbstickY = Device.GetAxis(EVRButtonId.k_EButton_Axis0).y;
+			float thumbstickY = device.GetAxis(EVRButtonId.k_EButton_Axis0).y;
 			if (!IsPressing && Mathf.Abs(thumbstickY) > 0.7f && Time.time - _lastScrollTime > 0.05f)
 			{
 				WindowsInterop.mouse_event(0x0800, 0, 0, (int)(thumbstickY * 120f), 0);
 				_lastScrollTime = Time.time;
 				PulseHaptic(200);
 			}
+		}
+	}
+
+	private void ReleasePointer(bool sendClick)
+	{
+		if (!_pointerDownActive && !_win32MouseDown && _clickOverrideTarget == null)
+		{
+			mouseDownPosition = null;
+			_clickPointerData = null;
+			IsPressing = false;
+			return;
+		}
+
+		try
+		{
+			if (_clickOverrideTarget != null && _clickPointerData != null)
+			{
+				_clickPointerData.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+				ExecuteEvents.Execute(_clickOverrideTarget, _clickPointerData, ExecuteEvents.pointerUpHandler);
+				if (sendClick && _clickOverrideTarget.activeInHierarchy)
+				{
+					ExecuteEvents.Execute(_clickOverrideTarget, _clickPointerData, ExecuteEvents.pointerClickHandler);
+				}
+			}
+			else if (_win32MouseDown)
+			{
+				MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftUp);
+			}
+		}
+		catch (Exception ex)
+		{
+			VRLog.Warn("Failed to release VR UI pointer cleanly: " + ex.Message);
+		}
+		finally
+		{
+			_pointerDownActive = false;
+			_win32MouseDown = false;
+			_clickOverrideTarget = null;
+			_clickPointerData = null;
+			mouseDownPosition = null;
+			IsPressing = false;
 		}
 	}
 

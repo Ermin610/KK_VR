@@ -41,6 +41,7 @@ namespace KKCharaStudioVR
         private HandContext rightHand;
         private KKCharaStudioVRSettings settings;
         private bool initialized;
+        private bool _lastPhysicsHandsEnabled;
         private static PhysicMaterial _sharedFrictionless;
 
         public static VRHandModelManager Instance { get; private set; }
@@ -69,6 +70,7 @@ namespace KKCharaStudioVR
 
             if (leftTracked != null) leftHand = CreateHand(leftTracked, true);
             if (rightTracked != null) rightHand = CreateHand(rightTracked, false);
+            _lastPhysicsHandsEnabled = IsPhysicsHandsEnabled();
             initialized = true;
 
             // Wait two frames for VRGIN tool system OnEnable/OnDisable cycle to settle,
@@ -86,6 +88,15 @@ namespace KKCharaStudioVR
         void Update()
         {
             if (!initialized) return;
+
+            bool physicsEnabled = IsPhysicsHandsEnabled();
+            if (physicsEnabled != _lastPhysicsHandsEnabled)
+            {
+                ConfigurePhysicsMode(leftHand, true, physicsEnabled);
+                ConfigurePhysicsMode(rightHand, false, physicsEnabled);
+                _lastPhysicsHandsEnabled = physicsEnabled;
+                VRLog.Info("Physics hands mode changed to: " + physicsEnabled);
+            }
 
             float alpha = settings != null ? settings.HandModelAlpha : 0.3f;
             float scale = settings != null ? settings.HandModelScale : 1.0f;
@@ -180,21 +191,10 @@ namespace KKCharaStudioVR
             bool isLeft = (h == leftHand);
             h.root.transform.localScale = Vector3.one * scale;
 
-            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
-            if (!physicsEnabled)
+            if (!IsPhysicsHandsEnabled())
             {
-                float xOffset = settings != null ? settings.HandOffsetX : 0f;
-                float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
-                float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
-                h.root.transform.localPosition = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
-
-                float pitch = settings != null ? settings.HandRotPitch : 30f;
-                float yaw = settings != null ? settings.HandRotYaw : 0f;
-                float roll = settings != null ? settings.HandRotRoll : 0f;
-                float baseRoll = isLeft ? 90f : -90f;
-                float appliedYaw = isLeft ? yaw : -yaw;
-                float appliedRoll = isLeft ? roll : -roll;
-                h.root.transform.localRotation = Quaternion.Euler(pitch, appliedYaw, baseRoll + appliedRoll);
+                h.root.transform.localPosition = GetTargetLocalPosition(isLeft);
+                h.root.transform.localRotation = GetTargetLocalRotation(isLeft);
             }
 
             // 触摸反馈：接触角色时渐变为暖色
@@ -232,26 +232,7 @@ namespace KKCharaStudioVR
             ctx.cachedController = tracked.GetComponent<VRGIN.Controls.Controller>();
             ctx.lastRenderModelHidden = false;
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
-            
-            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
-            if (physicsEnabled)
-            {
-                ctx.root.transform.parent = tracked.transform.parent;
-                ctx.root.transform.position = tracked.transform.position;
-                ctx.root.transform.rotation = tracked.transform.rotation;
-                
-                ctx.cachedRigidbody = ctx.root.AddComponent<Rigidbody>();
-                ctx.cachedRigidbody.useGravity = false;
-                ctx.cachedRigidbody.isKinematic = false;
-                ctx.cachedRigidbody.mass = 1.0f;
-                ctx.cachedRigidbody.drag = 0.5f;
-                ctx.cachedRigidbody.angularDrag = 0.5f;
-                ctx.cachedRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            }
-            else
-            {
-                ctx.root.transform.parent = tracked.transform;
-            }
+            ctx.root.transform.SetParent(tracked.transform, false);
 
             ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
@@ -440,6 +421,7 @@ namespace KKCharaStudioVR
                     ctx.material, 3, 0.014f, 0.007f);
             }
 
+            ConfigurePhysicsMode(ctx, isLeft, IsPhysicsHandsEnabled());
             bool handEnabled = settings != null ? settings.HandModelEnabled : true;
             ctx.root.SetActive(handEnabled);
             return ctx;
@@ -494,36 +476,108 @@ namespace KKCharaStudioVR
         
         void SetupMesh(GameObject obj, Material mat, bool isFinger = false)
         {
-            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
             Collider col = obj.GetComponent<Collider>();
             if (col != null)
             {
-                if (physicsEnabled)
+                col.isTrigger = isFinger;
+                if (_sharedFrictionless == null)
                 {
-                    col.isTrigger = isFinger; // Fingers are triggers (can penetrate!), palm/wrist are solid blockers!
-
-                    // Apply shared frictionless physics material
-                    if (_sharedFrictionless == null)
-                    {
-                        _sharedFrictionless = new PhysicMaterial("VRHandFrictionless");
-                        _sharedFrictionless.staticFriction = 0.0f;
-                        _sharedFrictionless.dynamicFriction = 0.0f;
-                        _sharedFrictionless.frictionCombine = PhysicMaterialCombine.Minimum;
-                        _sharedFrictionless.bounciness = 0.0f;
-                        _sharedFrictionless.bounceCombine = PhysicMaterialCombine.Minimum;
-                    }
-                    col.sharedMaterial = _sharedFrictionless;
+                    _sharedFrictionless = new PhysicMaterial("VRHandFrictionless");
+                    _sharedFrictionless.staticFriction = 0.0f;
+                    _sharedFrictionless.dynamicFriction = 0.0f;
+                    _sharedFrictionless.frictionCombine = PhysicMaterialCombine.Minimum;
+                    _sharedFrictionless.bounciness = 0.0f;
+                    _sharedFrictionless.bounceCombine = PhysicMaterialCombine.Minimum;
                 }
-                else
-                {
-                    Destroy(col);
-                }
+                col.sharedMaterial = _sharedFrictionless;
             }
             Renderer r = obj.GetComponent<Renderer>();
             mat.renderQueue = 3000;
             r.sharedMaterial = mat;
         }
         
+        private bool IsPhysicsHandsEnabled()
+        {
+            return settings != null ? settings.PhysicsHandsEnabled : true;
+        }
+
+        private Vector3 GetTargetLocalPosition(bool isLeft)
+        {
+            float xOffset = settings != null ? settings.HandOffsetX : 0f;
+            float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
+            float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
+            return new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
+        }
+
+        private Quaternion GetTargetLocalRotation(bool isLeft)
+        {
+            float pitch = settings != null ? settings.HandRotPitch : 30f;
+            float yaw = settings != null ? settings.HandRotYaw : 0f;
+            float roll = settings != null ? settings.HandRotRoll : 0f;
+            float baseRoll = isLeft ? 90f : -90f;
+            return Quaternion.Euler(pitch, isLeft ? yaw : -yaw, baseRoll + (isLeft ? roll : -roll));
+        }
+
+        private void ConfigurePhysicsMode(HandContext h, bool isLeft, bool enabled)
+        {
+            if (h == null || h.root == null || h.trackedObj == null || h.trackedObj.transform == null) return;
+
+            SetHandCollisionState(h, false);
+            Transform tracker = h.trackedObj.transform;
+            Vector3 localPosition = GetTargetLocalPosition(isLeft);
+            Quaternion localRotation = GetTargetLocalRotation(isLeft);
+
+            if (enabled)
+            {
+                if (h.cachedRigidbody == null)
+                    h.cachedRigidbody = h.root.AddComponent<Rigidbody>();
+
+                Rigidbody rb = h.cachedRigidbody;
+                rb.detectCollisions = false;
+                rb.isKinematic = true;
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+
+                h.root.transform.SetParent(tracker.parent, true);
+                h.root.transform.position = tracker.TransformPoint(localPosition);
+                h.root.transform.rotation = tracker.rotation * localRotation;
+                rb.position = h.root.transform.position;
+                rb.rotation = h.root.transform.rotation;
+                rb.useGravity = false;
+                rb.mass = 1.0f;
+                rb.drag = 0.5f;
+                rb.angularDrag = 0.5f;
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+                rb.maxAngularVelocity = 20.0f;
+                rb.isKinematic = false;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                rb.detectCollisions = true;
+                SetHandCollisionState(h, true);
+            }
+            else
+            {
+                if (h.cachedRigidbody != null)
+                {
+                    h.cachedRigidbody.detectCollisions = false;
+                    h.cachedRigidbody.velocity = Vector3.zero;
+                    h.cachedRigidbody.angularVelocity = Vector3.zero;
+                    h.cachedRigidbody.isKinematic = true;
+                }
+
+                h.root.transform.SetParent(tracker, false);
+                h.root.transform.localPosition = localPosition;
+                h.root.transform.localRotation = localRotation;
+            }
+        }
+
+        private void SetHandCollisionState(HandContext h, bool enabled)
+        {
+            foreach (Collider collider in h.root.GetComponentsInChildren<Collider>(true))
+                collider.enabled = enabled;
+            foreach (VRHandHapticTrigger trigger in h.root.GetComponentsInChildren<VRHandHapticTrigger>(true))
+                trigger.enabled = enabled;
+        }
+
         void UpdateHandAnimation(HandContext ctx)
         {
             if (ctx.trackedObj == null || ctx.trackedObj.index == SteamVR_TrackedObject.EIndex.None) return;
@@ -641,8 +695,7 @@ namespace KKCharaStudioVR
         {
             if (!initialized) return;
 
-            bool physicsEnabled = settings != null ? settings.PhysicsHandsEnabled : true;
-            if (!physicsEnabled) return;
+            if (!IsPhysicsHandsEnabled()) return;
 
             UpdateHandPhysics(leftHand, true);
             UpdateHandPhysics(rightHand, false);
@@ -656,19 +709,8 @@ namespace KKCharaStudioVR
             var rb = h.cachedRigidbody;
             if (rb == null) return;
 
-            // Target local offset calculation
-            float xOffset = settings != null ? settings.HandOffsetX : 0f;
-            float yOffset = settings != null ? settings.HandOffsetY : -0.02f;
-            float zOffset = settings != null ? settings.HandOffsetZ : -0.05f;
-            Vector3 targetLocalPos = new Vector3(isLeft ? xOffset : -xOffset, yOffset, zOffset);
-
-            float pitch = settings != null ? settings.HandRotPitch : 30f;
-            float yaw = settings != null ? settings.HandRotYaw : 0f;
-            float roll = settings != null ? settings.HandRotRoll : 0f;
-            float baseRoll = isLeft ? 90f : -90f;
-            float appliedYaw = isLeft ? yaw : -yaw;
-            float appliedRoll = isLeft ? roll : -roll;
-            Quaternion targetLocalRot = Quaternion.Euler(pitch, appliedYaw, baseRoll + appliedRoll);
+            Vector3 targetLocalPos = GetTargetLocalPosition(isLeft);
+            Quaternion targetLocalRot = GetTargetLocalRotation(isLeft);
 
             // Convert to global space targets
             Transform tracker = h.trackedObj.transform;
@@ -738,6 +780,22 @@ namespace KKCharaStudioVR
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
+        }
+
+        private void OnDestroy()
+        {
+            DestroyHand(leftHand);
+            DestroyHand(rightHand);
+            if (Instance == this) Instance = null;
+        }
+
+        private void DestroyHand(HandContext hand)
+        {
+            if (hand == null) return;
+            if (hand.cachedController != null && hand.lastRenderModelHidden)
+                hand.cachedController.SetRenderModelVisible(true);
+            if (hand.root != null) Destroy(hand.root);
+            if (hand.material != null) Destroy(hand.material);
         }
     }
 }

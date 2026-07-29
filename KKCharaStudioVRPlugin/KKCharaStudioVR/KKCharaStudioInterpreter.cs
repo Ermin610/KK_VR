@@ -163,7 +163,7 @@ internal class KKCharaStudioInterpreter : GameInterpreter
 					Skybox val2 = ((Component)camera).gameObject.GetComponent<Skybox>();
 					if (val2 == null)
 					{
-						val2 = ((Component)val2).gameObject.AddComponent<Skybox>();
+						val2 = ((Component)camera).gameObject.AddComponent<Skybox>();
 					}
 					val2.material = component.material;
 				}

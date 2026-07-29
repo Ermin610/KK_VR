@@ -17,6 +17,7 @@ namespace KKCharaStudioVR;
 internal class GripMoveKKCharaStudioTool : Tool
 {
 	private static GUIQuad internalGui;
+	private static readonly HashSet<GripMoveKKCharaStudioTool> ActiveTools = new HashSet<GripMoveKKCharaStudioTool>();
 	private float menuDownTime;
 	private KKCharaStudioVRSettings _settings;
 	private GameObject mirror1;
@@ -49,6 +50,30 @@ internal class GripMoveKKCharaStudioTool : Tool
 	public override Texture2D Image => UnityHelper.LoadImage("icon_gripmove.png");
 
 	public GUIQuad Gui { get; private set; }
+
+	internal static bool AnyObjectInteractionActive
+	{
+		get
+		{
+			foreach (GripMoveKKCharaStudioTool tool in ActiveTools)
+			{
+				if (tool != null && tool.HasObjectInteraction)
+					return true;
+			}
+			return false;
+		}
+	}
+
+	private bool HasObjectInteraction
+	{
+		get
+		{
+			if (grabbingObject != null) return true;
+			SteamVR_Controller.Device device = controller;
+			return screenGrabbed && lastGrabbedObject != null && device != null
+				&& device.GetPress(EVRButtonId.k_EButton_Grip);
+		}
+	}
 
 	private SteamVR_Controller.Device controller
 	{
@@ -97,6 +122,9 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 	protected override void OnDestroy()
 	{
+		ActiveTools.Remove(this);
+		SetComfortMoving(false);
+		ReleaseActiveGrab(false);
 		if (_proximityHighlight != null)
 			UnityEngine.Object.Destroy(_proximityHighlight);
 		if (_grabLine != null)
@@ -146,12 +174,15 @@ internal class GripMoveKKCharaStudioTool : Tool
 			((Behaviour)menuHandlder).enabled = false;
 		ikTool = IKTool.instance;
 		_isLeftHand = ((Component)this).GetComponent<VRGIN.Controls.LeftController>() != null;
+		ActiveTools.Add(this);
 		_lastHandModelEnabled = _settings != null && _settings.HandModelEnabled;
 	}
 
 	protected override void OnDisable()
 	{
 		base.OnDisable();
+		SetComfortMoving(false);
+		ReleaseActiveGrab(false);
 		ClearProximityHighlight();
 		if (_grabLine != null) ((Component)_grabLine).gameObject.SetActive(false);
 		if (gripMenuHandler != null)
@@ -382,6 +413,8 @@ internal class GripMoveKKCharaStudioTool : Tool
 	protected override void OnLevel(int level)
 	{
 		base.OnLevel(level);
+		SetComfortMoving(false);
+		ReleaseActiveGrab(false);
 		((MonoBehaviour)this).StopAllCoroutines();
 		ClearProximityHighlight();
 	}
@@ -391,6 +424,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		base.OnUpdate();
 		if (controller == null)
 		{
+			SetComfortMoving(false);
 			return;
 		}
 
@@ -407,26 +441,18 @@ internal class GripMoveKKCharaStudioTool : Tool
 		if (VRQuickActions.ikVisible)
 		{
 			UpdateProximityDetection();
-			HandleButtonEvents();
-			HandleObjectGrab();
-			HandleGripWorldMove();
-			UpdateGrabLine();
 		}
 		else
 		{
-			// If IK is hidden, force release any active grab and clear highlights immediately to prevent accidental dragging
-			if (grabbingObject != null)
-			{
-				if (grabbingObject.GetComponent<MoveableGUIObject>() != null)
-				{
-					grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
-				}
-				grabbingObject = null;
-			}
-			screenGrabbed = false;
-			lastGrabbedObject = null;
+			CancelHiddenIkInteraction();
 			ClearProximityHighlight();
 		}
+
+		// Hiding IK controls must not disable the main VR UI or world locomotion.
+		HandleButtonEvents();
+		HandleObjectGrab();
+		HandleGripWorldMove();
+		UpdateGrabLine();
 
 		if (lastGrabbedObject != null && grabbingObject == null)
 		{
@@ -442,9 +468,63 @@ internal class GripMoveKKCharaStudioTool : Tool
 		marker.transform.rotation = ((Component)this).transform.rotation;
 	}
 
+	private void SetComfortMoving(bool moving)
+	{
+		if (VRComfortVignette.Instance != null)
+			VRComfortVignette.Instance.SetMoving(_isLeftHand, moving);
+	}
+
+	private bool IsIkGrabTarget(GameObject obj)
+	{
+		if (obj == null) return false;
+		MoveableGUIObject mgo = obj.GetComponent<MoveableGUIObject>();
+		return mgo != null && mgo.guideObject != null;
+	}
+
+	private void CancelHiddenIkInteraction()
+	{
+		if (IsIkGrabTarget(grabbingObject))
+			ReleaseActiveGrab(false);
+		if (IsIkGrabTarget(lastGrabbedObject))
+		{
+			lastGrabbedObject = null;
+			screenGrabbed = false;
+		}
+	}
+
+	private void ReleaseActiveGrab(bool pulseHaptic)
+	{
+		try
+		{
+			if (grabbingObject != null)
+			{
+				MoveableGUIObject mgo = grabbingObject.GetComponent<MoveableGUIObject>();
+				if (mgo != null)
+					mgo.OnReleased();
+				if (pulseHaptic && controller != null)
+					controller.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
+			}
+		}
+		catch (Exception ex)
+		{
+			VRLog.Warn("Failed to finish VR grab cleanly: " + ex.Message);
+		}
+		finally
+		{
+			_smoothGrabInitialized = false;
+			grabbingObject = null;
+			screenGrabbed = false;
+			lastGrabbedObject = null;
+		}
+	}
+
 	private void HandleThumbstickLocomotion()
 	{
-		if (gripMenuHandler != null && gripMenuHandler.LaserVisible) return;
+		if (gripMenuHandler != null && gripMenuHandler.LaserVisible)
+		{
+			SetComfortMoving(false);
+			return;
+		}
 		Vector2 axis = controller.GetAxis(EVRButtonId.k_EButton_SteamVR_Touchpad);
 		bool isLeft = _isLeftHand;
 
@@ -506,16 +586,12 @@ internal class GripMoveKKCharaStudioTool : Tool
 					}
 				}
 
-				// 通知舒适暗角：正在移动
-				if (VRComfortVignette.Instance != null)
-					VRComfortVignette.Instance.SetMoving(true);
+				SetComfortMoving(true);
 			}
 		}
 		else
 		{
-			// 通知舒适暗角：停止移动
-			if (VRComfortVignette.Instance != null)
-				VRComfortVignette.Instance.SetMoving(false);
+			SetComfortMoving(false);
 		}
 	}
 
@@ -663,28 +739,13 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 
 		if (pressUp)
-		{
-			if (grabbingObject != null)
-			{
-				if (grabbingObject.GetComponent<MoveableGUIObject>() != null)
-				{
-					grabbingObject.GetComponent<MoveableGUIObject>().OnReleased();
-				}
-				// 释放触觉反馈
-				if (controller != null)
-					controller.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
-				_smoothGrabInitialized = false;
-				grabbingObject = null;
-			}
-			screenGrabbed = false;
-			lastGrabbedObject = null;
-		}
+			ReleaseActiveGrab(true);
 	}
 
 	private void HandleGripWorldMove()
 	{
-		// 双手缩放时跳过世界移动，避免冲突
-		if (VRTwoHandScale.Instance != null && VRTwoHandScale.Instance.IsScaling)
+		// Reserve both grips for scaling regardless of component Update order.
+		if (VRTwoHandScale.Instance != null && VRTwoHandScale.Instance.ShouldSuppressWorldMove)
 			return;
 
 		if (controller.GetPress(EVRButtonId.k_EButton_Grip) && grabbingObject == null)

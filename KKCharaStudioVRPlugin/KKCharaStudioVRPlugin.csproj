@@ -3,6 +3,8 @@
     <AssemblyName>KKCharaStudioVRPlugin</AssemblyName>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <TargetFramework>net35</TargetFramework>
+    <KKGameDir Condition="'$(KKGameDir)' == ''">..\..\Koikatu3</KKGameDir>
+    <LegacyLibDir Condition="'$(LegacyLibDir)' == ''">..\libs</LegacyLibDir>
   </PropertyGroup>
   <PropertyGroup>
     <LangVersion>11.0</LangVersion>
@@ -13,37 +15,37 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>$(KKGameDir)\CharaStudio_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="VRGIN_KKCS">
-      <HintPath>..\VRGIN_KKCS\bin\Debug\net35\VRGIN_KKCS.dll</HintPath>
+      <HintPath>..\VRGIN_KKCS\bin\$(Configuration)\net35\VRGIN_KKCS.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(KKGameDir)\CharaStudio_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml">
-      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\System.Xml.dll</HintPath>
+      <HintPath>$(KKGameDir)\CharaStudio_Data\Managed\System.Xml.dll</HintPath>
     </Reference>
     <Reference Include="System.Core">
-      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\System.Core.dll</HintPath>
+      <HintPath>$(KKGameDir)\CharaStudio_Data\Managed\System.Core.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx4">
-      <HintPath>..\libs\BepInEx4.dll</HintPath>
+      <HintPath>$(LegacyLibDir)\BepInEx4.dll</HintPath>
     </Reference>
     <Reference Include="0Harmony_BepInEx4">
-      <HintPath>..\libs\0Harmony_BepInEx4.dll</HintPath>
+      <HintPath>$(LegacyLibDir)\0Harmony_BepInEx4.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\Koikatu3\CharaStudio_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>$(KKGameDir)\CharaStudio_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="WindowsInput">
-      <HintPath>..\..\Koikatu3\BepInEx\WindowsInput.dll</HintPath>
+      <HintPath>$(KKGameDir)\BepInEx\WindowsInput.dll</HintPath>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>..\..\Koikatu3\BepInEx\core\0Harmony.dll</HintPath>
+      <HintPath>$(KKGameDir)\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>..\..\Koikatu3\BepInEx\core\BepInEx.dll</HintPath>
+      <HintPath>$(KKGameDir)\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

@@ -304,11 +304,12 @@ public class VRQuickActions : MonoBehaviour
     {
         ikVisible = !ikVisible;
 
-        // 1. 隐藏/显示我们自建的 VR 实体抓取球 (通过控制 Renderer 和 Collider 的启用状态，保持 GameObject 处于 Active 状态以便 FindObjectsOfType 能够搜索到)
+        // Only character guide handles have a guideObject. GUI panels also use
+        // MoveableGUIObject and must remain visible and interactive.
         MoveableGUIObject[] mgos = FindObjectsOfType<MoveableGUIObject>();
         foreach (var mgo in mgos)
         {
-            if (mgo != null && mgo.gameObject != null)
+            if (mgo != null && mgo.gameObject != null && mgo.guideObject != null)
             {
                 Renderer[] rs = mgo.GetComponentsInChildren<Renderer>(true);
                 foreach (var r in rs)

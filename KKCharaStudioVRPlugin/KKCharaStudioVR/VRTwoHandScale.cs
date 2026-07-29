@@ -8,18 +8,25 @@ namespace KKCharaStudioVR
     {
         public static VRTwoHandScale Instance { get; private set; }
 
-        /// <summary>
-        /// 是否正在双手缩放。GripMoveKKCharaStudioTool 检查此属性以跳过世界移动。
-        /// </summary>
         public bool IsScaling
         {
             get { return _isScaling; }
+        }
+
+        public bool ShouldSuppressWorldMove
+        {
+            get { return isActiveAndEnabled && IsFeatureEnabled && AreBothGripsPressed(); }
         }
 
         private float _initialDistance;
         private Vector3 _initialScale;
         private bool _isScaling;
         private KKCharaStudioVRSettings _settings;
+
+        private bool IsFeatureEnabled
+        {
+            get { return _settings == null || _settings.TwoHandScaleEnabled; }
+        }
 
         void Start()
         {
@@ -30,72 +37,112 @@ namespace KKCharaStudioVR
 
         void Update()
         {
-            if (_settings != null && !_settings.TwoHandScaleEnabled)
+            if (!IsFeatureEnabled)
             {
-                _isScaling = false;
+                ResetScaling();
                 return;
             }
 
-            if (VR.Mode == null || VR.Mode.Left == null || VR.Mode.Right == null)
+            SteamVR_Controller.Device leftDevice;
+            SteamVR_Controller.Device rightDevice;
+            if (!TryGetControllers(out leftDevice, out rightDevice))
+            {
+                ResetScaling();
                 return;
-
-            var leftTracked = ((Component)VR.Mode.Left).GetComponent<SteamVR_TrackedObject>();
-            var rightTracked = ((Component)VR.Mode.Right).GetComponent<SteamVR_TrackedObject>();
-            if (leftTracked == null || rightTracked == null) return;
-            if (leftTracked.index == SteamVR_TrackedObject.EIndex.None ||
-                rightTracked.index == SteamVR_TrackedObject.EIndex.None) return;
-
-            var leftDevice = SteamVR_Controller.Input((int)leftTracked.index);
-            var rightDevice = SteamVR_Controller.Input((int)rightTracked.index);
-            if (leftDevice == null || rightDevice == null) return;
+            }
 
             bool bothGrip = leftDevice.GetPress(EVRButtonId.k_EButton_Grip)
                          && rightDevice.GetPress(EVRButtonId.k_EButton_Grip);
+            if (!bothGrip || GripMoveKKCharaStudioTool.AnyObjectInteractionActive)
+            {
+                ResetScaling();
+                return;
+            }
+
+            if (VR.Camera == null || VR.Camera.SteamCam == null)
+            {
+                ResetScaling();
+                return;
+            }
 
             Transform origin = VR.Camera.SteamCam.origin;
-            if (origin == null) return;
+            if (origin == null || Mathf.Abs(origin.localScale.x) < 0.0001f)
+            {
+                ResetScaling();
+                return;
+            }
 
             Vector3 leftPos = ((Component)VR.Mode.Left).transform.position;
             Vector3 rightPos = ((Component)VR.Mode.Right).transform.position;
+            float worldDist = Vector3.Distance(leftPos, rightPos);
+            float unscaledDist = worldDist / Mathf.Abs(origin.localScale.x);
 
-            if (bothGrip)
+            if (!_isScaling)
             {
-                // 关键：用 scale-invariant 距离避免振荡
-                // 世界空间距离会随 origin.localScale 变化，必须除以当前 scale
-                float worldDist = Vector3.Distance(leftPos, rightPos);
-                float unscaledDist = worldDist / origin.localScale.x;
-
-                if (!_isScaling)
-                {
-                    _isScaling = true;
-                    _initialDistance = unscaledDist;
-                    _initialScale = origin.localScale;
-
-                    // 触觉反馈通知用户进入缩放模式
-                    leftDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
-                    rightDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
-                }
-                else if (_initialDistance > 0.01f)
-                {
-                    // 双手拉开 → ratio > 1 → scale 增大 → 用户变大（世界变小）
-                    float ratio = unscaledDist / _initialDistance;
-                    float newMagnitude = Mathf.Clamp(_initialScale.x * ratio, 0.1f, 10f);
-
-                    // 以双手中点为缩放中心，保持中点世界坐标不变
-                    Vector3 midpoint = (leftPos + rightPos) * 0.5f;
-                    Vector3 originToMid = midpoint - origin.position;
-                    float scaleChange = newMagnitude / origin.localScale.x;
-
-                    origin.localScale = Vector3.one * newMagnitude;
-                    Vector3 newPos = midpoint - originToMid * scaleChange;
-                    newPos.y = origin.position.y; // 锁定 Y 轴以防止缩放时高度漂移/上下移动
-                    origin.position = newPos;
-                }
+                if (unscaledDist <= 0.01f) return;
+                _isScaling = true;
+                _initialDistance = unscaledDist;
+                _initialScale = origin.localScale;
+                leftDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
+                rightDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
+                return;
             }
-            else
-            {
-                _isScaling = false;
-            }
+
+            if (_initialDistance <= 0.01f) return;
+
+            float ratio = unscaledDist / _initialDistance;
+            float newMagnitude = Mathf.Clamp(Mathf.Abs(_initialScale.x) * ratio, 0.1f, 10f);
+            Vector3 midpoint = (leftPos + rightPos) * 0.5f;
+            Vector3 originToMid = midpoint - origin.position;
+            float scaleChange = newMagnitude / Mathf.Abs(origin.localScale.x);
+
+            origin.localScale = Vector3.one * newMagnitude;
+            Vector3 newPos = midpoint - originToMid * scaleChange;
+            newPos.y = origin.position.y;
+            origin.position = newPos;
+        }
+
+        private bool TryGetControllers(out SteamVR_Controller.Device leftDevice, out SteamVR_Controller.Device rightDevice)
+        {
+            leftDevice = null;
+            rightDevice = null;
+            if (VR.Mode == null || VR.Mode.Left == null || VR.Mode.Right == null) return false;
+
+            SteamVR_TrackedObject leftTracked = ((Component)VR.Mode.Left).GetComponent<SteamVR_TrackedObject>();
+            SteamVR_TrackedObject rightTracked = ((Component)VR.Mode.Right).GetComponent<SteamVR_TrackedObject>();
+            if (leftTracked == null || rightTracked == null) return false;
+            if (leftTracked.index == SteamVR_TrackedObject.EIndex.None ||
+                rightTracked.index == SteamVR_TrackedObject.EIndex.None) return false;
+
+            leftDevice = SteamVR_Controller.Input((int)leftTracked.index);
+            rightDevice = SteamVR_Controller.Input((int)rightTracked.index);
+            return leftDevice != null && rightDevice != null;
+        }
+
+        private bool AreBothGripsPressed()
+        {
+            SteamVR_Controller.Device leftDevice;
+            SteamVR_Controller.Device rightDevice;
+            return TryGetControllers(out leftDevice, out rightDevice)
+                && leftDevice.GetPress(EVRButtonId.k_EButton_Grip)
+                && rightDevice.GetPress(EVRButtonId.k_EButton_Grip);
+        }
+
+        private void ResetScaling()
+        {
+            _isScaling = false;
+            _initialDistance = 0f;
+        }
+
+        void OnDisable()
+        {
+            ResetScaling();
+        }
+
+        void OnDestroy()
+        {
+            ResetScaling();
+            if (Instance == this) Instance = null;
         }
     }
 }
