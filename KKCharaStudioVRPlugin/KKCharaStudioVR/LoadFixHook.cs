@@ -24,12 +24,19 @@ namespace KKCharaStudioVR
 		[HarmonyPatch(typeof(SceneLoadScene), "OnClickLoad", new Type[] { }, null)]
 		public static bool LoadScenePreHook(SceneLoadScene __instance)
 		{
-			Logger.Log((LogLevel)32, (object)"Start Scene Loading.");
-			if (VRManager.Instance.Mode is GenericStandingMode)
-			{
-				(VR.Manager.Interpreter as KKCharaStudioInterpreter).ForceResetVRMode();
-			}
+			PrepareSceneLoad();
 			return true;
+		}
+
+		public static void PrepareSceneLoad()
+		{
+			Logger.Log((LogLevel)32, (object)"Start Scene Loading.");
+			if (VRManager.Instance != null && VRManager.Instance.Mode is GenericStandingMode)
+			{
+				KKCharaStudioInterpreter interpreter =
+					VR.Manager?.Interpreter as KKCharaStudioInterpreter;
+				interpreter?.ForceResetVRMode();
+			}
 		}
 
 		[HarmonyPostfix]
@@ -38,8 +45,7 @@ namespace KKCharaStudioVR
 		{
 			if (__result)
 			{
-				Logger.Log((LogLevel)32, (object)"LoadScene started successfully. Starting camera alignment coroutine.");
-				__instance.StartCoroutine(AlignVRCameraAfterLoadCo());
+				CompleteSceneLoad(__instance);
 			}
 		}
 
@@ -49,9 +55,16 @@ namespace KKCharaStudioVR
 		{
 			if (__result)
 			{
-				Logger.Log((LogLevel)32, (object)"ImportScene started successfully. Starting camera alignment coroutine.");
-				__instance.StartCoroutine(AlignVRCameraAfterLoadCo());
+				CompleteSceneLoad(__instance);
 			}
+		}
+
+		public static void CompleteSceneLoad(Studio.Studio studio)
+		{
+			if (studio == null)
+				return;
+			Logger.Log((LogLevel)32, (object)"Scene loaded successfully. Starting camera alignment coroutine.");
+			studio.StartCoroutine(AlignVRCameraAfterLoadCo());
 		}
 
 		private static IEnumerator AlignVRCameraAfterLoadCo()

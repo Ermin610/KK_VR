@@ -49,9 +49,11 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Accurate Laser Raycasting**: Realigned the interaction laser directly with the controller forward direction (instead of the rotated hands' finger forward) to ensure laser interaction with UI dropdowns and sliders is 100% accurate.
 
 ### 7. Compact Wrist Quick Menu
-- **Four focused actions**: Scene Load, Scene Save, MMD Play/Pause, and Load VMD.
-- **Safe scene loading**: Replacing the current scene requires a second confirmation click.
-- **In-headset VMD browser**: Load VMD forces MMDD to use VNGE's built-in browser and then returns to MMDD's normal import workflow.
+- **Focused submenus**: Scene cards, character cards, clothing presets, and MMD controls stay inside the compact wrist interface.
+- **Single-click scene workflow**: Scene Load opens a scene-card browser that filters out ordinary PNG renders; Scene Save opens a dedicated save page.
+- **Direct MMDD loading**: The VMD browser starts at `E:\action`, distinguishes motion and camera files from their metadata, prompts for a related camera after motion selection, and automatically matches nearby audio.
+- **Native character-card actions**: Add female or male cards and replace the currently selected character using Studio's built-in operations.
+- **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
 
 ---
@@ -63,6 +65,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 | **Left Joystick** | Smooth Movement (WASD-style walk) |
 | **Right Joystick (Left/Right)** | Smooth Turn / Snap Turn |
 | **Right Joystick (Up/Down)** | Adjust Height (Vertical Y-Axis movement) |
+| **Right Joystick (Wrist file browser)** | Scroll the current file list |
 | **Grip (Middle Finger)** | Grab character IK targets / Drag UI panels |
 | **Trigger (Index Finger)** | Click VR UI / Select objects in workspace |
 | **A Button** | Toggle all GUI visibility |

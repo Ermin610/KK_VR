@@ -7,10 +7,9 @@ using VRGIN.Core;
 
 namespace KKCharaStudioVR;
 
-public sealed class VRWristMenuController : MonoBehaviour
+public sealed partial class VRWristMenuController : MonoBehaviour
 {
     private const float MenuPressMaxDuration = 0.45f;
-    private const float ConfirmationDuration = 4f;
     private const float BaseMenuScale = 0.00045f;
     private const float MenuWidth = 560f;
     private const float MenuHeight = 500f;
@@ -24,7 +23,10 @@ public sealed class VRWristMenuController : MonoBehaviour
     private enum WristMenuPage
     {
         Root,
-        Clothing
+        Clothing,
+        Browser,
+        SceneSave,
+        CharacterCards
     }
 
     public static VRWristMenuController Instance { get; private set; }
@@ -34,12 +36,14 @@ public sealed class VRWristMenuController : MonoBehaviour
     private GameObject _menuRoot;
     private GameObject _rootPage;
     private GameObject _clothingPage;
+    private GameObject _browserPage;
+    private GameObject _sceneSavePage;
+    private GameObject _characterCardsPage;
     private RectTransform _menuRect;
     private Text _statusText;
     private Text _clothingCharacterText;
     private Texture2D _roundedTexture;
     private Sprite _roundedSprite;
-    private VRWristMenuButtonTarget _loadSceneButton;
     private readonly VRWristMenuButtonTarget[] _clothingPartButtons =
         new VRWristMenuButtonTarget[VRCharacterClothingService.PartCount];
     private VRWristMenuButtonTarget _hoveredButton;
@@ -56,7 +60,6 @@ public sealed class VRWristMenuController : MonoBehaviour
     private bool _menuPressChorded;
     private bool _poseInitialized;
     private float _menuPressStarted;
-    private float _confirmationUntil;
     private float _statusUntil;
     private float _nextClothingRefresh;
     private WristMenuPage _page;
@@ -168,7 +171,6 @@ public sealed class VRWristMenuController : MonoBehaviour
 
         _isOpen = open;
         _poseInitialized = false;
-        ResetConfirmation();
         SetHoveredButton(null);
         SetPointerVisible(false);
 
@@ -226,15 +228,18 @@ public sealed class VRWristMenuController : MonoBehaviour
 
         _rootPage = CreateRectObject("RootPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _clothingPage = CreateRectObject("ClothingPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _browserPage = CreateRectObject("BrowserPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _sceneSavePage = CreateRectObject("SceneSavePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _characterCardsPage = CreateRectObject("CharacterCardsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
         CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 516f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
 
         CreateText("SceneSection", _rootPage.transform, "场景  SCENE", 24f, 68f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
-        _loadSceneButton = CreateButton(
+        CreateButton(
             "LoadScene",
-            "读取场景\nLOAD SCENE",
+            "读取场景  >\nLOAD SCENE",
             24f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -246,7 +251,7 @@ public sealed class VRWristMenuController : MonoBehaviour
             20);
         CreateButton(
             "SaveScene",
-            "保存场景\nSAVE SCENE",
+            "保存场景  >\nSAVE SCENE",
             288f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -287,19 +292,34 @@ public sealed class VRWristMenuController : MonoBehaviour
         CreateText("CharacterSection", _rootPage.transform, "角色  CHARACTER", 24f, 290f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
-            "OpenClothing",
-            "角色换装  >\nCHARACTER CLOTHING",
+            "OpenCharacterCards",
+            "角色卡  >\nLOAD / REPLACE",
             24f,
+            320f,
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            HandleOpenCharacterCards,
+            _rootPage.transform,
+            248f,
+            62f,
+            20);
+        CreateButton(
+            "OpenClothing",
+            "角色换装  >\nCLOTHING",
+            288f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleOpenClothing,
             _rootPage.transform,
-            512f,
+            248f,
             62f,
             20);
 
         BuildClothingPage();
+        BuildBrowserPage();
+        BuildSceneSavePage();
+        BuildCharacterCardsPage();
 
         Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, GlassSurfaceColor);
         ApplyGlassEffects(statusBackground, new Color(0.9f, 0.97f, 1f, 0.12f), true, 2f);
@@ -307,6 +327,9 @@ public sealed class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(0.78f, 0.86f, 0.9f, 1f));
 
         _clothingPage.SetActive(false);
+        _browserPage.SetActive(false);
+        _sceneSavePage.SetActive(false);
+        _characterCardsPage.SetActive(false);
         _menuRoot.SetActive(false);
         return true;
     }
@@ -636,6 +659,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             return;
         }
 
+        UpdateBrowserStickScroll(rightDevice);
+
         Vector3 origin = _laser.transform.position;
         Vector3 direction = _laser.transform.forward;
         Vector3 end = origin + direction * 2f;
@@ -747,18 +772,28 @@ public sealed class VRWristMenuController : MonoBehaviour
     private void ShowPage(WristMenuPage page)
     {
         _page = page;
-        ResetConfirmation();
         SetHoveredButton(null);
 
         if (_rootPage != null)
             _rootPage.SetActive(page == WristMenuPage.Root);
         if (_clothingPage != null)
             _clothingPage.SetActive(page == WristMenuPage.Clothing);
+        if (_browserPage != null)
+            _browserPage.SetActive(page == WristMenuPage.Browser);
+        if (_sceneSavePage != null)
+            _sceneSavePage.SetActive(page == WristMenuPage.SceneSave);
+        if (_characterCardsPage != null)
+            _characterCardsPage.SetActive(page == WristMenuPage.CharacterCards);
 
         if (page == WristMenuPage.Clothing)
         {
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.CharacterCards)
+        {
+            RefreshCharacterCardsPage();
+            _nextCharacterRefresh = Time.unscaledTime + 0.25f;
         }
     }
 
@@ -823,48 +858,17 @@ public sealed class VRWristMenuController : MonoBehaviour
 
     private void HandleLoadScene()
     {
-        if (_confirmationUntil <= Time.unscaledTime)
-        {
-            _confirmationUntil = Time.unscaledTime + ConfirmationDuration;
-            _loadSceneButton.SetLabel("再次点击确认\nLOAD SCENE");
-            SetStatus("读取会替换当前场景，请再次点击确认", new Color(1f, 0.72f, 0.25f, 1f), ConfirmationDuration);
-            return;
-        }
-
-        ResetConfirmation();
-        SetOpen(false);
-        string status;
-        if (VRSceneActions.OpenLoadScene(out status))
-        {
-            VRLog.Info(status);
-            StartCoroutine(SummonMainGuiAfterDelay(0.45f));
-        }
-        else
-        {
-            SetOpen(true);
-            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 5f);
-        }
+        OpenFileBrowser(BrowserMode.LoadScene, VRSceneActions.SceneRoot, VRSceneActions.SceneRoot);
     }
 
     private void HandleSaveScene()
     {
-        ResetConfirmation();
-        SetOpen(false);
-        string status;
-        if (VRSceneActions.SaveScene(out status))
-        {
-            VRLog.Info(status);
-        }
-        else
-        {
-            SetOpen(true);
-            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 5f);
-        }
+        ShowPage(WristMenuPage.SceneSave);
+        SetStatus("保存到场景根目录", new Color(0.25f, 0.86f, 0.94f, 1f), 0f);
     }
 
     private void HandleToggleMmd()
     {
-        ResetConfirmation();
         string status;
         bool success = VRMmddService.TogglePlayPause(out status);
         SetStatus(
@@ -875,48 +879,23 @@ public sealed class VRWristMenuController : MonoBehaviour
 
     private void HandleLoadVmd()
     {
-        ResetConfirmation();
-        SetOpen(false);
-        string status;
-        if (VRMmddService.OpenVmdBrowser(out status))
-        {
-            VRLog.Info(status);
-            StartCoroutine(SummonMainGuiAfterDelay(0.2f));
-        }
-        else
-        {
-            SetOpen(true);
-            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 5f);
-        }
-    }
-
-    private IEnumerator SummonMainGuiAfterDelay(float delay)
-    {
-        float deadline = Time.unscaledTime + delay;
-        while (Time.unscaledTime < deadline)
-            yield return null;
-        if (VRQuickActions.Instance != null)
-            VRQuickActions.Instance.SummonMainGUI();
+        OpenFileBrowser(BrowserMode.LoadVmd, VRMmddService.DefaultVmdRoot, VRMmddService.DefaultVmdRoot);
     }
 
     private void UpdateTransientState()
     {
-        if (_confirmationUntil > 0f && Time.unscaledTime > _confirmationUntil)
-            ResetConfirmation();
-        if (_statusUntil > 0f && Time.unscaledTime > _statusUntil && _confirmationUntil <= 0f)
+        if (_statusUntil > 0f && Time.unscaledTime > _statusUntil)
             SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
         if (_page == WristMenuPage.Clothing && Time.unscaledTime >= _nextClothingRefresh)
         {
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
-    }
-
-    private void ResetConfirmation()
-    {
-        _confirmationUntil = 0f;
-        if (_loadSceneButton != null)
-            _loadSceneButton.SetLabel("读取场景\nLOAD SCENE");
+        if (_page == WristMenuPage.CharacterCards && Time.unscaledTime >= _nextCharacterRefresh)
+        {
+            RefreshCharacterCardsPage();
+            _nextCharacterRefresh = Time.unscaledTime + 0.25f;
+        }
     }
 
     private void SetStatus(string message, Color color, float duration)
@@ -989,6 +968,12 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
     {
         if (_label != null)
             _label.text = value;
+    }
+
+    public void SetVisible(bool visible)
+    {
+        if (_background != null)
+            _background.gameObject.SetActive(visible);
     }
 
     public void Activate()
