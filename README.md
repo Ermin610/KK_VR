@@ -49,10 +49,11 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Accurate Laser Raycasting**: Realigned the interaction laser directly with the controller forward direction (instead of the rotated hands' finger forward) to ensure laser interaction with UI dropdowns and sliders is 100% accurate.
 
 ### 7. Compact Wrist Quick Menu
-- **Focused submenus**: Scene cards, character cards, clothing presets, and MMD controls stay inside the compact wrist interface.
-- **Single-click scene workflow**: Scene Load opens a scene-card browser that filters out ordinary PNG renders; Scene Save opens a dedicated save page.
-- **Direct MMDD loading**: The VMD browser starts at `E:\action`, distinguishes motion and camera files from their metadata, prompts for a related camera after motion selection, and automatically matches nearby audio.
-- **Native character-card actions**: Add female or male cards and replace the currently selected character using Studio's built-in operations.
+- **Focused submenus**: Scene commands, character cards, clothing presets, and MMD controls stay organized in the compact wrist interface.
+- **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
+- **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and starts at `E:\action`.
+- **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
+- **Character-card preview**: Selecting a female, male, or replacement card expands its real card image on the wrist before a separate confirmation runs Studio's native add or replace operation.
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
 

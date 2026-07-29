@@ -26,7 +26,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         Clothing,
         Browser,
         SceneSave,
-        CharacterCards
+        CharacterCards,
+        CharacterPreview
     }
 
     public static VRWristMenuController Instance { get; private set; }
@@ -39,6 +40,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private GameObject _browserPage;
     private GameObject _sceneSavePage;
     private GameObject _characterCardsPage;
+    private GameObject _characterPreviewPage;
     private RectTransform _menuRect;
     private Text _statusText;
     private Text _clothingCharacterText;
@@ -114,6 +116,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             Destroy(_roundedSprite);
         if (_roundedTexture != null)
             Destroy(_roundedTexture);
+        ReleaseCharacterPreviewTexture();
         if (Instance == this)
             Instance = null;
     }
@@ -231,6 +234,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _browserPage = CreateRectObject("BrowserPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _sceneSavePage = CreateRectObject("SceneSavePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterCardsPage = CreateRectObject("CharacterCardsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _characterPreviewPage = CreateRectObject("CharacterPreviewPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
         CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 516f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
@@ -239,7 +243,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
         CreateButton(
             "LoadScene",
-            "读取场景  >\nLOAD SCENE",
+            "大屏幕读取  >\nSCENE PREVIEW",
             24f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -320,6 +324,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         BuildBrowserPage();
         BuildSceneSavePage();
         BuildCharacterCardsPage();
+        BuildCharacterPreviewPage();
 
         Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, GlassSurfaceColor);
         ApplyGlassEffects(statusBackground, new Color(0.9f, 0.97f, 1f, 0.12f), true, 2f);
@@ -330,6 +335,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _browserPage.SetActive(false);
         _sceneSavePage.SetActive(false);
         _characterCardsPage.SetActive(false);
+        _characterPreviewPage.SetActive(false);
         _menuRoot.SetActive(false);
         return true;
     }
@@ -784,6 +790,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             _sceneSavePage.SetActive(page == WristMenuPage.SceneSave);
         if (_characterCardsPage != null)
             _characterCardsPage.SetActive(page == WristMenuPage.CharacterCards);
+        if (_characterPreviewPage != null)
+            _characterPreviewPage.SetActive(page == WristMenuPage.CharacterPreview);
 
         if (page == WristMenuPage.Clothing)
         {
@@ -858,7 +866,17 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void HandleLoadScene()
     {
-        OpenFileBrowser(BrowserMode.LoadScene, VRSceneActions.SceneRoot, VRSceneActions.SceneRoot);
+        SetOpen(false);
+        string status;
+        if (VRSceneActions.OpenLoadScene(out status))
+        {
+            VRLog.Info(status);
+            StartCoroutine(SummonMainGuiAfterDelay(0.35f));
+            return;
+        }
+
+        SetOpen(true);
+        SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 6f);
     }
 
     private void HandleSaveScene()
@@ -880,6 +898,15 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void HandleLoadVmd()
     {
         OpenFileBrowser(BrowserMode.LoadVmd, VRMmddService.DefaultVmdRoot, VRMmddService.DefaultVmdRoot);
+    }
+
+    private IEnumerator SummonMainGuiAfterDelay(float delay)
+    {
+        float deadline = Time.unscaledTime + delay;
+        while (Time.unscaledTime < deadline)
+            yield return null;
+        if (VRQuickActions.Instance != null)
+            VRQuickActions.Instance.SummonMainGUI();
     }
 
     private void UpdateTransientState()

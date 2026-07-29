@@ -31,6 +31,8 @@ internal sealed class VRWristFileEntry
     public string FullPath;
     public bool IsDirectory;
     public bool IsSkipAction;
+    public bool IsActorTarget;
+    public int ObjectKey;
     public bool HasVmdMetadata;
     public VRVmdMetadata VmdMetadata;
 }

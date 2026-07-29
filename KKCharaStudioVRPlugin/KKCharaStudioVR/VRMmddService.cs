@@ -29,6 +29,7 @@ internal static class VRMmddService
         string motionPath,
         string cameraPath,
         string audioPath,
+        int[] actorObjectKeys,
         out string status)
     {
         if (!ValidateOptionalFile(motionPath, ".vmd", out status)
@@ -44,7 +45,11 @@ internal static class VRMmddService
             return false;
         }
 
-        string code = BuildLoadPackageCode(motionPath, cameraPath, audioPath);
+        string code = BuildLoadPackageCode(
+            motionPath,
+            cameraPath,
+            audioPath,
+            actorObjectKeys);
 
         string error;
         if (!VRPythonBridge.TryExecute(code, "MMDD wrist VMD load", out error))
@@ -86,7 +91,8 @@ internal static class VRMmddService
     private static string BuildLoadPackageCode(
         string motionPath,
         string cameraPath,
-        string audioPath)
+        string audioPath,
+        int[] actorObjectKeys)
     {
         StringBuilder code = new StringBuilder();
         code.Append(BuildBootstrapCode());
@@ -94,6 +100,7 @@ internal static class VRMmddService
         code.Append("motion_path = ").Append(ToPythonString(motionPath)).Append("\n");
         code.Append("camera_path = ").Append(ToPythonString(cameraPath)).Append("\n");
         code.Append("audio_path = ").Append(ToPythonString(audioPath)).Append("\n");
+        code.Append("target_keys = ").Append(ToPythonIntList(actorObjectKeys)).Append("\n");
         code.Append("motion_result = None\n");
         code.Append("camera_result = None\n");
         code.Append("actors = []\n");
@@ -102,8 +109,11 @@ internal static class VRMmddService
         code.Append("    if len(motion_result) == 1:\n");
         code.Append("        raise Exception(motion_result[0])\n");
         code.Append("    all_actors = [x.as_actor for x in game.scene_get_all_females()] + [x.as_actor for x in game.scene_get_all_males()]\n");
-        code.Append("    selected_nodes = tuple(game.studio.treeNodeCtrl.selectNodes)\n");
-        code.Append("    actors = [actor for actor in all_actors if actor.treeNodeObject in selected_nodes]\n");
+        code.Append("    if len(target_keys) > 0:\n");
+        code.Append("        actors = [actor for actor in all_actors if actor.objctrl.objectInfo.dicKey in target_keys]\n");
+        code.Append("    else:\n");
+        code.Append("        selected_nodes = tuple(game.studio.treeNodeCtrl.selectNodes)\n");
+        code.Append("        actors = [actor for actor in all_actors if actor.treeNodeObject in selected_nodes]\n");
         code.Append("    if len(actors) == 0 and len(all_actors) == 1:\n");
         code.Append("        actors = all_actors\n");
         code.Append("    if (len(motion_result[1]) > 0 or len(motion_result[2]) > 0 or len(motion_result[4]) > 0) and len(actors) == 0:\n");
@@ -211,6 +221,22 @@ internal static class VRMmddService
         }
         escaped.Append('\'');
         return escaped.ToString();
+    }
+
+    private static string ToPythonIntList(int[] values)
+    {
+        if (values == null || values.Length == 0)
+            return "[]";
+
+        StringBuilder result = new StringBuilder("[");
+        for (int index = 0; index < values.Length; index++)
+        {
+            if (index > 0)
+                result.Append(',');
+            result.Append(values[index]);
+        }
+        result.Append(']');
+        return result.ToString();
     }
 
     private static string FileNameWithoutExtension(string path)

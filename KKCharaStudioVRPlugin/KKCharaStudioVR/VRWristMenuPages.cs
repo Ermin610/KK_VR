@@ -18,8 +18,8 @@ public sealed partial class VRWristMenuController
     private enum BrowserMode
     {
         None,
-        LoadScene,
         LoadVmd,
+        SelectVmdActor,
         SelectVmdCamera,
         AddFemale,
         AddMale,
@@ -41,6 +41,8 @@ public sealed partial class VRWristMenuController
     private string _pendingMotionPath;
     private string _pendingAudioPath;
     private string _vmdMotionDirectory;
+    private int[] _pendingVmdActorKeys = new int[0];
+    private bool _pendingMotionHasCamera;
     private int _browserOffset;
     private int _browserStickDirection;
     private float _nextBrowserStickScroll;
@@ -367,7 +369,9 @@ public sealed partial class VRWristMenuController
 
     private void RefreshBrowserEntries()
     {
-        if (_browserMode == BrowserMode.SelectVmdCamera && _browserFixedEntries != null)
+        if ((_browserMode == BrowserMode.SelectVmdActor
+                || _browserMode == BrowserMode.SelectVmdCamera)
+            && _browserFixedEntries != null)
         {
             _browserEntries = _browserFixedEntries;
         }
@@ -378,10 +382,6 @@ public sealed partial class VRWristMenuController
             Func<string, bool> filter = null;
             switch (_browserMode)
             {
-                case BrowserMode.LoadScene:
-                    extensions = new[] { ".png" };
-                    filter = VRSceneActions.IsSceneCard;
-                    break;
                 case BrowserMode.LoadVmd:
                     extensions = new[] { ".vmd" };
                     inspectVmd = true;
@@ -445,10 +445,10 @@ public sealed partial class VRWristMenuController
     {
         switch (_browserMode)
         {
-            case BrowserMode.LoadScene:
-                return "读取场景卡";
             case BrowserMode.LoadVmd:
                 return "读取 VMD";
+            case BrowserMode.SelectVmdActor:
+                return "选择动作目标";
             case BrowserMode.SelectVmdCamera:
                 return "选择镜头 VMD";
             case BrowserMode.AddFemale:
@@ -464,6 +464,8 @@ public sealed partial class VRWristMenuController
 
     private string BuildBrowserPathLabel()
     {
+        if (_browserMode == BrowserMode.SelectVmdActor)
+            return "当前场景角色";
         if (_browserMode == BrowserMode.SelectVmdCamera)
             return "同目录镜头";
 
@@ -480,6 +482,8 @@ public sealed partial class VRWristMenuController
     {
         if (entry.IsSkipAction)
             return "不载入镜头\nMOTION ONLY";
+        if (entry.IsActorTarget)
+            return "[角色]  " + entry.DisplayName;
         if (entry.IsDirectory)
             return "[目录]  " + entry.DisplayName + "  >";
         if (entry.HasVmdMetadata)
@@ -496,13 +500,13 @@ public sealed partial class VRWristMenuController
             return "[" + kind + "]  " + entry.DisplayName;
         }
 
-        string prefix = _browserMode == BrowserMode.LoadScene ? "场景" : "角色";
-        return "[" + prefix + "]  " + entry.DisplayName;
+        return "[角色卡]  " + entry.DisplayName;
     }
 
     private void HandleBrowserBack()
     {
-        if (_browserMode == BrowserMode.SelectVmdCamera)
+        if (_browserMode == BrowserMode.SelectVmdActor
+            || _browserMode == BrowserMode.SelectVmdCamera)
         {
             OpenFileBrowser(
                 BrowserMode.LoadVmd,
@@ -558,45 +562,25 @@ public sealed partial class VRWristMenuController
 
         switch (_browserMode)
         {
-            case BrowserMode.LoadScene:
-                StartSceneLoad(entry.FullPath);
-                break;
             case BrowserMode.LoadVmd:
                 HandleVmdSelection(entry);
+                break;
+            case BrowserMode.SelectVmdActor:
+                HandleVmdActorSelection(entry);
                 break;
             case BrowserMode.SelectVmdCamera:
                 StartVmdLoad(
                     _pendingMotionPath,
                     entry.IsSkipAction ? null : entry.FullPath,
-                    _pendingAudioPath);
+                    _pendingAudioPath,
+                    _pendingVmdActorKeys);
                 break;
             case BrowserMode.AddFemale:
             case BrowserMode.AddMale:
             case BrowserMode.ReplaceCharacter:
-                StartCoroutine(ExecuteCharacterCardAfterFrame(entry.FullPath));
+                OpenCharacterCardPreview(entry.FullPath);
                 break;
         }
-    }
-
-    private void StartSceneLoad(string path)
-    {
-        _operationInProgress = true;
-        SetStatus("正在读取场景：" + Path.GetFileNameWithoutExtension(path),
-            new Color(0.25f, 0.86f, 0.94f, 1f), 0f);
-        SetOpen(false);
-        StartCoroutine(VRSceneActions.LoadScene(path, (success, status) =>
-        {
-            _operationInProgress = false;
-            if (success)
-            {
-                VRLog.Info(status);
-                return;
-            }
-
-            SetOpen(true);
-            OpenFileBrowser(BrowserMode.LoadScene, VRSceneActions.SceneRoot, _browserDirectory);
-            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 6f);
-        }));
     }
 
     private void HandleVmdSelection(VRWristFileEntry entry)
@@ -606,26 +590,114 @@ public sealed partial class VRWristMenuController
 
         if (!metadata.HasActorData)
         {
-            StartVmdLoad(null, entry.FullPath, audioPath);
-            return;
-        }
-
-        if (metadata.HasCameraData)
-        {
-            StartVmdLoad(entry.FullPath, entry.FullPath, audioPath);
-            return;
-        }
-
-        List<VRWristFileEntry> cameras = VRWristFileCatalog.FindRelatedCameraFiles(entry.FullPath);
-        if (cameras.Count == 0)
-        {
-            StartVmdLoad(entry.FullPath, null, audioPath);
+            StartVmdLoad(null, entry.FullPath, audioPath, new int[0]);
             return;
         }
 
         _pendingMotionPath = entry.FullPath;
         _pendingAudioPath = audioPath;
         _vmdMotionDirectory = Path.GetDirectoryName(entry.FullPath);
+        _pendingMotionHasCamera = metadata.HasCameraData;
+        _pendingVmdActorKeys = VRVmdTargetService.GetSelectedObjectKeys();
+        if (_pendingVmdActorKeys.Length > 0)
+        {
+            ContinuePendingVmdSelection();
+            return;
+        }
+
+        string targetStatus;
+        List<VRVmdActorTarget> targets = VRVmdTargetService.GetAllTargets(out targetStatus);
+        if (targets.Count == 0)
+        {
+            SetStatus(
+                targetStatus,
+                new Color(1f, 0.38f, 0.34f, 1f),
+                8f);
+            return;
+        }
+        if (targets.Count == 1)
+        {
+            if (VRVmdTargetService.TrySelectTarget(targets[0].ObjectKey, out targetStatus))
+            {
+                _pendingVmdActorKeys = new[] { targets[0].ObjectKey };
+                ContinuePendingVmdSelection();
+            }
+            else
+            {
+                SetStatus(
+                    targetStatus,
+                    new Color(1f, 0.38f, 0.34f, 1f),
+                    8f);
+            }
+            return;
+        }
+
+        _browserMode = BrowserMode.SelectVmdActor;
+        _browserRoot = _vmdMotionDirectory;
+        _browserDirectory = _vmdMotionDirectory;
+        _browserFixedEntries = new List<VRWristFileEntry>();
+        foreach (VRVmdActorTarget target in targets)
+        {
+            _browserFixedEntries.Add(new VRWristFileEntry
+            {
+                DisplayName = target.DisplayName,
+                IsActorTarget = true,
+                ObjectKey = target.ObjectKey
+            });
+        }
+        _browserOffset = 0;
+        RefreshBrowserEntries();
+        ShowPage(WristMenuPage.Browser);
+        SetStatus(
+            "请选择接收动作的角色",
+            new Color(1f, 0.72f, 0.25f, 1f),
+            0f);
+    }
+
+    private void HandleVmdActorSelection(VRWristFileEntry entry)
+    {
+        if (!entry.IsActorTarget)
+            return;
+
+        string status;
+        if (!VRVmdTargetService.TrySelectTarget(entry.ObjectKey, out status))
+        {
+            SetStatus(
+                status,
+                new Color(1f, 0.38f, 0.34f, 1f),
+                8f);
+            return;
+        }
+
+        _pendingVmdActorKeys = new[] { entry.ObjectKey };
+        SetStatus(status, new Color(0.35f, 1f, 0.62f, 1f), 0f);
+        ContinuePendingVmdSelection();
+    }
+
+    private void ContinuePendingVmdSelection()
+    {
+        if (_pendingMotionHasCamera)
+        {
+            StartVmdLoad(
+                _pendingMotionPath,
+                _pendingMotionPath,
+                _pendingAudioPath,
+                _pendingVmdActorKeys);
+            return;
+        }
+
+        List<VRWristFileEntry> cameras =
+            VRWristFileCatalog.FindRelatedCameraFiles(_pendingMotionPath);
+        if (cameras.Count == 0)
+        {
+            StartVmdLoad(
+                _pendingMotionPath,
+                null,
+                _pendingAudioPath,
+                _pendingVmdActorKeys);
+            return;
+        }
+
         _browserMode = BrowserMode.SelectVmdCamera;
         _browserRoot = _vmdMotionDirectory;
         _browserDirectory = _vmdMotionDirectory;
@@ -642,29 +714,46 @@ public sealed partial class VRWristMenuController
         RefreshBrowserEntries();
         ShowPage(WristMenuPage.Browser);
 
-        string audioStatus = string.IsNullOrEmpty(audioPath)
+        string audioStatus = string.IsNullOrEmpty(_pendingAudioPath)
             ? "未找到音频"
-            : "音频自动：" + Path.GetFileNameWithoutExtension(audioPath);
+            : "音频自动：" + Path.GetFileNameWithoutExtension(_pendingAudioPath);
         SetStatus(
-            "动作：" + Path.GetFileNameWithoutExtension(entry.FullPath) + " | " + audioStatus,
+            "动作：" + Path.GetFileNameWithoutExtension(_pendingMotionPath) + " | " + audioStatus,
             new Color(1f, 0.72f, 0.25f, 1f),
             0f);
     }
 
-    private void StartVmdLoad(string motionPath, string cameraPath, string audioPath)
+    private void StartVmdLoad(
+        string motionPath,
+        string cameraPath,
+        string audioPath,
+        int[] actorObjectKeys)
     {
         if (_operationInProgress)
             return;
         _operationInProgress = true;
         SetStatus("正在载入 VMD…", new Color(1f, 0.72f, 0.25f, 1f), 0f);
-        StartCoroutine(LoadVmdAfterFrame(motionPath, cameraPath, audioPath));
+        StartCoroutine(LoadVmdAfterFrame(
+            motionPath,
+            cameraPath,
+            audioPath,
+            actorObjectKeys));
     }
 
-    private IEnumerator LoadVmdAfterFrame(string motionPath, string cameraPath, string audioPath)
+    private IEnumerator LoadVmdAfterFrame(
+        string motionPath,
+        string cameraPath,
+        string audioPath,
+        int[] actorObjectKeys)
     {
         yield return null;
         string status;
-        bool success = VRMmddService.LoadVmdPackage(motionPath, cameraPath, audioPath, out status);
+        bool success = VRMmddService.LoadVmdPackage(
+            motionPath,
+            cameraPath,
+            audioPath,
+            actorObjectKeys,
+            out status);
         _operationInProgress = false;
         if (success)
         {
