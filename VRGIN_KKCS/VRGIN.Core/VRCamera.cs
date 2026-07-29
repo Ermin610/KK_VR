@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using Object = UnityEngine.Object;
 using VRGIN.Helpers;
+using VRGIN.Visuals;
 
 namespace VRGIN.Core;
 
@@ -18,6 +19,8 @@ public class VRCamera : ProtectedBehaviour
 	private const float MIN_FAR_CLIP_PLANE = 10f;
 
 	private Camera _Camera;
+
+	private Camera _GUIOverlayCamera;
 
 	public SteamVR_Camera SteamCam { get; private set; }
 
@@ -70,6 +73,7 @@ public class VRCamera : ProtectedBehaviour
 		((Component)this).gameObject.AddComponent<SteamVR_Camera>();
 		SteamCam = ((Component)this).GetComponent<SteamVR_Camera>();
 		SteamCam.Expand();
+		CreateGUIOverlayCamera();
 		if (!VR.Settings.MirrorScreen)
 		{
 			Object.Destroy((Object)(object)((Component)SteamCam.head).GetComponent<SteamVR_GameView>());
@@ -78,6 +82,43 @@ public class VRCamera : ProtectedBehaviour
 		SteamVR_Camera.sceneResolutionScale = VR.Settings.RenderScale;
 		new GameObject("CenterEyeAnchor").transform.SetParent(SteamCam.head);
 		Object.DontDestroyOnLoad((Object)(object)((Component)SteamCam.origin).gameObject);
+	}
+
+	private void CreateGUIOverlayCamera()
+	{
+		GameObject overlayObject = new GameObject("VRGIN_UIOverlayCamera");
+		overlayObject.transform.SetParent(((Component)this).transform, false);
+		_GUIOverlayCamera = overlayObject.AddComponent<Camera>();
+		_GUIOverlayCamera.clearFlags = CameraClearFlags.Depth;
+		_GUIOverlayCamera.backgroundColor = Color.clear;
+		_GUIOverlayCamera.cullingMask = GUIQuad.OverlayLayerMask;
+		_GUIOverlayCamera.depth = _Camera.depth + 100f;
+		_GUIOverlayCamera.renderingPath = RenderingPath.Forward;
+		_GUIOverlayCamera.useOcclusionCulling = false;
+		_GUIOverlayCamera.allowHDR = false;
+		_GUIOverlayCamera.stereoTargetEye = StereoTargetEyeMask.Both;
+		SyncGUIOverlayCamera();
+		VRLog.Info(
+			"Created VR UI overlay camera on layer {0}; scene depth and post effects cannot cover UI",
+			GUIQuad.OverlayLayer);
+	}
+
+	private void SyncGUIOverlayCamera()
+	{
+		if (_Camera == null || _GUIOverlayCamera == null)
+			return;
+
+		_Camera.cullingMask &= ~GUIQuad.OverlayLayerMask;
+		_GUIOverlayCamera.enabled = _Camera.enabled;
+		_GUIOverlayCamera.depth = _Camera.depth + 100f;
+		_GUIOverlayCamera.nearClipPlane = _Camera.nearClipPlane;
+		_GUIOverlayCamera.farClipPlane = _Camera.farClipPlane;
+		_GUIOverlayCamera.fieldOfView = _Camera.fieldOfView;
+		_GUIOverlayCamera.orthographic = _Camera.orthographic;
+		_GUIOverlayCamera.orthographicSize = _Camera.orthographicSize;
+		_GUIOverlayCamera.rect = _Camera.rect;
+		_GUIOverlayCamera.targetDisplay = _Camera.targetDisplay;
+		_GUIOverlayCamera.stereoTargetEye = _Camera.stereoTargetEye;
 	}
 
 	public void Copy(Camera blueprint, bool master = false, bool hasOtherConsumers = false)
@@ -161,8 +202,10 @@ public class VRCamera : ProtectedBehaviour
 			VR.Context.InvisibleLayer
 		});
 		num &= ~VR.Context.IgnoreMask;
+		num &= ~GUIQuad.OverlayLayerMask;
 		VRLog.Info("The camera sees {0} ({1})", string.Join(", ", UnityHelper.GetLayerNames(num)), string.Join(", ", Slaves.Select((CameraSlave s) => ((Object)s).name).ToArray()));
 		((Component)this).GetComponent<Camera>().cullingMask = num;
+		SyncGUIOverlayCamera();
 	}
 
 	public void CopyFX(Camera blueprint)
@@ -227,6 +270,7 @@ public class VRCamera : ProtectedBehaviour
 		{
 			SteamCam.origin.localScale = Vector3.one * VR.Settings.IPDScale;
 		}
+		SyncGUIOverlayCamera();
 	}
 
 	public void Refresh()

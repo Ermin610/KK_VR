@@ -288,6 +288,7 @@ public class GripMenuHandler : ProtectedBehaviour
 	{
 		Laser = new GameObject().AddComponent<LineRenderer>();
 		((Component)Laser).transform.SetParent(((Component)this).transform, false);
+		((Component)Laser).gameObject.layer = GUIQuad.OverlayLayer;
 		((Renderer)Laser).material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
 		Material material = ((Renderer)Laser).material;
 		material.renderQueue += 5000;
@@ -301,6 +302,7 @@ public class GripMenuHandler : ProtectedBehaviour
 
 		dotCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 		dotCursor.transform.SetParent(((Component)this).transform, false);
+		dotCursor.layer = GUIQuad.OverlayLayer;
 		dotCursor.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
 		Object.DestroyImmediate(dotCursor.GetComponent<Collider>());
 		_dotRenderer = dotCursor.GetComponent<Renderer>();
@@ -394,23 +396,13 @@ public class GripMenuHandler : ProtectedBehaviour
 		}
 	}
 
-	// Finds the uGUI click target the user actually aimed at, by sorting raycast
-	// hits by sortingOrder (then depth) descending — the correct visual top.
-	//
-	// Why this is needed: Koikatu's SortingAwareGraphicRaycaster returns hits in an
-	// order where a lower-sortingOrder element (e.g. the scene-card grid, order 10)
-	// can come BEFORE a higher-sortingOrder popup button (e.g. the Load confirm,
-	// order 100). Unity's EventSystem always acts on results[0], so the click lands
-	// on the grid behind the popup. We detect that case and dispatch the click to
-	// the correct top element ourselves.
-	//
-	// Returns the GameObject that should receive the click, or null if no override
-	// is needed (results[0] is already the top — let the normal Win32 click handle it).
-	private GameObject FindClickOverrideTarget()
+	// Compatibility fallback for third-party canvases whose custom raycasters still
+	// return a lower-sorting popup target before the visually top element.
+	private GameObject FindClickOverrideTarget(Vector2 pointerPosition)
 	{
 		if (EventSystem.current == null) return null;
 		var ped = new PointerEventData(EventSystem.current);
-		ped.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+		ped.position = pointerPosition;
 		var results = new List<RaycastResult>();
 		EventSystem.current.RaycastAll(ped, results);
 		if (results.Count < 2) return null;
@@ -467,11 +459,12 @@ public class GripMenuHandler : ProtectedBehaviour
 					MouseOperations.SetClientCursorPosition((int)_lastHitScreenPos.x, (int)_lastHitScreenPos.y);
 				}
 
-				_clickOverrideTarget = FindClickOverrideTarget();
+				Vector2 pointerPosition = GetEventPointerPosition();
+				_clickOverrideTarget = FindClickOverrideTarget(pointerPosition);
 				if (_clickOverrideTarget != null)
 				{
 					_clickPointerData = new PointerEventData(EventSystem.current);
-					_clickPointerData.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+					_clickPointerData.position = pointerPosition;
 					_clickPointerData.button = PointerEventData.InputButton.Left;
 					_pointerDownActive = true;
 					_win32MouseDown = false;
@@ -483,7 +476,9 @@ public class GripMenuHandler : ProtectedBehaviour
 					_win32MouseDown = true;
 					MouseOperations.MouseEvent(WindowsInterop.MouseEventFlags.LeftDown);
 				}
-				mouseDownPosition = new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
+				mouseDownPosition = _hasValidHit
+					? _lastHitScreenPos
+					: new Vector2(Input.mousePosition.x, (float)VRGUI.Height - Input.mousePosition.y);
 				PulseHaptic(800);
 			}
 
@@ -516,7 +511,7 @@ public class GripMenuHandler : ProtectedBehaviour
 		{
 			if (_clickOverrideTarget != null && _clickPointerData != null)
 			{
-				_clickPointerData.position = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+				_clickPointerData.position = GetEventPointerPosition();
 				ExecuteEvents.Execute(_clickOverrideTarget, _clickPointerData, ExecuteEvents.pointerUpHandler);
 				if (sendClick && _clickOverrideTarget.activeInHierarchy)
 				{
@@ -618,6 +613,28 @@ public class GripMenuHandler : ProtectedBehaviour
 		if (w <= 0f) w = VRGUI.Width;
 		if (h <= 0f) h = VRGUI.Height;
 		return new Vector2(u * w, (1f - v) * h);
+	}
+
+	private Vector2 GetEventPointerPosition()
+	{
+		if (!_hasValidHit)
+			return new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+
+		WindowsInterop.RECT clientRect = WindowManager.GetClientRect();
+		float clientWidth = clientRect.Right - clientRect.Left;
+		float clientHeight = clientRect.Bottom - clientRect.Top;
+		if (clientWidth <= 0f)
+			clientWidth = VRGUI.Width;
+		if (clientHeight <= 0f)
+			clientHeight = VRGUI.Height;
+		clientWidth = Mathf.Max(1f, clientWidth);
+		clientHeight = Mathf.Max(1f, clientHeight);
+
+		float screenWidth = Screen.width > 0 ? Screen.width : clientWidth;
+		float screenHeight = Screen.height > 0 ? Screen.height : clientHeight;
+		return new Vector2(
+			_lastHitScreenPos.x / clientWidth * screenWidth,
+			(1f - _lastHitScreenPos.y / clientHeight) * screenHeight);
 	}
 
 	// Directly use Laser.transform — identical to VRGIN MenuHandler

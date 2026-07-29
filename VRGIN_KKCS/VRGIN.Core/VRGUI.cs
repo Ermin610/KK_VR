@@ -65,7 +65,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 
 		private int GetOrder()
 		{
-			return -Canvas.sortingOrder;
+			return Canvas != null ? Canvas.sortingOrder : 0;
 		}
 	}
 
@@ -187,18 +187,18 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 
 	private bool IsUnprocessed(Canvas c)
 	{
-		//IL_0001: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0009: Unknown result type (might be due to invalid IL or missing references)
-		//IL_000f: Invalid comparison between Unknown and I4
-		if ((int)c.renderMode != 0)
+		if (c == null)
 		{
-			if ((int)c.renderMode == 1 && c.worldCamera != _VRGUICamera)
-			{
-				return c.worldCamera.targetTexture == null;
-			}
 			return false;
 		}
-		return true;
+
+		if (c.renderMode == RenderMode.ScreenSpaceOverlay)
+			return true;
+
+		if (c.renderMode == RenderMode.ScreenSpaceCamera && c.worldCamera != _VRGUICamera)
+			return c.worldCamera == null || c.worldCamera.targetTexture == null;
+
+		return false;
 	}
 
 	protected void CatchCanvas()
@@ -219,7 +219,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 			{
 				int layer = LayerMask.NameToLayer(VR.Context.UILayer);
 				((Component)item).gameObject.layer = layer;
-				Transform[] componentsInChildren = ((Component)item).gameObject.GetComponentsInChildren<Transform>();
+				Transform[] componentsInChildren = ((Component)item).gameObject.GetComponentsInChildren<Transform>(true);
 				for (int i = 0; i < componentsInChildren.Length; i++)
 				{
 					((Component)componentsInChildren[i]).gameObject.layer = layer;
@@ -227,7 +227,7 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 			}
 			if (VR.Context.EnforceDefaultGUIMaterials)
 			{
-				Graphic[] componentsInChildren2 = ((Component)item).gameObject.GetComponentsInChildren<Graphic>();
+				Graphic[] componentsInChildren2 = ((Component)item).gameObject.GetComponentsInChildren<Graphic>(true);
 				foreach (Graphic obj in componentsInChildren2)
 				{
 					obj.material = obj.defaultMaterial;
@@ -238,11 +238,22 @@ public class VRGUI : ProtectedBehaviour, IScreenGrabber
 				GraphicRaycaster component = ((Component)item).GetComponent<GraphicRaycaster>();
 				if ((component != null))
 				{
+					object ignoreReversedGraphics = UnityHelper.GetPropertyOrField<GraphicRaycaster>(
+						component,
+						"ignoreReversedGraphics");
+					object blockingObjects = UnityHelper.GetPropertyOrField<GraphicRaycaster>(
+						component,
+						"blockingObjects");
+					object blockingMask = UnityHelper.GetPropertyOrField<GraphicRaycaster>(
+						component,
+						"m_BlockingMask");
+					bool wasEnabled = component.enabled;
 					Object.DestroyImmediate((Object)(object)component);
 					SortingAwareGraphicRaycaster obj2 = ((Component)item).gameObject.AddComponent<SortingAwareGraphicRaycaster>();
-					UnityHelper.SetPropertyOrField(obj2, "ignoreReversedGraphics", UnityHelper.GetPropertyOrField<GraphicRaycaster>(component, "ignoreReversedGraphics"));
-					UnityHelper.SetPropertyOrField(obj2, "blockingObjects", UnityHelper.GetPropertyOrField<GraphicRaycaster>(component, "blockingObjects"));
-					UnityHelper.SetPropertyOrField(obj2, "m_BlockingMask", UnityHelper.GetPropertyOrField<GraphicRaycaster>(component, "m_BlockingMask"));
+					UnityHelper.SetPropertyOrField(obj2, "ignoreReversedGraphics", ignoreReversedGraphics);
+					UnityHelper.SetPropertyOrField(obj2, "blockingObjects", blockingObjects);
+					UnityHelper.SetPropertyOrField(obj2, "m_BlockingMask", blockingMask);
+					obj2.enabled = wasEnabled;
 				}
 			}
 		}

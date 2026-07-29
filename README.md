@@ -47,6 +47,8 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 ### 6. Robust UI & Laser Controls
 - **Unified Settings Panel**: Merged settings into a single static `GUIQuad` shared across both controllers, preventing duplicate window bugs.
 - **Accurate Laser Raycasting**: Realigned the interaction laser directly with the controller forward direction (instead of the rotated hands' finger forward) to ensure laser interaction with UI dropdowns and sliders is 100% accurate.
+- **Native Popup Compatibility**: Studio option, graphics, confirmation, and other initially hidden panels are captured when they open, with visual sorting order preserved for reliable laser clicks.
+- **Scene-Proof UI Rendering**: Floating Studio UI, wrist menus, and laser cursors use a dedicated final-pass VR camera so maps, geometry, and camera post-processing effects cannot cover them.
 
 ### 7. Compact Wrist Quick Menu
 - **Focused submenus**: Scene commands, character cards, clothing presets, and MMD controls stay organized in the compact wrist interface.

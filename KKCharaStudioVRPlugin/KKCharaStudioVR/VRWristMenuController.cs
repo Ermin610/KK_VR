@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Valve.VR;
 using VRGIN.Core;
+using VRGIN.Visuals;
 
 namespace KKCharaStudioVR;
 
@@ -195,7 +196,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (VR.Mode == null || VR.Mode.Left == null || VR.Camera == null || VR.Camera.Head == null)
             return false;
 
-        _visibleLayer = LayerMask.NameToLayer(VR.Context.GuiLayer);
+        _visibleLayer = GUIQuad.OverlayLayer;
         if (_visibleLayer < 0)
             _visibleLayer = 0;
         _colliderLayer = LayerMask.NameToLayer(VR.Context.InvisibleLayer);
