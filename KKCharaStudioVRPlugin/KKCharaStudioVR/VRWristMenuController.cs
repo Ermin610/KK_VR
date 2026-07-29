@@ -15,6 +15,12 @@ public sealed class VRWristMenuController : MonoBehaviour
     private const float MenuWidth = 560f;
     private const float MenuHeight = 500f;
 
+    private static readonly Color GlassPanelColor = new Color(0.035f, 0.045f, 0.055f, 0.82f);
+    private static readonly Color GlassHeaderColor = new Color(0.88f, 0.94f, 1f, 0.075f);
+    private static readonly Color GlassSurfaceColor = new Color(0.78f, 0.86f, 0.92f, 0.075f);
+    private static readonly Color GlassOutlineColor = new Color(0.92f, 0.97f, 1f, 0.2f);
+    private static readonly Color GlassShadowColor = new Color(0f, 0f, 0f, 0.48f);
+
     private enum WristMenuPage
     {
         Root,
@@ -31,6 +37,8 @@ public sealed class VRWristMenuController : MonoBehaviour
     private RectTransform _menuRect;
     private Text _statusText;
     private Text _clothingCharacterText;
+    private Texture2D _roundedTexture;
+    private Sprite _roundedSprite;
     private VRWristMenuButtonTarget _loadSceneButton;
     private readonly VRWristMenuButtonTarget[] _clothingPartButtons =
         new VRWristMenuButtonTarget[VRCharacterClothingService.PartCount];
@@ -99,6 +107,10 @@ public sealed class VRWristMenuController : MonoBehaviour
             Destroy(_laser.gameObject);
         if (_cursor != null)
             Destroy(_cursor);
+        if (_roundedSprite != null)
+            Destroy(_roundedSprite);
+        if (_roundedTexture != null)
+            Destroy(_roundedTexture);
         if (Instance == this)
             Instance = null;
     }
@@ -186,6 +198,7 @@ public sealed class VRWristMenuController : MonoBehaviour
             _colliderLayer = 2;
         _pointerMask = 1 << _colliderLayer;
         _font = ResolveFont();
+        EnsureGlassAssets();
 
         _menuRoot = new GameObject("KKVR_WristMenu", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
         _menuRoot.layer = _visibleLayer;
@@ -204,8 +217,12 @@ public sealed class VRWristMenuController : MonoBehaviour
         CanvasScaler scaler = _menuRoot.GetComponent<CanvasScaler>();
         scaler.dynamicPixelsPerUnit = 10f;
 
-        CreateImage("Background", _menuRect, 0f, 0f, MenuWidth, MenuHeight, new Color(0.035f, 0.04f, 0.045f, 0.97f));
-        CreateImage("Header", _menuRect, 0f, 0f, MenuWidth, 58f, new Color(0.075f, 0.09f, 0.105f, 1f));
+        Image glassPanel = CreateImage("Background", _menuRect, 0f, 0f, MenuWidth, MenuHeight, GlassPanelColor);
+        ApplyGlassEffects(glassPanel, GlassOutlineColor, true, 6f);
+        Image glassHeader = CreateImage("Header", _menuRect, 0f, 0f, MenuWidth, 58f, GlassHeaderColor);
+        ApplyGlassEffects(glassHeader, new Color(1f, 1f, 1f, 0.1f), false, 0f);
+        CreateImage("TopGlint", _menuRect, 18f, 7f, 524f, 2f, new Color(1f, 1f, 1f, 0.28f), false);
+        CreateImage("HeaderDivider", _menuRect, 24f, 57f, 512f, 1f, new Color(0.72f, 0.9f, 1f, 0.16f), false);
 
         _rootPage = CreateRectObject("RootPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _clothingPage = CreateRectObject("ClothingPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
@@ -220,8 +237,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "读取场景\nLOAD SCENE",
             24f,
             98f,
-            new Color(0.05f, 0.19f, 0.23f, 1f),
-            new Color(0.08f, 0.38f, 0.45f, 1f),
+            new Color(0.07f, 0.21f, 0.25f, 0.5f),
+            new Color(0.09f, 0.42f, 0.49f, 0.78f),
             HandleLoadScene,
             _rootPage.transform,
             248f,
@@ -232,8 +249,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "保存场景\nSAVE SCENE",
             288f,
             98f,
-            new Color(0.05f, 0.19f, 0.23f, 1f),
-            new Color(0.08f, 0.38f, 0.45f, 1f),
+            new Color(0.07f, 0.21f, 0.25f, 0.5f),
+            new Color(0.09f, 0.42f, 0.49f, 0.78f),
             HandleSaveScene,
             _rootPage.transform,
             248f,
@@ -247,8 +264,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "播放 / 暂停\nPLAY / PAUSE",
             24f,
             208f,
-            new Color(0.22f, 0.15f, 0.045f, 1f),
-            new Color(0.46f, 0.29f, 0.06f, 1f),
+            new Color(0.28f, 0.2f, 0.07f, 0.46f),
+            new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleToggleMmd,
             _rootPage.transform,
             248f,
@@ -259,8 +276,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "读取 VMD\nLOAD VMD",
             288f,
             208f,
-            new Color(0.22f, 0.15f, 0.045f, 1f),
-            new Color(0.46f, 0.29f, 0.06f, 1f),
+            new Color(0.28f, 0.2f, 0.07f, 0.46f),
+            new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleLoadVmd,
             _rootPage.transform,
             248f,
@@ -274,8 +291,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "角色换装  >\nCHARACTER CLOTHING",
             24f,
             320f,
-            new Color(0.055f, 0.2f, 0.115f, 1f),
-            new Color(0.09f, 0.4f, 0.2f, 1f),
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleOpenClothing,
             _rootPage.transform,
             512f,
@@ -284,7 +301,8 @@ public sealed class VRWristMenuController : MonoBehaviour
 
         BuildClothingPage();
 
-        CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, new Color(0.07f, 0.08f, 0.085f, 1f));
+        Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, GlassSurfaceColor);
+        ApplyGlassEffects(statusBackground, new Color(0.9f, 0.97f, 1f, 0.12f), true, 2f);
         _statusText = CreateText("Status", _menuRect, "就绪", 38f, 420f, 484f, 50f, 18,
             TextAnchor.MiddleLeft, new Color(0.78f, 0.86f, 0.9f, 1f));
 
@@ -300,8 +318,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "<",
             18f,
             10f,
-            new Color(0.14f, 0.16f, 0.18f, 1f),
-            new Color(0.28f, 0.32f, 0.35f, 1f),
+            new Color(1f, 1f, 1f, 0.08f),
+            new Color(1f, 1f, 1f, 0.2f),
             HandleBackToRoot,
             _clothingPage.transform,
             58f,
@@ -310,8 +328,15 @@ public sealed class VRWristMenuController : MonoBehaviour
         CreateText("ClothingTitle", _clothingPage.transform, "角色换装", 92f, 10f, 444f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
 
-        CreateImage("SelectedCharacterBackground", _clothingPage.transform, 24f, 66f, 512f, 38f,
-            new Color(0.075f, 0.1f, 0.085f, 1f));
+        Image selectedCharacterBackground = CreateImage(
+            "SelectedCharacterBackground",
+            _clothingPage.transform,
+            24f,
+            66f,
+            512f,
+            38f,
+            new Color(0.55f, 0.9f, 0.7f, 0.065f));
+        ApplyGlassEffects(selectedCharacterBackground, new Color(0.72f, 1f, 0.82f, 0.13f), false, 0f);
         _clothingCharacterText = CreateText(
             "SelectedCharacter",
             _clothingPage.transform,
@@ -331,8 +356,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "穿好\nDRESSED",
             24f,
             140f,
-            new Color(0.055f, 0.2f, 0.115f, 1f),
-            new Color(0.09f, 0.4f, 0.2f, 1f),
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
             () => HandleClothingPreset(0),
             _clothingPage.transform,
             165f,
@@ -343,8 +368,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "半脱\nHALF",
             198f,
             140f,
-            new Color(0.18f, 0.14f, 0.055f, 1f),
-            new Color(0.4f, 0.29f, 0.08f, 1f),
+            new Color(0.28f, 0.2f, 0.07f, 0.46f),
+            new Color(0.55f, 0.36f, 0.1f, 0.74f),
             () => HandleClothingPreset(1),
             _clothingPage.transform,
             164f,
@@ -355,8 +380,8 @@ public sealed class VRWristMenuController : MonoBehaviour
             "脱下\nUNDRESS",
             371f,
             140f,
-            new Color(0.22f, 0.08f, 0.09f, 1f),
-            new Color(0.46f, 0.13f, 0.16f, 1f),
+            new Color(0.3f, 0.09f, 0.12f, 0.46f),
+            new Color(0.58f, 0.15f, 0.2f, 0.74f),
             () => HandleClothingPreset(3),
             _clothingPage.transform,
             165f,
@@ -375,8 +400,8 @@ public sealed class VRWristMenuController : MonoBehaviour
                 VRCharacterClothingService.GetPartName(i) + "  -",
                 x,
                 y,
-                new Color(0.07f, 0.115f, 0.14f, 1f),
-                new Color(0.11f, 0.27f, 0.34f, 1f),
+                new Color(0.08f, 0.15f, 0.18f, 0.5f),
+                new Color(0.12f, 0.32f, 0.39f, 0.76f),
                 () => HandleCycleClothingPart(partId),
                 _clothingPage.transform,
                 248f,
@@ -385,13 +410,99 @@ public sealed class VRWristMenuController : MonoBehaviour
         }
     }
 
-    private Image CreateImage(string name, Transform parent, float x, float y, float width, float height, Color color)
+    private void EnsureGlassAssets()
+    {
+        if (_roundedSprite != null)
+            return;
+
+        const int size = 48;
+        const float radius = 8f;
+        const float border = 12f;
+        float half = size * 0.5f;
+        float inner = half - radius;
+        Color[] pixels = new Color[size * size];
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float qx = Mathf.Abs(x + 0.5f - half) - inner;
+                float qy = Mathf.Abs(y + 0.5f - half) - inner;
+                float ox = Mathf.Max(qx, 0f);
+                float oy = Mathf.Max(qy, 0f);
+                float distance = Mathf.Sqrt(ox * ox + oy * oy)
+                    + Mathf.Min(Mathf.Max(qx, qy), 0f)
+                    - radius;
+                float alpha = Mathf.Clamp01(0.5f - distance);
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        _roundedTexture = new Texture2D(size, size, TextureFormat.ARGB32, false);
+        _roundedTexture.name = "KKVR_GlassRoundedTexture";
+        _roundedTexture.filterMode = FilterMode.Bilinear;
+        _roundedTexture.wrapMode = TextureWrapMode.Clamp;
+        _roundedTexture.hideFlags = HideFlags.HideAndDontSave;
+        _roundedTexture.SetPixels(pixels);
+        _roundedTexture.Apply(false, true);
+
+        _roundedSprite = Sprite.Create(
+            _roundedTexture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(border, border, border, border));
+        _roundedSprite.name = "KKVR_GlassRoundedSprite";
+        _roundedSprite.hideFlags = HideFlags.HideAndDontSave;
+    }
+
+    private Image CreateImage(
+        string name,
+        Transform parent,
+        float x,
+        float y,
+        float width,
+        float height,
+        Color color,
+        bool rounded = true)
     {
         GameObject go = CreateRectObject(name, parent, x, y, width, height, _visibleLayer);
         Image image = go.AddComponent<Image>();
+        if (rounded && _roundedSprite != null)
+        {
+            image.sprite = _roundedSprite;
+            image.type = Image.Type.Sliced;
+        }
         image.color = color;
         image.raycastTarget = false;
         return image;
+    }
+
+    private static void ApplyGlassEffects(
+        Image image,
+        Color outlineColor,
+        bool elevated,
+        float shadowOffset)
+    {
+        if (image == null)
+            return;
+
+        if (elevated)
+        {
+            Shadow shadow = image.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = shadowOffset >= 4f
+                ? GlassShadowColor
+                : new Color(0f, 0f, 0f, 0.26f);
+            shadow.effectDistance = new Vector2(0f, -shadowOffset);
+            shadow.useGraphicAlpha = true;
+        }
+
+        Outline outline = image.gameObject.AddComponent<Outline>();
+        outline.effectColor = outlineColor;
+        outline.effectDistance = new Vector2(1f, -1f);
+        outline.useGraphicAlpha = true;
     }
 
     private Text CreateText(
@@ -420,6 +531,11 @@ public sealed class VRWristMenuController : MonoBehaviour
         text.resizeTextMinSize = 12;
         text.resizeTextMaxSize = fontSize;
         text.raycastTarget = false;
+
+        Shadow shadow = go.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+        shadow.effectDistance = new Vector2(0f, -1f);
+        shadow.useGraphicAlpha = true;
         return text;
     }
 
@@ -438,6 +554,16 @@ public sealed class VRWristMenuController : MonoBehaviour
     {
         Transform buttonParent = parent ?? _menuRect;
         Image background = CreateImage(name, buttonParent, x, y, width, height, normalColor);
+        ApplyGlassEffects(background, new Color(0.94f, 0.98f, 1f, 0.14f), true, 2f);
+        CreateImage(
+            name + "Glint",
+            background.transform,
+            10f,
+            5f,
+            width - 20f,
+            1f,
+            new Color(1f, 1f, 1f, 0.16f),
+            false);
         Text buttonText = CreateText(name + "Label", background.transform, label, 10f, 5f, width - 20f, height - 10f, fontSize,
             TextAnchor.MiddleCenter, Color.white);
 
