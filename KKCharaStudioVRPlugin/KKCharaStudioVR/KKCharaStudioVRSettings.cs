@@ -157,6 +157,8 @@ public class KKCharaStudioVRSettings : VRSettings
 	private bool _ComfortVignetteEnabled = true;
 	private float _ComfortVignetteRadius = 0.5f;
 	private bool _TwoHandScaleEnabled = true;
+	private bool _WristMenuEnabled = true;
+	private float _WristMenuScale = 1.0f;
 
 	[XmlComment("Enable comfort vignette during movement")]
 	public bool ComfortVignetteEnabled
@@ -177,6 +179,20 @@ public class KKCharaStudioVRSettings : VRSettings
 	{
 		get { return _TwoHandScaleEnabled; }
 		set { _TwoHandScaleEnabled = value; TriggerPropertyChanged("TwoHandScaleEnabled"); }
+	}
+
+	[XmlComment("Enable the compact left-wrist quick menu")]
+	public bool WristMenuEnabled
+	{
+		get { return _WristMenuEnabled; }
+		set { _WristMenuEnabled = value; TriggerPropertyChanged("WristMenuEnabled"); }
+	}
+
+	[XmlComment("Scale of the compact wrist menu")]
+	public float WristMenuScale
+	{
+		get { return _WristMenuScale; }
+		set { _WristMenuScale = value; TriggerPropertyChanged("WristMenuScale"); }
 	}
 
 	private float _HandOffsetX = 0f;

@@ -313,6 +313,14 @@ public class GripMenuHandler : ProtectedBehaviour
 	protected override void OnUpdate()
 	{
 		base.OnUpdate();
+		if (VRWristMenuController.IsOpen)
+		{
+			ReleasePointer(false);
+			if (Laser != null)
+				LaserVisible = false;
+			return;
+		}
+
 		if (VR.Camera == null || !((Component)VR.Camera).gameObject.activeInHierarchy)
 		{
 			ReleasePointer(false);

@@ -1,0 +1,639 @@
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.UI;
+using Valve.VR;
+using VRGIN.Core;
+
+namespace KKCharaStudioVR;
+
+public sealed class VRWristMenuController : MonoBehaviour
+{
+    private const float MenuPressMaxDuration = 0.45f;
+    private const float ConfirmationDuration = 4f;
+    private const float BaseMenuScale = 0.00045f;
+
+    public static VRWristMenuController Instance { get; private set; }
+    public static bool IsOpen => Instance != null && Instance._isOpen;
+
+    private KKCharaStudioVRSettings _settings;
+    private GameObject _menuRoot;
+    private RectTransform _menuRect;
+    private Text _statusText;
+    private VRWristMenuButtonTarget _loadSceneButton;
+    private VRWristMenuButtonTarget _hoveredButton;
+    private Font _font;
+    private LineRenderer _laser;
+    private GameObject _cursor;
+    private Renderer _cursorRenderer;
+    private Transform _rightTransform;
+    private int _visibleLayer;
+    private int _colliderLayer;
+    private int _pointerMask;
+    private bool _isOpen;
+    private bool _menuPressActive;
+    private bool _menuPressChorded;
+    private bool _poseInitialized;
+    private float _menuPressStarted;
+    private float _confirmationUntil;
+    private float _statusUntil;
+
+    private void Awake()
+    {
+        Instance = this;
+        ResolveSettings();
+    }
+
+    private void Update()
+    {
+        ResolveSettings();
+        HandleMenuButton();
+
+        if (_settings != null && !_settings.WristMenuEnabled)
+        {
+            if (_isOpen)
+                SetOpen(false);
+            return;
+        }
+
+        if (!_isOpen)
+            return;
+
+        if (!EnsureMenu())
+        {
+            SetOpen(false);
+            return;
+        }
+
+        UpdatePose();
+        UpdateTransientState();
+        UpdatePointer();
+    }
+
+    private void OnDisable()
+    {
+        SetOpen(false);
+    }
+
+    private void OnDestroy()
+    {
+        SetOpen(false);
+        if (_menuRoot != null)
+            Destroy(_menuRoot);
+        if (_laser != null)
+            Destroy(_laser.gameObject);
+        if (_cursor != null)
+            Destroy(_cursor);
+        if (Instance == this)
+            Instance = null;
+    }
+
+    public void ToggleMenu()
+    {
+        SetOpen(!_isOpen);
+    }
+
+    private void ResolveSettings()
+    {
+        if (_settings == null && VR.Manager != null && VR.Manager.Context != null)
+            _settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+    }
+
+    private void HandleMenuButton()
+    {
+        SteamVR_Controller.Device leftDevice = GetDevice(VR.Mode?.Left);
+        if (leftDevice == null)
+        {
+            _menuPressActive = false;
+            return;
+        }
+
+        if (leftDevice.GetPressDown(EVRButtonId.k_EButton_ApplicationMenu))
+        {
+            _menuPressActive = true;
+            _menuPressChorded = false;
+            _menuPressStarted = Time.unscaledTime;
+        }
+
+        if (_menuPressActive && leftDevice.GetPress(EVRButtonId.k_EButton_ApplicationMenu))
+        {
+            _menuPressChorded |= leftDevice.GetPress(EVRButtonId.k_EButton_Grip)
+                || leftDevice.GetPress(EVRButtonId.k_EButton_Axis1);
+        }
+
+        if (!_menuPressActive || !leftDevice.GetPressUp(EVRButtonId.k_EButton_ApplicationMenu))
+            return;
+
+        float duration = Time.unscaledTime - _menuPressStarted;
+        _menuPressActive = false;
+        if (!_menuPressChorded && duration <= MenuPressMaxDuration
+            && (_settings == null || _settings.WristMenuEnabled))
+        {
+            ToggleMenu();
+            leftDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
+        }
+    }
+
+    private void SetOpen(bool open)
+    {
+        if (open && !EnsureMenu())
+            return;
+
+        _isOpen = open;
+        _poseInitialized = false;
+        ResetConfirmation();
+        SetHoveredButton(null);
+        SetPointerVisible(false);
+
+        if (_menuRoot != null)
+            _menuRoot.SetActive(open);
+        if (open)
+            SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+
+        VRLog.Info("Wrist menu " + (open ? "opened." : "closed."));
+    }
+
+    private bool EnsureMenu()
+    {
+        if (_menuRoot != null)
+            return true;
+        if (VR.Mode == null || VR.Mode.Left == null || VR.Camera == null || VR.Camera.Head == null)
+            return false;
+
+        _visibleLayer = LayerMask.NameToLayer(VR.Context.GuiLayer);
+        if (_visibleLayer < 0)
+            _visibleLayer = 0;
+        _colliderLayer = LayerMask.NameToLayer(VR.Context.InvisibleLayer);
+        if (_colliderLayer < 0)
+            _colliderLayer = 2;
+        _pointerMask = 1 << _colliderLayer;
+        _font = ResolveFont();
+
+        _menuRoot = new GameObject("KKVR_WristMenu", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        _menuRoot.layer = _visibleLayer;
+        _menuRoot.transform.SetParent(transform, false);
+        _menuRect = _menuRoot.GetComponent<RectTransform>();
+        _menuRect.sizeDelta = new Vector2(560f, 430f);
+        _menuRect.localScale = Vector3.one * BaseMenuScale;
+
+        Canvas canvas = _menuRoot.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 30000;
+        if (VR.Camera.SteamCam != null)
+            canvas.worldCamera = VR.Camera.SteamCam.camera;
+
+        CanvasScaler scaler = _menuRoot.GetComponent<CanvasScaler>();
+        scaler.dynamicPixelsPerUnit = 10f;
+
+        CreateImage("Background", _menuRect, 0f, 0f, 560f, 430f, new Color(0.035f, 0.04f, 0.045f, 0.97f));
+        CreateImage("Header", _menuRect, 0f, 0f, 560f, 58f, new Color(0.075f, 0.09f, 0.105f, 1f));
+        CreateText("Title", _menuRect, "KK VR 快捷菜单", 22f, 10f, 516f, 40f, 28,
+            TextAnchor.MiddleLeft, Color.white);
+
+        CreateText("SceneSection", _menuRect, "场景  SCENE", 24f, 70f, 512f, 28f, 20,
+            TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
+        _loadSceneButton = CreateButton(
+            "LoadScene",
+            "读取场景\nLOAD SCENE",
+            24f,
+            104f,
+            new Color(0.05f, 0.19f, 0.23f, 1f),
+            new Color(0.08f, 0.38f, 0.45f, 1f),
+            HandleLoadScene);
+        CreateButton(
+            "SaveScene",
+            "保存场景\nSAVE SCENE",
+            288f,
+            104f,
+            new Color(0.05f, 0.19f, 0.23f, 1f),
+            new Color(0.08f, 0.38f, 0.45f, 1f),
+            HandleSaveScene);
+
+        CreateText("MmdSection", _menuRect, "MMD", 24f, 198f, 512f, 28f, 20,
+            TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
+        CreateButton(
+            "ToggleMmd",
+            "播放 / 暂停\nPLAY / PAUSE",
+            24f,
+            232f,
+            new Color(0.22f, 0.15f, 0.045f, 1f),
+            new Color(0.46f, 0.29f, 0.06f, 1f),
+            HandleToggleMmd);
+        CreateButton(
+            "LoadVmd",
+            "读取 VMD\nLOAD VMD",
+            288f,
+            232f,
+            new Color(0.22f, 0.15f, 0.045f, 1f),
+            new Color(0.46f, 0.29f, 0.06f, 1f),
+            HandleLoadVmd);
+
+        CreateImage("StatusBackground", _menuRect, 24f, 326f, 512f, 76f, new Color(0.07f, 0.08f, 0.085f, 1f));
+        _statusText = CreateText("Status", _menuRect, "就绪", 38f, 336f, 484f, 56f, 18,
+            TextAnchor.MiddleLeft, new Color(0.78f, 0.86f, 0.9f, 1f));
+
+        _menuRoot.SetActive(false);
+        return true;
+    }
+
+    private Image CreateImage(string name, Transform parent, float x, float y, float width, float height, Color color)
+    {
+        GameObject go = CreateRectObject(name, parent, x, y, width, height, _visibleLayer);
+        Image image = go.AddComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private Text CreateText(
+        string name,
+        Transform parent,
+        string value,
+        float x,
+        float y,
+        float width,
+        float height,
+        int fontSize,
+        TextAnchor alignment,
+        Color color)
+    {
+        GameObject go = CreateRectObject(name, parent, x, y, width, height, _visibleLayer);
+        Text text = go.AddComponent<Text>();
+        text.font = _font;
+        text.text = value;
+        text.fontSize = fontSize;
+        text.color = color;
+        text.alignment = alignment;
+        text.supportRichText = false;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = 12;
+        text.resizeTextMaxSize = fontSize;
+        text.raycastTarget = false;
+        return text;
+    }
+
+    private VRWristMenuButtonTarget CreateButton(
+        string name,
+        string label,
+        float x,
+        float y,
+        Color normalColor,
+        Color hoverColor,
+        Action onClick)
+    {
+        const float width = 248f;
+        const float height = 78f;
+        Image background = CreateImage(name, _menuRect, x, y, width, height, normalColor);
+        Text buttonText = CreateText(name + "Label", background.transform, label, 10f, 8f, width - 20f, height - 16f, 21,
+            TextAnchor.MiddleCenter, Color.white);
+
+        GameObject hitbox = new GameObject(name + "Hitbox");
+        hitbox.layer = _colliderLayer;
+        hitbox.transform.SetParent(background.transform, false);
+        hitbox.transform.localPosition = new Vector3(width * 0.5f, -height * 0.5f, 0f);
+        hitbox.transform.localRotation = Quaternion.identity;
+        hitbox.transform.localScale = Vector3.one;
+
+        BoxCollider collider = hitbox.AddComponent<BoxCollider>();
+        collider.size = new Vector3(width, height, 12f);
+        collider.isTrigger = true;
+
+        VRWristMenuButtonTarget target = hitbox.AddComponent<VRWristMenuButtonTarget>();
+        target.Configure(background, buttonText, normalColor, hoverColor, onClick);
+        return target;
+    }
+
+    private static GameObject CreateRectObject(
+        string name,
+        Transform parent,
+        float x,
+        float y,
+        float width,
+        float height,
+        int layer)
+    {
+        GameObject go = new GameObject(name, typeof(RectTransform));
+        go.layer = layer;
+        RectTransform rect = go.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(x, -y);
+        rect.sizeDelta = new Vector2(width, height);
+        return go;
+    }
+
+    private void UpdatePose()
+    {
+        Transform left = ((Component)VR.Mode.Left).transform;
+        Transform head = VR.Camera.Head;
+        float configuredScale = _settings != null ? Mathf.Clamp(_settings.WristMenuScale, 0.7f, 1.5f) : 1f;
+        Vector3 targetPosition = left.position + head.up * 0.105f + head.forward * 0.035f;
+        Quaternion targetRotation = Quaternion.LookRotation(head.forward, head.up);
+
+        _menuRect.localScale = Vector3.one * (BaseMenuScale * configuredScale);
+        if (!_poseInitialized)
+        {
+            _menuRect.position = targetPosition;
+            _menuRect.rotation = targetRotation;
+            _poseInitialized = true;
+            return;
+        }
+
+        float blend = Mathf.Clamp01(Time.unscaledDeltaTime * 20f);
+        _menuRect.position = Vector3.Lerp(_menuRect.position, targetPosition, blend);
+        _menuRect.rotation = Quaternion.Slerp(_menuRect.rotation, targetRotation, blend);
+    }
+
+    private void UpdatePointer()
+    {
+        SteamVR_Controller.Device rightDevice = GetDevice(VR.Mode?.Right);
+        if (rightDevice == null || !EnsurePointer())
+        {
+            SetHoveredButton(null);
+            SetPointerVisible(false);
+            return;
+        }
+
+        Vector3 origin = _laser.transform.position;
+        Vector3 direction = _laser.transform.forward;
+        Vector3 end = origin + direction * 2f;
+        VRWristMenuButtonTarget target = null;
+        float nearest = float.MaxValue;
+
+        RaycastHit[] hits = Physics.RaycastAll(
+            new Ray(origin, direction),
+            2f,
+            _pointerMask,
+            QueryTriggerInteraction.Collide);
+        foreach (RaycastHit hit in hits)
+        {
+            VRWristMenuButtonTarget candidate = hit.collider.GetComponent<VRWristMenuButtonTarget>();
+            if (candidate != null && hit.distance < nearest)
+            {
+                nearest = hit.distance;
+                target = candidate;
+                end = hit.point;
+            }
+        }
+
+        if (target != _hoveredButton && target != null)
+            rightDevice.TriggerHapticPulse(140, EVRButtonId.k_EButton_Axis0);
+        SetHoveredButton(target);
+        SetPointerVisible(true);
+
+        _laser.SetPosition(0, origin);
+        _laser.SetPosition(1, end);
+        _cursor.SetActive(target != null);
+        if (target != null)
+            _cursor.transform.position = end;
+
+        Color pointerColor = target != null
+            ? new Color(0.25f, 1f, 0.82f, 1f)
+            : new Color(0.2f, 0.78f, 0.95f, 1f);
+        _laser.SetColors(pointerColor, pointerColor);
+        if (_cursorRenderer != null)
+            _cursorRenderer.material.color = pointerColor;
+
+        if (target != null && rightDevice.GetPressDown(EVRButtonId.k_EButton_Axis1))
+        {
+            rightDevice.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
+            target.Activate();
+        }
+    }
+
+    private bool EnsurePointer()
+    {
+        if (VR.Mode == null || VR.Mode.Right == null)
+            return false;
+
+        Transform right = ((Component)VR.Mode.Right).transform;
+        if (_laser == null)
+        {
+            GameObject laserObject = new GameObject("KKVR_WristMenuLaser");
+            laserObject.layer = _visibleLayer;
+            _laser = laserObject.AddComponent<LineRenderer>();
+            _laser.useWorldSpace = true;
+            _laser.SetVertexCount(2);
+            _laser.SetWidth(0.002f, 0.002f);
+            _laser.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+            _laser.material.renderQueue += 5000;
+
+            _cursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            _cursor.name = "KKVR_WristMenuCursor";
+            _cursor.layer = _visibleLayer;
+            _cursor.transform.SetParent(transform, false);
+            _cursor.transform.localScale = Vector3.one * 0.008f;
+            Collider cursorCollider = _cursor.GetComponent<Collider>();
+            if (cursorCollider != null)
+                Destroy(cursorCollider);
+            _cursorRenderer = _cursor.GetComponent<Renderer>();
+            _cursorRenderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+            _cursorRenderer.material.renderQueue += 5000;
+        }
+
+        if (_rightTransform != right)
+        {
+            _rightTransform = right;
+            _laser.transform.SetParent(right, false);
+            Quaternion pointerRotation = Quaternion.Euler(60f, 0f, 0f);
+            _laser.transform.localRotation = pointerRotation;
+            _laser.transform.localPosition = pointerRotation * Vector3.forward * 0.07f;
+        }
+
+        return true;
+    }
+
+    private void SetPointerVisible(bool visible)
+    {
+        if (_laser != null)
+            _laser.gameObject.SetActive(visible);
+        if (_cursor != null)
+            _cursor.SetActive(false);
+    }
+
+    private void SetHoveredButton(VRWristMenuButtonTarget target)
+    {
+        if (_hoveredButton == target)
+            return;
+        if (_hoveredButton != null)
+            _hoveredButton.SetHovered(false);
+        _hoveredButton = target;
+        if (_hoveredButton != null)
+            _hoveredButton.SetHovered(true);
+    }
+
+    private void HandleLoadScene()
+    {
+        if (_confirmationUntil <= Time.unscaledTime)
+        {
+            _confirmationUntil = Time.unscaledTime + ConfirmationDuration;
+            _loadSceneButton.SetLabel("再次点击确认\nLOAD SCENE");
+            SetStatus("读取会替换当前场景，请再次点击确认", new Color(1f, 0.72f, 0.25f, 1f), ConfirmationDuration);
+            return;
+        }
+
+        ResetConfirmation();
+        SetOpen(false);
+        string status;
+        if (VRSceneActions.OpenLoadScene(out status))
+        {
+            VRLog.Info(status);
+            StartCoroutine(SummonMainGuiAfterDelay(0.45f));
+        }
+        else
+        {
+            SetOpen(true);
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 5f);
+        }
+    }
+
+    private void HandleSaveScene()
+    {
+        ResetConfirmation();
+        SetOpen(false);
+        string status;
+        if (VRSceneActions.SaveScene(out status))
+        {
+            VRLog.Info(status);
+        }
+        else
+        {
+            SetOpen(true);
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 5f);
+        }
+    }
+
+    private void HandleToggleMmd()
+    {
+        ResetConfirmation();
+        string status;
+        bool success = VRMmddService.TogglePlayPause(out status);
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            4f);
+    }
+
+    private void HandleLoadVmd()
+    {
+        ResetConfirmation();
+        SetOpen(false);
+        string status;
+        if (VRMmddService.OpenVmdBrowser(out status))
+        {
+            VRLog.Info(status);
+            StartCoroutine(SummonMainGuiAfterDelay(0.2f));
+        }
+        else
+        {
+            SetOpen(true);
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 5f);
+        }
+    }
+
+    private IEnumerator SummonMainGuiAfterDelay(float delay)
+    {
+        float deadline = Time.unscaledTime + delay;
+        while (Time.unscaledTime < deadline)
+            yield return null;
+        if (VRQuickActions.Instance != null)
+            VRQuickActions.Instance.SummonMainGUI();
+    }
+
+    private void UpdateTransientState()
+    {
+        if (_confirmationUntil > 0f && Time.unscaledTime > _confirmationUntil)
+            ResetConfirmation();
+        if (_statusUntil > 0f && Time.unscaledTime > _statusUntil && _confirmationUntil <= 0f)
+            SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+    }
+
+    private void ResetConfirmation()
+    {
+        _confirmationUntil = 0f;
+        if (_loadSceneButton != null)
+            _loadSceneButton.SetLabel("读取场景\nLOAD SCENE");
+    }
+
+    private void SetStatus(string message, Color color, float duration)
+    {
+        if (_statusText == null)
+            return;
+        _statusText.text = message;
+        _statusText.color = color;
+        _statusUntil = duration > 0f ? Time.unscaledTime + duration : 0f;
+    }
+
+    private static SteamVR_Controller.Device GetDevice(VRGIN.Controls.Controller controller)
+    {
+        if (controller == null || !controller.IsTracking)
+            return null;
+        SteamVR_TrackedObject tracked = ((Component)controller).GetComponent<SteamVR_TrackedObject>();
+        if (tracked == null || tracked.index == SteamVR_TrackedObject.EIndex.None)
+            return null;
+        return SteamVR_Controller.Input((int)tracked.index);
+    }
+
+    private static Font ResolveFont()
+    {
+        string[] candidates = { "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Arial Unicode MS" };
+        string[] installed = Font.GetOSInstalledFontNames();
+        foreach (string candidate in candidates)
+        {
+            foreach (string name in installed)
+            {
+                if (string.Equals(name, candidate, StringComparison.OrdinalIgnoreCase))
+                    return Font.CreateDynamicFontFromOSFont(name, 32);
+            }
+        }
+
+        foreach (Font font in Resources.FindObjectsOfTypeAll<Font>())
+        {
+            if (font != null && font.HasCharacter('场'))
+                return font;
+        }
+
+        return Resources.GetBuiltinResource<Font>("Arial.ttf");
+    }
+}
+
+internal sealed class VRWristMenuButtonTarget : MonoBehaviour
+{
+    private Image _background;
+    private Text _label;
+    private Color _normalColor;
+    private Color _hoverColor;
+    private Action _onClick;
+
+    public void Configure(Image background, Text label, Color normalColor, Color hoverColor, Action onClick)
+    {
+        _background = background;
+        _label = label;
+        _normalColor = normalColor;
+        _hoverColor = hoverColor;
+        _onClick = onClick;
+        SetHovered(false);
+    }
+
+    public void SetHovered(bool hovered)
+    {
+        if (_background != null)
+            _background.color = hovered ? _hoverColor : _normalColor;
+    }
+
+    public void SetLabel(string value)
+    {
+        if (_label != null)
+            _label.text = value;
+    }
+
+    public void Activate()
+    {
+        _onClick?.Invoke();
+    }
+}

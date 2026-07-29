@@ -48,6 +48,12 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Unified Settings Panel**: Merged settings into a single static `GUIQuad` shared across both controllers, preventing duplicate window bugs.
 - **Accurate Laser Raycasting**: Realigned the interaction laser directly with the controller forward direction (instead of the rotated hands' finger forward) to ensure laser interaction with UI dropdowns and sliders is 100% accurate.
 
+### 7. Compact Wrist Quick Menu
+- **Four focused actions**: Scene Load, Scene Save, MMD Play/Pause, and Load VMD.
+- **Safe scene loading**: Replacing the current scene requires a second confirmation click.
+- **In-headset VMD browser**: Load VMD forces MMDD to use VNGE's built-in browser and then returns to MMDD's normal import workflow.
+- **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
+
 ---
 
 ## 🎮 Controller Layout (Meta Quest 3)
@@ -59,8 +65,11 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 | **Right Joystick (Up/Down)** | Adjust Height (Vertical Y-Axis movement) |
 | **Grip (Middle Finger)** | Grab character IK targets / Drag UI panels |
 | **Trigger (Index Finger)** | Click VR UI / Select objects in workspace |
-| **A / X Buttons** | Toggle All GUI Visibility (Smooth scale animation) |
-| **Left Joystick Click (Press)** | Summon Main Menu Panel directly in front of your head |
+| **A Button** | Toggle all GUI visibility |
+| **X Button** | Toggle IK controls |
+| **Left Menu Button (short press)** | Open / close the wrist quick menu |
+| **Left Joystick Click (Press)** | Toggle MMDD play / pause |
+| **Left Grip + Left Joystick Click** | Summon the main GUI in front of your head |
 | **Right Joystick Click (Press)** | Undo last action in Studio |
 | **Keyboard Spacebar** | Toggle Desktop Blackout Cover (Privacy / Performance Mode) |
 
@@ -88,6 +97,7 @@ Access the settings menu inside VR or on the desktop window to customize:
 - Hand model visibility, transparency, and scaling offsets.
 - DynamicBone collider radius.
 - Comfort Vignette toggle and clear radius.
+- Wrist quick menu enable and scale.
 
 ---
 

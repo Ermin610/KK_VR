@@ -158,6 +158,13 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				GUILayout.Label($"UI Spawn Distance: {settings.UISpawnDistance:F2}m");
 				settings.UISpawnDistance = GUILayout.HorizontalSlider(settings.UISpawnDistance, 0.5f, 3.0f);
 
+				settings.WristMenuEnabled = GUILayout.Toggle(settings.WristMenuEnabled, "Wrist Quick Menu");
+				if (settings.WristMenuEnabled)
+				{
+					GUILayout.Label($"Wrist Menu Scale: {settings.WristMenuScale:F2}");
+					settings.WristMenuScale = GUILayout.HorizontalSlider(settings.WristMenuScale, 0.7f, 1.5f);
+				}
+
 				GUILayout.Space(5);
 				GUILayout.Label("--- 手部设置 ---", headerStyle);
 				settings.HandModelEnabled = GUILayout.Toggle(settings.HandModelEnabled, "Hand Model Enabled");
@@ -260,6 +267,8 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.ComfortVignetteEnabled = true;
 					settings.ComfortVignetteRadius = 0.5f;
 					settings.TwoHandScaleEnabled = true;
+					settings.WristMenuEnabled = true;
+					settings.WristMenuScale = 1.0f;
 					settings.Save();
 				}
 				GUILayout.EndHorizontal();

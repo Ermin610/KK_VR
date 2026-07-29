@@ -115,6 +115,7 @@ internal class VRLoader : ProtectedBehaviour
 			val.AddComponent<KKCharaStudioVRGUI>();
 			val.AddComponent<VRHandModelManager>();
 			val.AddComponent<VRQuickActions>();
+			val.AddComponent<VRWristMenuController>();
 			val.AddComponent<VRComfortVignette>();
 			val.AddComponent<VRTwoHandScale>(); // Controlled by TwoHandScaleEnabled setting
 			UnityEngine.Object.DontDestroyOnLoad(((Component)VRCamera.Instance).gameObject);

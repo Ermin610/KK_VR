@@ -11,11 +11,24 @@ namespace KKCharaStudioVR;
 
 public class VRQuickActions : MonoBehaviour
 {
+    public static VRQuickActions Instance { get; private set; }
+
     private bool uiVisible = true;
     private Dictionary<GUIQuad, bool> previousStates = new Dictionary<GUIQuad, bool>();
     private float lastToggleTime = 0f;
     private Dictionary<GUIQuad, Vector3> originalScales = new Dictionary<GUIQuad, Vector3>();
     private Dictionary<GUIQuad, Coroutine> scaleCoroutines = new Dictionary<GUIQuad, Coroutine>();
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
 
     private void Update()
     {
@@ -202,7 +215,7 @@ public class VRQuickActions : MonoBehaviour
         }
     }
 
-    private void SummonMainGUI()
+    public void SummonMainGUI()
     {
         // Search both registry (active quads) and previousStates (hidden quads)
         GUIQuad mainQuad = null;
@@ -356,106 +369,11 @@ public class VRQuickActions : MonoBehaviour
         VRLog.Info($"Toggled IK Controls visibility to: {ikVisible}");
     }
 
-    private static object _mainEngine;
-    private static System.Reflection.MethodInfo _createScriptSourceMethod;
-    private static System.Reflection.MethodInfo _compileMethod;
-    private static System.Reflection.MethodInfo _executeMethod;
-    private static bool _pythonInitialized = false;
-
-    private void InitPython()
-    {
-        if (_pythonInitialized) return;
-        try
-        {
-            System.Reflection.Assembly consoleAssembly = null;
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (assembly.GetName().Name == "Unity.Console")
-                {
-                    consoleAssembly = assembly;
-                    break;
-                }
-            }
-
-            if (consoleAssembly != null)
-            {
-                Type programType = consoleAssembly.GetType("Unity.Console.Program");
-                if (programType != null)
-                {
-                    var getMainEngine = programType.GetMethod("get_MainEngine", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                    if (getMainEngine != null)
-                    {
-                        _mainEngine = getMainEngine.Invoke(null, null);
-                        if (_mainEngine != null)
-                        {
-                            Type engineType = _mainEngine.GetType();
-                            _createScriptSourceMethod = engineType.GetMethod("CreateScriptSourceFromString", new Type[] { typeof(string) });
-                            
-                            if (_createScriptSourceMethod != null)
-                            {
-                                VRLog.Info("Successfully resolved CreateScriptSourceFromString method on Python Engine!");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            VRLog.Error($"InitPython failed: {ex}");
-        }
-        _pythonInitialized = true;
-    }
-
-    private void ExecutePythonCode(string code)
-    {
-        InitPython();
-        if (_mainEngine == null || _createScriptSourceMethod == null)
-        {
-            VRLog.Warn("Python engine not found or not initialized. Cannot execute python code.");
-            return;
-        }
-
-        try
-        {
-            object scriptSource = _createScriptSourceMethod.Invoke(_mainEngine, new object[] { code });
-            if (scriptSource != null)
-            {
-                if (_compileMethod == null)
-                {
-                    _compileMethod = scriptSource.GetType().GetMethod("Compile", new Type[] { });
-                }
-
-                if (_compileMethod != null)
-                {
-                    object compiledCode = _compileMethod.Invoke(scriptSource, null);
-                    if (compiledCode != null)
-                    {
-                        if (_executeMethod == null)
-                        {
-                            _executeMethod = compiledCode.GetType().GetMethod("Execute", new Type[] { });
-                        }
-
-                        if (_executeMethod != null)
-                        {
-                            _executeMethod.Invoke(compiledCode, null);
-                            VRLog.Info("Executed MMDD Play/Pause Python code successfully!");
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            VRLog.Error($"ExecutePythonCode failed: {ex}");
-        }
-    }
-
     private void ToggleMMDDPlayPause()
     {
-        VRLog.Info("Left controller ApplicationMenu (Y button) pressed! Toggling MMDD playback...");
-        string code = "from vngameengine import vnge_game\nif hasattr(vnge_game.gdata, 'mmdd') and vnge_game.gdata.mmdd is not None:\n    vnge_game.gdata.mmdd.startStop()";
-        ExecutePythonCode(code);
+        string status;
+        if (!VRMmddService.TogglePlayPause(out status))
+            VRLog.Warn(status);
     }
 
     private void ToggleReShade()

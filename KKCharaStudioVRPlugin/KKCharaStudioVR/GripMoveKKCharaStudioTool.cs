@@ -436,6 +436,17 @@ internal class GripMoveKKCharaStudioTool : Tool
 			ApplyHandModelState(currentHandEnabled);
 		}
 
+		if (!_isLeftHand && VRWristMenuController.IsOpen)
+		{
+			SetComfortMoving(false);
+			ClearProximityHighlight();
+			if (grabbingObject != null || screenGrabbed)
+				ReleaseActiveGrab(false);
+			if (_grabLine != null)
+				((Component)_grabLine).gameObject.SetActive(false);
+			return;
+		}
+
 		HandleThumbstickLocomotion();
 
 		if (VRQuickActions.ikVisible)

@@ -15,7 +15,13 @@ namespace KKCharaStudioVR
 
         public bool ShouldSuppressWorldMove
         {
-            get { return isActiveAndEnabled && IsFeatureEnabled && AreBothGripsPressed(); }
+            get
+            {
+                return !VRWristMenuController.IsOpen
+                    && isActiveAndEnabled
+                    && IsFeatureEnabled
+                    && AreBothGripsPressed();
+            }
         }
 
         private float _initialDistance;
@@ -37,7 +43,7 @@ namespace KKCharaStudioVR
 
         void Update()
         {
-            if (!IsFeatureEnabled)
+            if (!IsFeatureEnabled || VRWristMenuController.IsOpen)
             {
                 ResetScaling();
                 return;

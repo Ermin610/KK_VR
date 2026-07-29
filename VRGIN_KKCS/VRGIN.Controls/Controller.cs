@@ -320,6 +320,14 @@ public abstract class Controller : ProtectedBehaviour
 		}
 		else
 		{
+			// A single registered tool has nowhere to cycle to. Leave the short
+			// application-menu press available to game-specific quick actions.
+			if (Tools.Count <= 1)
+			{
+				appButtonPressTime = null;
+				return;
+			}
+
 			if ((ActiveTool != null))
 			{
 				((Behaviour)ActiveTool).enabled = false;
