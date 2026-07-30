@@ -29,9 +29,6 @@
     <Reference Include="System.Core">
       <HintPath>$(KKGameDir)\CharaStudio_Data\Managed\System.Core.dll</HintPath>
     </Reference>
-    <Reference Include="BepInEx4">
-      <HintPath>$(LegacyLibDir)\BepInEx4.dll</HintPath>
-    </Reference>
     <Reference Include="0Harmony_BepInEx4">
       <HintPath>$(LegacyLibDir)\0Harmony_BepInEx4.dll</HintPath>
     </Reference>

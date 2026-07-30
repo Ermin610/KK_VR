@@ -59,6 +59,17 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
 
+### 8. Integrated Studio / Timeline Camera Sync
+- **Final-camera following**: VR follows the final Studio camera, including Timeline animation, without requiring a hard Timeline dependency.
+- **Head-tracking preservation**: Camera deltas move the VR origin while retaining the headset's physical offset and normal locomotion.
+- **Comfort controls**: Choose full, yaw-only, or disabled rotation and follow all translation, camera cuts only, or no translation.
+- **Reliable scene lifecycle**: Scene cards align from their saved camera before auto-playing motion is applied; object-only imports reset the observer without teleporting the player.
+- **Camera-object support**: Active Studio camera objects can be used as the authoritative camera source.
+
+Camera synchronization is adapted from
+[YukyoMoe/KK_VR_CameraSync](https://github.com/YukyoMoe/KK_VR_CameraSync)
+under the MIT License. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ---
 
 ## 🎮 Controller Layout (Meta Quest 3)
@@ -104,6 +115,7 @@ Access the settings menu inside VR or on the desktop window to customize:
 - DynamicBone collider radius.
 - Comfort Vignette toggle and clear radius.
 - Wrist quick menu enable and scale.
+- Studio / Timeline camera synchronization modes and cut threshold.
 
 ---
 
