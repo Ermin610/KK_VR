@@ -159,14 +159,6 @@ public class KKCharaStudioVRSettings : VRSettings
 	private bool _TwoHandScaleEnabled = true;
 	private bool _WristMenuEnabled = true;
 	private float _WristMenuScale = 1.0f;
-	private bool _CameraSyncEnabled = true;
-	private bool _CameraSyncPreserveHeadTracking = true;
-	private bool _CameraSyncAlignOnSceneLoad = true;
-	private VRCameraRotationMode _CameraSyncInitialRotationMode = VRCameraRotationMode.YawOnly;
-	private VRCameraRotationMode _CameraSyncRotationMode = VRCameraRotationMode.YawOnly;
-	private VRCameraPositionFollowMode _CameraSyncPositionMode = VRCameraPositionFollowMode.AllMotion;
-	private float _CameraSyncCutThreshold = 2.0f;
-	private bool _CameraSyncReadObjectCamera = true;
 
 	[XmlComment("Enable comfort vignette during movement")]
 	public bool ComfortVignetteEnabled
@@ -201,90 +193,6 @@ public class KKCharaStudioVRSettings : VRSettings
 	{
 		get { return _WristMenuScale; }
 		set { _WristMenuScale = value; TriggerPropertyChanged("WristMenuScale"); }
-	}
-
-	[XmlComment("Follow the final Studio camera, including Timeline-driven camera motion")]
-	public bool CameraSyncEnabled
-	{
-		get { return _CameraSyncEnabled; }
-		set { _CameraSyncEnabled = value; TriggerPropertyChanged("CameraSyncEnabled"); }
-	}
-
-	[XmlComment("Preserve physical headset movement relative to the animated Studio camera")]
-	public bool CameraSyncPreserveHeadTracking
-	{
-		get { return _CameraSyncPreserveHeadTracking; }
-		set
-		{
-			_CameraSyncPreserveHeadTracking = value;
-			TriggerPropertyChanged("CameraSyncPreserveHeadTracking");
-		}
-	}
-
-	[XmlComment("Align the headset once to a scene card's saved camera after loading")]
-	public bool CameraSyncAlignOnSceneLoad
-	{
-		get { return _CameraSyncAlignOnSceneLoad; }
-		set
-		{
-			_CameraSyncAlignOnSceneLoad = value;
-			TriggerPropertyChanged("CameraSyncAlignOnSceneLoad");
-		}
-	}
-
-	[XmlComment("Rotation used for the one-time scene-load camera alignment")]
-	public VRCameraRotationMode CameraSyncInitialRotationMode
-	{
-		get { return _CameraSyncInitialRotationMode; }
-		set
-		{
-			_CameraSyncInitialRotationMode = value;
-			TriggerPropertyChanged("CameraSyncInitialRotationMode");
-		}
-	}
-
-	[XmlComment("Rotation followed from the final Studio camera")]
-	public VRCameraRotationMode CameraSyncRotationMode
-	{
-		get { return _CameraSyncRotationMode; }
-		set
-		{
-			_CameraSyncRotationMode = value;
-			TriggerPropertyChanged("CameraSyncRotationMode");
-		}
-	}
-
-	[XmlComment("Translation mode for final Studio camera movement")]
-	public VRCameraPositionFollowMode CameraSyncPositionMode
-	{
-		get { return _CameraSyncPositionMode; }
-		set
-		{
-			_CameraSyncPositionMode = value;
-			TriggerPropertyChanged("CameraSyncPositionMode");
-		}
-	}
-
-	[XmlComment("World-space distance required for CutsOnly camera translation")]
-	public float CameraSyncCutThreshold
-	{
-		get { return _CameraSyncCutThreshold; }
-		set
-		{
-			_CameraSyncCutThreshold = value;
-			TriggerPropertyChanged("CameraSyncCutThreshold");
-		}
-	}
-
-	[XmlComment("Read the active Studio camera object when one is selected")]
-	public bool CameraSyncReadObjectCamera
-	{
-		get { return _CameraSyncReadObjectCamera; }
-		set
-		{
-			_CameraSyncReadObjectCamera = value;
-			TriggerPropertyChanged("CameraSyncReadObjectCamera");
-		}
 	}
 
 	private float _HandOffsetX = 0f;

@@ -166,59 +166,6 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				}
 
 				GUILayout.Space(5);
-				GUILayout.Label("--- 镜头同步 ---", headerStyle);
-				settings.CameraSyncEnabled = GUILayout.Toggle(
-					settings.CameraSyncEnabled,
-					"Follow Studio / Timeline Camera");
-				if (settings.CameraSyncEnabled)
-				{
-					settings.CameraSyncAlignOnSceneLoad = GUILayout.Toggle(
-						settings.CameraSyncAlignOnSceneLoad,
-						"Align Camera After Scene Load");
-					settings.CameraSyncPreserveHeadTracking = GUILayout.Toggle(
-						settings.CameraSyncPreserveHeadTracking,
-						"Preserve Head Tracking Offset");
-					settings.CameraSyncReadObjectCamera = GUILayout.Toggle(
-						settings.CameraSyncReadObjectCamera,
-						"Read Active Camera Object");
-
-					if (GUILayout.Button(
-						    "Initial Rotation: " +
-						    settings.CameraSyncInitialRotationMode))
-					{
-						settings.CameraSyncInitialRotationMode =
-							NextRotationMode(settings.CameraSyncInitialRotationMode);
-					}
-
-					if (GUILayout.Button(
-						    "Follow Rotation: " +
-						    settings.CameraSyncRotationMode))
-					{
-						settings.CameraSyncRotationMode =
-							NextRotationMode(settings.CameraSyncRotationMode);
-					}
-
-					if (GUILayout.Button(
-						    "Position Follow: " +
-						    settings.CameraSyncPositionMode))
-					{
-						settings.CameraSyncPositionMode =
-							NextPositionMode(settings.CameraSyncPositionMode);
-					}
-
-					if (settings.CameraSyncPositionMode ==
-					    VRCameraPositionFollowMode.CutsOnly)
-					{
-						GUILayout.Label(
-							$"Cut Distance: {settings.CameraSyncCutThreshold:F2}m");
-						settings.CameraSyncCutThreshold = GUILayout.HorizontalSlider(
-							settings.CameraSyncCutThreshold,
-							0.1f,
-							10.0f);
-					}
-				}
-
-				GUILayout.Space(5);
 				GUILayout.Label("--- 手部设置 ---", headerStyle);
 				settings.HandModelEnabled = GUILayout.Toggle(settings.HandModelEnabled, "Hand Model Enabled");
 				if (settings.HandModelEnabled)
@@ -322,14 +269,6 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.TwoHandScaleEnabled = true;
 					settings.WristMenuEnabled = true;
 					settings.WristMenuScale = 1.0f;
-					settings.CameraSyncEnabled = true;
-					settings.CameraSyncPreserveHeadTracking = true;
-					settings.CameraSyncAlignOnSceneLoad = true;
-					settings.CameraSyncInitialRotationMode = VRCameraRotationMode.YawOnly;
-					settings.CameraSyncRotationMode = VRCameraRotationMode.YawOnly;
-					settings.CameraSyncPositionMode = VRCameraPositionFollowMode.AllMotion;
-					settings.CameraSyncCutThreshold = 2.0f;
-					settings.CameraSyncReadObjectCamera = true;
 					settings.Save();
 				}
 				GUILayout.EndHorizontal();
@@ -380,34 +319,6 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				style.alignment = val.alignment;
 				style.wordWrap = val.wordWrap;
 			}
-		}
-	}
-
-	private static VRCameraRotationMode NextRotationMode(
-		VRCameraRotationMode current)
-	{
-		switch (current)
-		{
-			case VRCameraRotationMode.YawOnly:
-				return VRCameraRotationMode.Full;
-			case VRCameraRotationMode.Full:
-				return VRCameraRotationMode.None;
-			default:
-				return VRCameraRotationMode.YawOnly;
-		}
-	}
-
-	private static VRCameraPositionFollowMode NextPositionMode(
-		VRCameraPositionFollowMode current)
-	{
-		switch (current)
-		{
-			case VRCameraPositionFollowMode.AllMotion:
-				return VRCameraPositionFollowMode.CutsOnly;
-			case VRCameraPositionFollowMode.CutsOnly:
-				return VRCameraPositionFollowMode.Off;
-			default:
-				return VRCameraPositionFollowMode.AllMotion;
 		}
 	}
 }

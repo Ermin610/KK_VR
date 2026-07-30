@@ -230,38 +230,13 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_0064: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0065: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0066: Unknown result type (might be due to invalid IL or missing references)
-		VRCameraSyncController cameraSync = VRCameraSyncController.Instance;
-		cameraSync?.Suspend();
-		try
-		{
-			Studio.Studio activeStudio = studio ?? Singleton<Studio.Studio>.Instance;
-			if (activeStudio == null || activeStudio.cameraCtrl == null || VR.Camera.Head == null)
-			{
-				return;
-			}
-
-			studio = activeStudio;
-			GetCurrentLookDirAndRot(out var lookPoint, out var dir, out var rot);
-			var val = new Studio.CameraControl.CameraData();
-			VR.Camera.Head.TransformPoint(dir.normalized * DEFAULT_DISTANCE * DISTANCE_RATIO);
-			Vector3 val2 = new Vector3(0f, 0f, -1f * DEFAULT_DISTANCE * DISTANCE_RATIO);
-
-			Transform transformBase = activeStudio.cameraCtrl.transBase;
-			if (transformBase != null)
-			{
-				lookPoint = transformBase.InverseTransformPoint(lookPoint);
-				Quaternion localRotation =
-					Quaternion.Inverse(transformBase.rotation) * Quaternion.Euler(rot);
-				rot = localRotation.eulerAngles;
-			}
-
-			val.Set(lookPoint, rot, val2, activeStudio.cameraCtrl.fieldOfView);
-			activeStudio.cameraCtrl.Import(val);
-		}
-		finally
-		{
-			cameraSync?.ResumeAndReset();
-		}
+		GetCurrentLookDirAndRot(out var lookPoint, out var dir, out var rot);
+		var val = new Studio.CameraControl.CameraData();
+		VR.Camera.Head.TransformPoint(dir.normalized * DEFAULT_DISTANCE * DISTANCE_RATIO);
+		Vector3 val2 = default(Vector3);
+		val2 = new Vector3(0f, 0f, -1f * DEFAULT_DISTANCE * DISTANCE_RATIO);
+		val.Set(lookPoint, rot, val2, studio.cameraCtrl.fieldOfView);
+		studio.cameraCtrl.Import(val);
 	}
 
 	private void GetCurrentLookDirAndRot(out Vector3 lookPoint, out Vector3 dir, out Vector3 rot)
@@ -320,64 +295,10 @@ public class VRCameraMoveHelper : MonoBehaviour
 		//IL_003e: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0040: Unknown result type (might be due to invalid IL or missing references)
 		//IL_0041: Unknown result type (might be due to invalid IL or missing references)
-		try
-		{
-			if (!TryGetCurrentStudioCameraPose(out Vector3 tobeHeadPos, out Quaternion tobeHeadRot))
-			{
-				return;
-			}
-
-			MoveTo(tobeHeadPos, tobeHeadRot);
-		}
-		finally
-		{
-			VRCameraSyncController.Instance?.CompleteNativeCameraReset();
-		}
-	}
-
-	private bool TryGetCurrentStudioCameraPose(
-		out Vector3 position,
-		out Quaternion rotation)
-	{
-		position = Vector3.zero;
-		rotation = Quaternion.identity;
-
-		Studio.Studio activeStudio = studio ?? Singleton<Studio.Studio>.Instance;
-		if (activeStudio == null || activeStudio.cameraCtrl == null)
-		{
-			return false;
-		}
-
-		studio = activeStudio;
-		KKCharaStudioVRSettings settings =
-			VR.Manager?.Context?.Settings as KKCharaStudioVRSettings;
-		if (settings != null &&
-		    settings.CameraSyncReadObjectCamera &&
-		    activeStudio.ociCamera != null &&
-		    activeStudio.ociCamera.objectItem != null)
-		{
-			Transform objectCamera = activeStudio.ociCamera.objectItem.transform;
-			position = objectCamera.position;
-			rotation = objectCamera.rotation;
-			return true;
-		}
-
-		Studio.CameraControl.CameraData cameraData = activeStudio.cameraCtrl.Export();
-		rotation = Quaternion.Euler(cameraData.rotate);
-		Transform transformBase = activeStudio.cameraCtrl.transBase;
-		if (transformBase != null)
-		{
-			rotation = transformBase.rotation * rotation;
-			position =
-				transformBase.TransformPoint(cameraData.pos) +
-				rotation * cameraData.distance;
-		}
-		else
-		{
-			position = cameraData.pos + rotation * cameraData.distance;
-		}
-
-		return true;
+		var val = studio.cameraCtrl.Export();
+		Vector3 tobeHeadPos = val.pos + Quaternion.Euler(val.rotate) * val.distance;
+		Quaternion tobeHeadRot = Quaternion.Euler(val.rotate);
+		MoveTo(tobeHeadPos, tobeHeadRot);
 	}
 
 	public void MoveTo(Vector3 tobeHeadPos, Quaternion tobeHeadRot)

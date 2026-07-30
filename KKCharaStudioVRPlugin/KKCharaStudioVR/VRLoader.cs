@@ -110,7 +110,6 @@ internal class VRLoader : ProtectedBehaviour
 			IKTool.Create(val);
 			VRControllerMgr.Install(val);
 			VRCameraMoveHelper.Install(val);
-			VRCameraSyncController.Install(val);
 			VRItemObjMoveHelper.Install(val);
 			val.AddComponent<DynamicBoneColliderManager>();
 			val.AddComponent<KKCharaStudioVRGUI>();

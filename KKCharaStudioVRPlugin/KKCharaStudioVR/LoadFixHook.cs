@@ -14,7 +14,6 @@ namespace KKCharaStudioVR
 	public static class LoadFixHook
 	{
 		public static bool forceSetStandingMode;
-		private static int _uiRefreshGeneration;
 
 		public static void InstallHook()
 		{
@@ -32,8 +31,6 @@ namespace KKCharaStudioVR
 		public static void PrepareSceneLoad()
 		{
 			Logger.Log((LogLevel)32, (object)"Start Scene Loading.");
-			VRCameraSyncController.Instance?.BeginSceneLoad();
-
 			if (VRManager.Instance != null && VRManager.Instance.Mode is GenericStandingMode)
 			{
 				KKCharaStudioInterpreter interpreter =
@@ -43,56 +40,19 @@ namespace KKCharaStudioVR
 		}
 
 		[HarmonyPostfix]
-		[HarmonyPatch(typeof(Studio.Studio), "LoadSceneCoroutine", new Type[] { typeof(string) }, null)]
-		public static void LoadSceneCoroutinePostHook(
-			Studio.Studio __instance,
-			ref IEnumerator __result)
-		{
-			if (__instance == null || __result == null)
-			{
-				return;
-			}
-
-			object previousSceneInfo = __instance.sceneInfo;
-			VRCameraSyncController.Instance?.BeginSceneLoad();
-			__result = CompleteStudioLoadCoroutine(
-				__instance,
-				__result,
-				previousSceneInfo);
-		}
-
-		[HarmonyPrefix]
-		[HarmonyPatch(typeof(Studio.Studio), "LoadScene", new Type[] { typeof(string) }, null)]
-		public static void StudioLoadScenePreHook()
-		{
-			VRCameraSyncController.Instance?.BeginSceneLoad();
-		}
-
-		[HarmonyPostfix]
 		[HarmonyPatch(typeof(Studio.Studio), "LoadScene", new Type[] { typeof(string) }, null)]
 		public static void LoadScenePostHook(Studio.Studio __instance, bool __result)
 		{
-			VRCameraSyncController.Instance?.CompleteSceneLoad(__result);
 			if (__result)
 			{
 				CompleteSceneLoad(__instance);
 			}
 		}
 
-		[HarmonyPrefix]
-		[HarmonyPatch(typeof(Studio.Studio), "ImportScene", new Type[] { typeof(string) }, null)]
-		public static void ImportScenePreHook()
-		{
-			VRCameraSyncController.Instance?.BeginSceneImport();
-		}
-
 		[HarmonyPostfix]
 		[HarmonyPatch(typeof(Studio.Studio), "ImportScene", new Type[] { typeof(string) }, null)]
 		public static void ImportScenePostHook(Studio.Studio __instance, bool __result)
 		{
-			// ImportScene adds objects to the current scene and does not import
-			// cameraSaveData. Reset the observer without teleporting the player.
-			VRCameraSyncController.Instance?.CompleteSceneImport(__result);
 			if (__result)
 			{
 				CompleteSceneLoad(__instance);
@@ -103,45 +63,13 @@ namespace KKCharaStudioVR
 		{
 			if (studio == null)
 				return;
-			int generation = ++_uiRefreshGeneration;
-			Logger.Log((LogLevel)32, (object)"Scene mutation completed. Scheduling VR UI refresh.");
-			studio.StartCoroutine(RefreshVRAfterLoadCo(generation));
+			Logger.Log((LogLevel)32, (object)"Scene loaded successfully. Starting camera alignment coroutine.");
+			studio.StartCoroutine(AlignVRCameraAfterLoadCo());
 		}
 
-		private static IEnumerator CompleteStudioLoadCoroutine(
-			Studio.Studio studio,
-			IEnumerator original,
-			object previousSceneInfo)
+		private static IEnumerator AlignVRCameraAfterLoadCo()
 		{
-			bool completed = false;
-			try
-			{
-				while (original.MoveNext())
-				{
-					yield return original.Current;
-				}
-				completed = true;
-			}
-			finally
-			{
-				IDisposable disposable = original as IDisposable;
-				disposable?.Dispose();
-
-				bool sceneChanged =
-					studio != null &&
-					!ReferenceEquals(studio.sceneInfo, previousSceneInfo);
-				bool succeeded = completed && sceneChanged;
-				VRCameraSyncController.Instance?.CompleteSceneLoad(succeeded);
-				if (succeeded)
-				{
-					CompleteSceneLoad(studio);
-				}
-			}
-		}
-
-		private static IEnumerator RefreshVRAfterLoadCo(int generation)
-		{
-			Logger.Log((LogLevel)32, (object)"RefreshVRAfterLoadCo: Waiting for scene load to register...");
+			Logger.Log((LogLevel)32, (object)"AlignVRCameraAfterLoadCo: Waiting for scene load to register...");
 			yield return null;
 			yield return null;
 
@@ -154,34 +82,28 @@ namespace KKCharaStudioVR
 				}
 			}
 
-			Logger.Log((LogLevel)32, (object)"RefreshVRAfterLoadCo: Waiting for Studio UI and camera data.");
+			Logger.Log((LogLevel)32, (object)"AlignVRCameraAfterLoadCo: Scene load finished, waiting for camera data to import...");
+			// Wait a few frames for imported camera parameters to be applied to mainCamera
 			yield return null;
 			yield return null;
 			yield return null;
 			yield return null;
 			yield return null;
 
-			if (generation != _uiRefreshGeneration)
-			{
-				yield break;
-			}
-
-			// The integrated sync controller owns camera alignment. Keep this
-			// fallback for installations where the controller could not start.
-			if (VRCameraSyncController.Instance == null &&
-			    VRCameraMoveHelper.Instance != null)
+			Logger.Log((LogLevel)32, (object)"AlignVRCameraAfterLoadCo: Re-aligning VR camera to new camera position.");
+			if (VRCameraMoveHelper.Instance != null)
 			{
 				VRCameraMoveHelper.Instance.MoveToCurrent();
 			}
 
-			Logger.Log((LogLevel)32, (object)"RefreshVRAfterLoadCo: Repositioning the main Studio UI.");
-			float dist = 2.0f;
+			Logger.Log((LogLevel)32, (object)"AlignVRCameraAfterLoadCo: Repositioning the main floating studio UI quad in front of the camera.");
+			float dist = 0.5f;
 			var settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
 			if (settings != null)
 			{
 				dist = settings.UISpawnDistance;
 			}
-			dist = Mathf.Clamp(dist, 0.5f, 3.0f);
+			if (dist > 0.6f) dist = 0.5f; // Clamp to comfortable distance
 			VRCameraMoveHelper.RepositionMainUI(dist);
 		}
 	}
