@@ -51,7 +51,7 @@ public class SubGUIQuad : ProtectedBehaviour
 		renderer = ((Component)this).GetComponent<Renderer>();
 		((Component)this).transform.localPosition = Vector3.zero;
 		((Component)this).transform.localRotation = Quaternion.identity;
-		((Component)this).gameObject.layer = GUIQuad.OverlayLayer;
+		((Component)this).gameObject.layer = LayerMask.NameToLayer(VRManager.Instance.Context.GuiLayer);
 	}
 
 	protected override void OnStart()

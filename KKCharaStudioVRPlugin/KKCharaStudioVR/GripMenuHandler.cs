@@ -288,7 +288,6 @@ public class GripMenuHandler : ProtectedBehaviour
 	{
 		Laser = new GameObject().AddComponent<LineRenderer>();
 		((Component)Laser).transform.SetParent(((Component)this).transform, false);
-		((Component)Laser).gameObject.layer = GUIQuad.OverlayLayer;
 		((Renderer)Laser).material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
 		Material material = ((Renderer)Laser).material;
 		material.renderQueue += 5000;
@@ -302,7 +301,6 @@ public class GripMenuHandler : ProtectedBehaviour
 
 		dotCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 		dotCursor.transform.SetParent(((Component)this).transform, false);
-		dotCursor.layer = GUIQuad.OverlayLayer;
 		dotCursor.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
 		Object.DestroyImmediate(dotCursor.GetComponent<Collider>());
 		_dotRenderer = dotCursor.GetComponent<Renderer>();

@@ -10,10 +10,6 @@ namespace VRGIN.Visuals;
 
 public class GUIQuad : ProtectedBehaviour
 {
-	public const int OverlayLayer = 30;
-
-	public const int OverlayLayerMask = 1 << OverlayLayer;
-
 	private Renderer renderer;
 
 	public bool IsOwned;
@@ -44,7 +40,7 @@ public class GUIQuad : ProtectedBehaviour
 		_Source = VR.GUI;
 		((Component)this).transform.localPosition = Vector3.zero;
 		((Component)this).transform.localRotation = Quaternion.identity;
-		((Component)this).gameObject.layer = OverlayLayer;
+		((Component)this).gameObject.layer = LayerMask.NameToLayer(VRManager.Instance.Context.GuiLayer);
 	}
 
 	protected override void OnStart()
