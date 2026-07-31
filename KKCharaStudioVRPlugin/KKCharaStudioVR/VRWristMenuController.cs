@@ -47,11 +47,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private GameObject _characterPreviewPage;
     private RectTransform _menuRect;
     private Text _statusText;
-    private Text _clothingCharacterText;
+    private VRWristMenuButtonTarget _clothingTargetButton;
     private Texture2D _roundedTexture;
     private Sprite _roundedSprite;
     private readonly VRWristMenuButtonTarget[] _clothingPartButtons =
         new VRWristMenuButtonTarget[VRCharacterClothingService.PartCount];
+    private int _clothingTargetObjectKey = -1;
+    private Studio.OCIChar _clothingTargetCharacter;
     private VRWristMenuButtonTarget _hoveredButton;
     private Font _font;
     private LineRenderer _laser;
@@ -426,26 +428,18 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         CreateText("ClothingTitle", _clothingPage.transform, "角色换装", 92f, 10f, 444f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
 
-        Image selectedCharacterBackground = CreateImage(
-            "SelectedCharacterBackground",
-            _clothingPage.transform,
+        _clothingTargetButton = CreateButton(
+            "ClothingTarget",
+            "选择场景角色  >",
             24f,
             66f,
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            HandleChooseClothingTarget,
+            _clothingPage.transform,
             512f,
             38f,
-            new Color(0.55f, 0.9f, 0.7f, 0.065f));
-        ApplyGlassEffects(selectedCharacterBackground, new Color(0.72f, 1f, 0.82f, 0.13f), false, 0f);
-        _clothingCharacterText = CreateText(
-            "SelectedCharacter",
-            _clothingPage.transform,
-            "未选择角色",
-            38f,
-            69f,
-            484f,
-            32f,
-            18,
-            TextAnchor.MiddleLeft,
-            new Color(0.7f, 0.8f, 0.74f, 1f));
+            17);
 
         CreateText("ClothingPresetSection", _clothingPage.transform, "整套预设  PRESET", 24f, 112f, 512f, 24f, 18,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
@@ -894,16 +888,16 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void RefreshClothingPage()
     {
-        if (_clothingCharacterText == null)
+        if (_clothingTargetButton == null)
             return;
 
         Studio.OCIChar character;
         string selectionStatus;
-        bool hasCharacter = VRCharacterClothingService.TryGetSelectedCharacter(out character, out selectionStatus);
-        _clothingCharacterText.text = hasCharacter ? "当前角色  " + selectionStatus : selectionStatus;
-        _clothingCharacterText.color = hasCharacter
-            ? new Color(0.62f, 1f, 0.72f, 1f)
-            : new Color(1f, 0.45f, 0.4f, 1f);
+        bool hasCharacter = TryGetClothingTarget(out character, out selectionStatus);
+        _clothingTargetButton.SetLabel(
+            hasCharacter
+                ? "当前角色  " + selectionStatus + "  >"
+                : "选择场景角色  >");
 
         for (int i = 0; i < _clothingPartButtons.Length; i++)
         {
@@ -919,8 +913,73 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void HandleOpenClothing()
     {
+        HandleChooseClothingTarget();
+    }
+
+    private void HandleChooseClothingTarget()
+    {
+        string status;
+        var targets = VRVmdTargetService.GetAllTargets(out status);
+        if (targets.Count == 0)
+        {
+            SetStatus(
+                status ?? "当前场景没有角色",
+                new Color(1f, 0.38f, 0.34f, 1f),
+                7f);
+            return;
+        }
+
+        OpenActorTargetBrowser(
+            BrowserMode.SelectClothingActor,
+            targets,
+            "请选择要换装的场景角色",
+            out status);
+    }
+
+    private void HandleClothingActorSelection(VRWristFileEntry entry)
+    {
+        if (!entry.IsActorTarget)
+            return;
+
+        VRVmdActorTarget target;
+        string status;
+        if (!VRVmdTargetService.TryGetTarget(entry.ObjectKey, out target, out status))
+        {
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+            return;
+        }
+
+        _clothingTargetObjectKey = entry.ObjectKey;
+        _clothingTargetCharacter = target.Character;
+        SetStatus("换装目标：" + target.DisplayName, new Color(0.35f, 1f, 0.62f, 1f), 0f);
         ShowPage(WristMenuPage.Clothing);
-        SetStatus("角色换装", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+    }
+
+    private bool TryGetClothingTarget(out Studio.OCIChar character, out string status)
+    {
+        character = null;
+        if (_clothingTargetObjectKey < 0)
+        {
+            status = "请先在手环中选择场景角色";
+            return false;
+        }
+
+        VRVmdActorTarget target;
+        if (VRVmdTargetService.TryGetTarget(
+                _clothingTargetObjectKey,
+                out target,
+                out status)
+            && object.ReferenceEquals(_clothingTargetCharacter, target.Character))
+        {
+            character = target.Character;
+            status = target.DisplayName;
+            return true;
+        }
+
+        _clothingTargetObjectKey = -1;
+        _clothingTargetCharacter = null;
+        status = "场景角色已变化，请重新选择换装目标";
+        return false;
     }
 
     private void HandleToggleIkVisibility()
@@ -951,7 +1010,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void HandleClothingPreset(byte state)
     {
         string status;
-        bool success = VRCharacterClothingService.TrySetAll(state, out status);
+        Studio.OCIChar character;
+        bool hasTarget = TryGetClothingTarget(out character, out status);
+        bool success = hasTarget
+            && VRCharacterClothingService.TrySetAll(_clothingTargetObjectKey, state, out status);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
@@ -962,7 +1024,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void HandleCycleClothingPart(int partId)
     {
         string status;
-        bool success = VRCharacterClothingService.TryCyclePart(partId, out status);
+        Studio.OCIChar character;
+        bool hasTarget = TryGetClothingTarget(out character, out status);
+        bool success = hasTarget
+            && VRCharacterClothingService.TryCyclePart(
+                _clothingTargetObjectKey,
+                partId,
+                out status);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
@@ -1003,7 +1071,14 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void HandleLoadVmd()
     {
-        OpenFileBrowser(BrowserMode.LoadVmd, VRMmddService.DefaultVmdRoot, VRMmddService.DefaultVmdRoot);
+        string root = GetConfiguredVmdRoot();
+        if (string.IsNullOrEmpty(root))
+        {
+            OpenVmdRootPicker(false);
+            return;
+        }
+
+        OpenFileBrowser(BrowserMode.LoadVmd, root, root);
     }
 
     private void HandleToggleTimeline()

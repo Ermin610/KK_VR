@@ -41,6 +41,71 @@ internal static class VRWristFileCatalog
 {
     private const int RelatedFileScanLimit = 512;
 
+    public static List<VRWristFileEntry> ListDrives()
+    {
+        List<VRWristFileEntry> entries = new List<VRWristFileEntry>();
+        DriveInfo[] drives;
+        try
+        {
+            drives = DriveInfo.GetDrives();
+        }
+        catch (Exception)
+        {
+            return entries;
+        }
+
+        Array.Sort(drives, (left, right) =>
+            StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name));
+        foreach (DriveInfo drive in drives)
+        {
+            try
+            {
+                if (!drive.IsReady)
+                    continue;
+
+                entries.Add(new VRWristFileEntry
+                {
+                    DisplayName = drive.Name,
+                    FullPath = drive.RootDirectory.FullName,
+                    IsDirectory = true
+                });
+            }
+            catch (Exception)
+            {
+                // Disconnected removable and network drives should not hide usable disks.
+            }
+        }
+        return entries;
+    }
+
+    public static List<VRWristFileEntry> ListDirectories(string directory)
+    {
+        List<VRWristFileEntry> entries = new List<VRWristFileEntry>();
+        try
+        {
+            string fullDirectory = Path.GetFullPath(directory);
+            if (!Directory.Exists(fullDirectory))
+                return entries;
+
+            string[] directories = Directory.GetDirectories(fullDirectory);
+            Array.Sort(directories, StringComparer.CurrentCultureIgnoreCase);
+            foreach (string child in directories)
+            {
+                entries.Add(new VRWristFileEntry
+                {
+                    DisplayName = Path.GetFileName(child),
+                    FullPath = child,
+                    IsDirectory = true
+                });
+            }
+        }
+        catch (Exception)
+        {
+            entries.Clear();
+        }
+        return entries;
+    }
+
     public static List<VRWristFileEntry> ListDirectory(
         string root,
         string directory,

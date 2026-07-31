@@ -159,6 +159,7 @@ public class KKCharaStudioVRSettings : VRSettings
 	private bool _TwoHandScaleEnabled = true;
 	private bool _WristMenuEnabled = true;
 	private float _WristMenuScale = 1.0f;
+	private string _VmdRootPath = string.Empty;
 
 	[XmlComment("Enable comfort vignette during movement")]
 	public bool ComfortVignetteEnabled
@@ -193,6 +194,17 @@ public class KKCharaStudioVRSettings : VRSettings
 	{
 		get { return _WristMenuScale; }
 		set { _WristMenuScale = value; TriggerPropertyChanged("WristMenuScale"); }
+	}
+
+	[XmlComment("Root folder containing VMD motion, camera, and audio files")]
+	public string VmdRootPath
+	{
+		get { return _VmdRootPath; }
+		set
+		{
+			_VmdRootPath = value ?? string.Empty;
+			TriggerPropertyChanged("VmdRootPath");
+		}
 	}
 
 	private float _HandOffsetX = 0f;

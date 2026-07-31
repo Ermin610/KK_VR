@@ -19,8 +19,10 @@ public sealed partial class VRWristMenuController
     {
         None,
         LoadVmd,
+        SelectVmdRoot,
         SelectVmdActor,
         SelectVmdCamera,
+        SelectClothingActor,
         SelectHighHeelsActor,
         SelectCharacterReplaceActor,
         AddFemale,
@@ -34,6 +36,7 @@ public sealed partial class VRWristMenuController
     private Text _browserTitleText;
     private Text _browserPathText;
     private Text _browserScrollText;
+    private VRWristMenuButtonTarget _browserHeaderActionButton;
     private BrowserMode _browserMode;
     private VRCharacterCardMode _characterCardMode;
     private string _browserRoot;
@@ -47,6 +50,10 @@ public sealed partial class VRWristMenuController
     private int _browserStickDirection;
     private float _nextBrowserStickScroll;
     private bool _operationInProgress;
+    private bool _returnToVmdBrowserAfterRootPicker;
+    private string _vmdRootPickerPreviousRoot;
+    private string _vmdRootPickerPreviousDirectory;
+    private int _vmdRootPickerPreviousOffset;
 
     private void BuildBrowserPage()
     {
@@ -68,11 +75,24 @@ public sealed partial class VRWristMenuController
             "文件",
             92f,
             10f,
-            444f,
+            258f,
             40f,
             27,
             TextAnchor.MiddleLeft,
             Color.white);
+        _browserHeaderActionButton = CreateButton(
+            "BrowserHeaderAction",
+            "更换目录",
+            362f,
+            10f,
+            new Color(0.12f, 0.16f, 0.2f, 0.56f),
+            new Color(0.22f, 0.34f, 0.42f, 0.8f),
+            HandleBrowserHeaderAction,
+            _browserPage.transform,
+            174f,
+            38f,
+            16);
+        _browserHeaderActionButton.SetVisible(false);
 
         Image pathBackground = CreateImage(
             "BrowserPathBackground",
@@ -305,8 +325,15 @@ public sealed partial class VRWristMenuController
 
     private void RefreshBrowserEntries()
     {
-        if ((_browserMode == BrowserMode.SelectVmdActor
+        if (_browserMode == BrowserMode.SelectVmdRoot)
+        {
+            _browserEntries = string.IsNullOrEmpty(_browserDirectory)
+                ? VRWristFileCatalog.ListDrives()
+                : VRWristFileCatalog.ListDirectories(_browserDirectory);
+        }
+        else if ((_browserMode == BrowserMode.SelectVmdActor
                 || _browserMode == BrowserMode.SelectVmdCamera
+                || _browserMode == BrowserMode.SelectClothingActor
                 || _browserMode == BrowserMode.SelectHighHeelsActor
                 || _browserMode == BrowserMode.SelectCharacterReplaceActor)
             && _browserFixedEntries != null)
@@ -352,6 +379,16 @@ public sealed partial class VRWristMenuController
             return;
 
         _browserTitleText.text = GetBrowserTitle();
+        bool hasCurrentFolder = _browserMode == BrowserMode.SelectVmdRoot
+            && !string.IsNullOrEmpty(_browserDirectory)
+            && Directory.Exists(_browserDirectory);
+        bool showHeaderAction = _browserMode == BrowserMode.LoadVmd || hasCurrentFolder;
+        _browserHeaderActionButton.SetVisible(showHeaderAction);
+        if (showHeaderAction)
+        {
+            _browserHeaderActionButton.SetLabel(
+                _browserMode == BrowserMode.LoadVmd ? "更换目录" : "使用此目录");
+        }
         int firstVisible = _browserEntries.Count == 0 ? 0 : _browserOffset + 1;
         int lastVisible = Math.Min(_browserEntries.Count, _browserOffset + BrowserVisibleRows);
         _browserPathText.text = BuildBrowserPathLabel()
@@ -384,12 +421,16 @@ public sealed partial class VRWristMenuController
         {
             case BrowserMode.LoadVmd:
                 return "读取 VMD";
+            case BrowserMode.SelectVmdRoot:
+                return "动作数据目录";
             case BrowserMode.SelectVmdActor:
                 return "选择动作目标";
             case BrowserMode.SelectVmdCamera:
                 return "选择镜头 VMD";
             case BrowserMode.SelectHighHeelsActor:
                 return "高跟鞋：选择角色";
+            case BrowserMode.SelectClothingActor:
+                return "换装：选择角色";
             case BrowserMode.SelectCharacterReplaceActor:
                 return "替换：选择场景角色";
             case BrowserMode.AddFemale:
@@ -404,11 +445,16 @@ public sealed partial class VRWristMenuController
     private string BuildBrowserPathLabel()
     {
         if (_browserMode == BrowserMode.SelectVmdActor
+            || _browserMode == BrowserMode.SelectClothingActor
             || _browserMode == BrowserMode.SelectHighHeelsActor
             || _browserMode == BrowserMode.SelectCharacterReplaceActor)
             return "当前场景角色";
         if (_browserMode == BrowserMode.SelectVmdCamera)
             return "同目录镜头";
+        if (_browserMode == BrowserMode.SelectVmdRoot)
+            return string.IsNullOrEmpty(_browserDirectory)
+                ? "选择磁盘"
+                : _browserDirectory;
 
         string relative = _browserDirectory.Substring(_browserRoot.Length)
             .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -446,6 +492,23 @@ public sealed partial class VRWristMenuController
 
     private void HandleBrowserBack()
     {
+        if (_browserMode == BrowserMode.SelectVmdRoot)
+        {
+            HandleVmdRootPickerBack();
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectClothingActor)
+        {
+            Studio.OCIChar character;
+            string status;
+            if (TryGetClothingTarget(out character, out status))
+                ShowPage(WristMenuPage.Clothing);
+            else
+                HandleBackToRoot();
+            return;
+        }
+
         if (_browserMode == BrowserMode.SelectHighHeelsActor)
         {
             int objectKey;
@@ -467,11 +530,17 @@ public sealed partial class VRWristMenuController
         if (_browserMode == BrowserMode.SelectVmdActor
             || _browserMode == BrowserMode.SelectVmdCamera)
         {
+            string root = GetConfiguredVmdRoot();
+            if (string.IsNullOrEmpty(root))
+            {
+                OpenVmdRootPicker(false);
+                return;
+            }
             OpenFileBrowser(
                 BrowserMode.LoadVmd,
-                VRMmddService.DefaultVmdRoot,
+                root,
                 string.IsNullOrEmpty(_vmdMotionDirectory)
-                    ? VRMmddService.DefaultVmdRoot
+                    ? root
                     : _vmdMotionDirectory);
             return;
         }
@@ -533,6 +602,9 @@ public sealed partial class VRWristMenuController
                     _pendingAudioPath,
                     _pendingVmdActorKeys);
                 break;
+            case BrowserMode.SelectClothingActor:
+                HandleClothingActorSelection(entry);
+                break;
             case BrowserMode.SelectHighHeelsActor:
                 HandleHighHeelsActorSelection(entry);
                 break;
@@ -544,6 +616,174 @@ public sealed partial class VRWristMenuController
                 OpenCharacterCardPreview(entry.FullPath);
                 break;
         }
+    }
+
+    private void HandleBrowserHeaderAction()
+    {
+        if (_browserMode == BrowserMode.LoadVmd)
+        {
+            OpenVmdRootPicker(true);
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectVmdRoot)
+            HandleConfirmVmdRoot();
+    }
+
+    private string GetConfiguredVmdRoot()
+    {
+        ResolveSettings();
+        if (_settings == null || string.IsNullOrEmpty(_settings.VmdRootPath))
+            return null;
+
+        try
+        {
+            string root = Path.GetFullPath(_settings.VmdRootPath);
+            return Directory.Exists(root) ? root : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private void OpenVmdRootPicker(bool returnToVmdBrowser)
+    {
+        _returnToVmdBrowserAfterRootPicker = returnToVmdBrowser
+            && _browserMode == BrowserMode.LoadVmd
+            && !string.IsNullOrEmpty(_browserRoot)
+            && Directory.Exists(_browserRoot);
+        _vmdRootPickerPreviousRoot = _returnToVmdBrowserAfterRootPicker
+            ? _browserRoot
+            : null;
+        _vmdRootPickerPreviousDirectory = _returnToVmdBrowserAfterRootPicker
+            ? _browserDirectory
+            : null;
+        _vmdRootPickerPreviousOffset = _returnToVmdBrowserAfterRootPicker
+            ? _browserOffset
+            : 0;
+
+        string startDirectory = GetConfiguredVmdRoot();
+        if (string.IsNullOrEmpty(startDirectory)
+            && Directory.Exists(VRMmddService.SuggestedVmdRoot))
+        {
+            startDirectory = Path.GetFullPath(VRMmddService.SuggestedVmdRoot);
+        }
+        if (string.IsNullOrEmpty(startDirectory))
+        {
+            try
+            {
+                string gameRoot = Path.GetPathRoot(AppDomain.CurrentDomain.BaseDirectory);
+                if (!string.IsNullOrEmpty(gameRoot) && Directory.Exists(gameRoot))
+                    startDirectory = gameRoot;
+            }
+            catch (Exception)
+            {
+                startDirectory = null;
+            }
+        }
+
+        _browserMode = BrowserMode.SelectVmdRoot;
+        _browserRoot = string.Empty;
+        _browserDirectory = startDirectory;
+        _browserFixedEntries = null;
+        _browserOffset = 0;
+        _browserStickDirection = 0;
+        RefreshBrowserEntries();
+        ShowPage(WristMenuPage.Browser);
+        SetStatus(
+            "请选择动作、镜头和音频所在的根目录",
+            new Color(1f, 0.72f, 0.25f, 1f),
+            0f);
+    }
+
+    private void HandleConfirmVmdRoot()
+    {
+        if (string.IsNullOrEmpty(_browserDirectory) || !Directory.Exists(_browserDirectory))
+        {
+            SetStatus("请先进入一个可用目录", new Color(1f, 0.38f, 0.34f, 1f), 5f);
+            return;
+        }
+
+        ResolveSettings();
+        if (_settings == null)
+        {
+            SetStatus("VR 设置尚未初始化", new Color(1f, 0.38f, 0.34f, 1f), 6f);
+            return;
+        }
+
+        try
+        {
+            string root = Path.GetFullPath(_browserDirectory);
+            _settings.VmdRootPath = root;
+            _settings.Save();
+            _vmdMotionDirectory = root;
+            _returnToVmdBrowserAfterRootPicker = false;
+            _vmdRootPickerPreviousRoot = null;
+            _vmdRootPickerPreviousDirectory = null;
+            OpenFileBrowser(BrowserMode.LoadVmd, root, root);
+            SetStatus("动作目录已保存：" + root, new Color(0.35f, 1f, 0.62f, 1f), 5f);
+        }
+        catch (Exception ex)
+        {
+            SetStatus("动作目录保存失败：" + ex.Message, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+        }
+    }
+
+    private void HandleVmdRootPickerBack()
+    {
+        if (!string.IsNullOrEmpty(_browserDirectory))
+        {
+            try
+            {
+                string current = Path.GetFullPath(_browserDirectory);
+                string driveRoot = Path.GetPathRoot(current);
+                if (!string.IsNullOrEmpty(driveRoot)
+                    && string.Equals(
+                        current.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                        driveRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    _browserDirectory = null;
+                }
+                else
+                {
+                    _browserDirectory = Path.GetDirectoryName(current);
+                }
+                _browserOffset = 0;
+                RefreshBrowserEntries();
+                return;
+            }
+            catch (Exception)
+            {
+                _browserDirectory = null;
+                _browserOffset = 0;
+                RefreshBrowserEntries();
+                return;
+            }
+        }
+
+        if (_returnToVmdBrowserAfterRootPicker
+            && !string.IsNullOrEmpty(_vmdRootPickerPreviousRoot)
+            && Directory.Exists(_vmdRootPickerPreviousRoot))
+        {
+            string directory = Directory.Exists(_vmdRootPickerPreviousDirectory)
+                && VRWristFileCatalog.IsInsideRoot(
+                    _vmdRootPickerPreviousRoot,
+                    _vmdRootPickerPreviousDirectory)
+                    ? _vmdRootPickerPreviousDirectory
+                    : _vmdRootPickerPreviousRoot;
+            int previousOffset = _vmdRootPickerPreviousOffset;
+            OpenFileBrowser(
+                BrowserMode.LoadVmd,
+                _vmdRootPickerPreviousRoot,
+                directory);
+            _browserOffset = previousOffset;
+            RefreshBrowserEntries();
+            return;
+        }
+
+        HandleBackToRoot();
     }
 
     private bool OpenActorTargetBrowser(
@@ -751,6 +991,7 @@ public sealed partial class VRWristMenuController
             cameraPath,
             audioPath,
             actorObjectKeys,
+            GetConfiguredVmdRoot(),
             out status);
         _operationInProgress = false;
         if (success)

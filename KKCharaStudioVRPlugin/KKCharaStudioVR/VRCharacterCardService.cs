@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Studio;
+using UnityEngine;
 using VRGIN.Core;
 
 namespace KKCharaStudioVR;
@@ -87,6 +88,65 @@ internal static class VRCharacterCardService
         {
             status = "角色卡读取失败：" + ex.Message;
             VRLog.Error(status);
+            return false;
+        }
+    }
+
+    public static bool TryLoadNativePreview(
+        VRCharacterCardMode mode,
+        string path,
+        out Texture2D texture,
+        out string characterName,
+        out string status)
+    {
+        texture = null;
+        characterName = null;
+        try
+        {
+            if (!ValidateCardPath(path, out status))
+                return false;
+
+            byte sex = mode == VRCharacterCardMode.AddMale ? (byte)0 : (byte)1;
+            string expectedRoot = sex == 0 ? MaleRoot : FemaleRoot;
+            if (!VRWristFileCatalog.IsInsideRoot(expectedRoot, path))
+            {
+                status = sex == 0 ? "请选择男性角色卡" : "请选择女性角色卡";
+                return false;
+            }
+
+            ChaFileControl card = new ChaFileControl();
+            if (!card.LoadCharaFile(path, sex, noLoadPng: true))
+            {
+                status = sex == 0
+                    ? "文件不是有效的男性角色卡"
+                    : "文件不是有效的女性角色卡";
+                return false;
+            }
+
+            // This is the same thumbnail loader used by Studio.CharaList.
+            texture = PngAssist.LoadTexture(path);
+            if (texture == null)
+            {
+                status = "工作室原生卡面接口未能读取图片";
+                return false;
+            }
+
+            characterName = card.parameter != null
+                && !string.IsNullOrEmpty(card.parameter.fullname)
+                    ? card.parameter.fullname
+                    : Path.GetFileNameWithoutExtension(path);
+            status = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (texture != null)
+            {
+                UnityEngine.Object.Destroy(texture);
+                texture = null;
+            }
+            status = "工作室原生卡面读取失败：" + ex.Message;
+            VRLog.Warn(status);
             return false;
         }
     }

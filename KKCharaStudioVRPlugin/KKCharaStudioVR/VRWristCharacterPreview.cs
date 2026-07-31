@@ -178,24 +178,15 @@ public sealed partial class VRWristMenuController
             if (requestId != _characterPreviewRequestId)
                 yield break;
 
-            if (string.IsNullOrEmpty(path)
-                || !File.Exists(path)
-                || !string.Equals(
-                    Path.GetExtension(path),
-                    ".png",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidDataException("角色卡文件不存在或格式无效");
-            }
-
-            byte[] bytes = ReadPngPreviewBytes(path);
-            texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!texture.LoadImage(bytes))
-            {
-                Destroy(texture);
-                texture = null;
-                throw new InvalidDataException("无法解码角色卡预览图");
-            }
+            string characterName;
+            string previewStatus;
+            if (!VRCharacterCardService.TryLoadNativePreview(
+                    _characterCardMode,
+                    path,
+                    out texture,
+                    out characterName,
+                    out previewStatus))
+                throw new IOException(previewStatus ?? "无法读取角色卡预览图");
 
             if (requestId != _characterPreviewRequestId)
             {
@@ -217,7 +208,7 @@ public sealed partial class VRWristMenuController
                 _characterPreviewTexture.height);
 
             _pendingCharacterCardPath = path;
-            _characterPreviewNameText.text = Path.GetFileNameWithoutExtension(path);
+            _characterPreviewNameText.text = characterName;
             _characterPreviewMessageText.gameObject.SetActive(false);
             _characterPreviewLoadButton.SetLabel(GetCharacterPreviewLoadLabel());
             _characterPreviewReplaceButton.SetLabel("替换场景角色\nREPLACE");
@@ -282,30 +273,6 @@ public sealed partial class VRWristMenuController
             CharacterPreviewAreaX + (CharacterPreviewAreaWidth - width) * 0.5f,
             -(CharacterPreviewAreaY + (CharacterPreviewAreaHeight - height) * 0.5f));
         _characterPreviewRect.sizeDelta = new Vector2(width, height);
-    }
-
-    private static byte[] ReadPngPreviewBytes(string path)
-    {
-        using FileStream stream = new FileStream(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.ReadWrite);
-        long pngSize = PngFile.GetPngSize(stream);
-        if (pngSize <= 0 || pngSize > int.MaxValue || pngSize > stream.Length)
-            throw new InvalidDataException("角色卡没有有效的 PNG 卡面");
-
-        byte[] bytes = new byte[(int)pngSize];
-        stream.Position = 0;
-        int offset = 0;
-        while (offset < bytes.Length)
-        {
-            int read = stream.Read(bytes, offset, bytes.Length - offset);
-            if (read <= 0)
-                throw new EndOfStreamException("角色卡 PNG 数据不完整");
-            offset += read;
-        }
-        return bytes;
     }
 
     private string GetCharacterPreviewLoadLabel()

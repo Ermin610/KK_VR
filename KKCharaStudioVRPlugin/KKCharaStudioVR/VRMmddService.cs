@@ -7,7 +7,7 @@ namespace KKCharaStudioVR;
 
 internal static class VRMmddService
 {
-    public const string DefaultVmdRoot = @"E:\action";
+    public const string SuggestedVmdRoot = @"E:\action";
     public const float DefaultFixedFov = 53.13f;
     public const float MinFixedFov = 20f;
     public const float MaxFixedFov = 120f;
@@ -150,6 +150,7 @@ internal static class VRMmddService
         string cameraPath,
         string audioPath,
         int[] actorObjectKeys,
+        string vmdRoot,
         out string status)
     {
         if (!ValidateOptionalFile(motionPath, ".vmd", out status)
@@ -164,12 +165,18 @@ internal static class VRMmddService
             status = "没有选择动作或镜头 VMD";
             return false;
         }
+        if (string.IsNullOrEmpty(vmdRoot) || !Directory.Exists(vmdRoot))
+        {
+            status = "动作数据目录不存在，请重新选择";
+            return false;
+        }
 
         string code = BuildLoadPackageCode(
             motionPath,
             cameraPath,
             audioPath,
-            actorObjectKeys);
+            actorObjectKeys,
+            vmdRoot);
 
         string error;
         if (!VRPythonBridge.TryExecute(code, "MMDD wrist VMD load", out error))
@@ -204,7 +211,6 @@ internal static class VRMmddService
             + "    raise Exception('MMD Director could not be started')\n"
             + "mmdd = game.gdata.mmdd\n"
             + "config = game.gdata.mmdd_config\n"
-            + "config.vmdHomeDir = " + ToPythonString(DefaultVmdRoot) + "\n"
             + "game.visible = 0\n";
     }
 
@@ -212,10 +218,12 @@ internal static class VRMmddService
         string motionPath,
         string cameraPath,
         string audioPath,
-        int[] actorObjectKeys)
+        int[] actorObjectKeys,
+        string vmdRoot)
     {
         StringBuilder code = new StringBuilder();
         code.Append(BuildBootstrapCode());
+        code.Append("config.vmdHomeDir = ").Append(ToPythonString(vmdRoot)).Append("\n");
         code.Append("from vmdlib import VmdLib\n");
         code.Append("motion_path = ").Append(ToPythonString(motionPath)).Append("\n");
         code.Append("camera_path = ").Append(ToPythonString(cameraPath)).Append("\n");
@@ -349,7 +357,12 @@ internal static class VRMmddService
         code.Append("if mc.HighHeels is None:\n");
         code.Append("    raise Exception('This MMDD motion controller has no High Heels support')\n");
         code.Append(action);
-        // High-heel setters apply immediately. MMDD start() updates the camera when Play is pressed.
+        if (!string.IsNullOrEmpty(action))
+        {
+            // Apply the selected actor only. A global mmdd.update() also rewrites the VR camera.
+            code.Append("if not mmdd.isPlaying:\n");
+            code.Append("    mc.setFrame(mmdd.curFrame)\n");
+        }
         code.Append("rot = mc.getHeelzRotation()\n");
         code.Append("VRMmddStateBridge.ReportHighHeels(mc.CharName, mc.HighHeels.PluginName or 'Unknown', bool(mc.HighHeels.enable), bool(mc.ShoesDetect), float(rot[0]), float(rot[1]), float(rot[2]), bool(mc.ShoesOffset[0]), float(mc.ShoesOffset[1]), float(mc.ShoesOffset[2]))\n");
 

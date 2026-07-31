@@ -33,48 +33,19 @@ internal static class VRCharacterClothingService
         return "当前角色";
     }
 
-    public static bool TryGetSelectedCharacter(out OCIChar character, out string status)
+    public static bool TryGetCharacter(int objectKey, out OCIChar character, out string status)
     {
         character = null;
-        try
-        {
-            Studio.Studio studio = Singleton<Studio.Studio>.Instance;
-            if (studio == null || studio.treeNodeCtrl == null)
-            {
-                status = "工作室角色列表尚未就绪";
-                return false;
-            }
-
-            ObjectCtrlInfo[] selected = studio.treeNodeCtrl.selectObjectCtrl;
-            if (selected == null || selected.Length == 0)
-            {
-                status = "未选择角色";
-                return false;
-            }
-
-            foreach (ObjectCtrlInfo item in selected)
-            {
-                OCIChar selectedCharacter = item as OCIChar;
-                if (selectedCharacter != null)
-                {
-                    character = selectedCharacter;
-                    status = GetCharacterName(character);
-                    return true;
-                }
-            }
-
-            status = "当前选择不是角色";
+        VRVmdActorTarget target;
+        if (!VRVmdTargetService.TryGetTarget(objectKey, out target, out status))
             return false;
-        }
-        catch (Exception ex)
-        {
-            status = "无法读取当前角色：" + ex.Message;
-            VRLog.Error(status);
-            return false;
-        }
+
+        character = target.Character;
+        status = target.DisplayName;
+        return true;
     }
 
-    public static bool TrySetAll(byte state, out string status)
+    public static bool TrySetAll(int objectKey, byte state, out string status)
     {
         if (state != 0 && state != 1 && state != 3)
         {
@@ -83,7 +54,7 @@ internal static class VRCharacterClothingService
         }
 
         OCIChar character;
-        if (!TryGetSelectedCharacter(out character, out status))
+        if (!TryGetCharacter(objectKey, out character, out status))
             return false;
 
         try
@@ -100,10 +71,10 @@ internal static class VRCharacterClothingService
         }
     }
 
-    public static bool TryCyclePart(int partId, out string status)
+    public static bool TryCyclePart(int objectKey, int partId, out string status)
     {
         OCIChar character;
-        if (!TryGetSelectedCharacter(out character, out status))
+        if (!TryGetCharacter(objectKey, out character, out status))
             return false;
         if (!IsValidPart(character, partId))
         {
