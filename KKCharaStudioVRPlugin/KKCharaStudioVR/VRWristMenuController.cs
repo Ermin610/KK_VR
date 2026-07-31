@@ -27,7 +27,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         Browser,
         SceneSave,
         CharacterCards,
-        CharacterPreview
+        CharacterPreview,
+        Settings
     }
 
     public static VRWristMenuController Instance { get; private set; }
@@ -235,9 +236,22 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _sceneSavePage = CreateRectObject("SceneSavePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterCardsPage = CreateRectObject("CharacterCardsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterPreviewPage = CreateRectObject("CharacterPreviewPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _settingsPage = CreateRectObject("SettingsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
-        CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 516f, 40f, 28,
+        CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 382f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
+        CreateButton(
+            "OpenSettings",
+            "设置  >",
+            418f,
+            12f,
+            new Color(0.12f, 0.16f, 0.2f, 0.56f),
+            new Color(0.22f, 0.34f, 0.42f, 0.8f),
+            HandleOpenSettings,
+            _rootPage.transform,
+            118f,
+            34f,
+            17);
 
         CreateText("SceneSection", _rootPage.transform, "场景  SCENE", 24f, 68f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
@@ -270,28 +284,40 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
         CreateButton(
             "ToggleMmd",
-            "播放 / 暂停\nPLAY / PAUSE",
+            "MMDD\n播放 / 暂停",
             24f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleToggleMmd,
             _rootPage.transform,
-            248f,
+            160f,
             68f,
-            20);
+            17);
+        _timelineButton = CreateButton(
+            "ToggleTimeline",
+            "TIMELINE\n播放",
+            200f,
+            208f,
+            new Color(0.12f, 0.17f, 0.3f, 0.5f),
+            new Color(0.18f, 0.36f, 0.62f, 0.8f),
+            HandleToggleTimeline,
+            _rootPage.transform,
+            160f,
+            68f,
+            17);
         CreateButton(
             "LoadVmd",
-            "读取 VMD\nLOAD VMD",
-            288f,
+            "VMD\n读取文件",
+            376f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleLoadVmd,
             _rootPage.transform,
-            248f,
+            160f,
             68f,
-            20);
+            17);
 
         CreateText("CharacterSection", _rootPage.transform, "角色  CHARACTER", 24f, 290f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
@@ -325,6 +351,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         BuildSceneSavePage();
         BuildCharacterCardsPage();
         BuildCharacterPreviewPage();
+        BuildSettingsPage();
 
         Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, GlassSurfaceColor);
         ApplyGlassEffects(statusBackground, new Color(0.9f, 0.97f, 1f, 0.12f), true, 2f);
@@ -336,7 +363,9 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _sceneSavePage.SetActive(false);
         _characterCardsPage.SetActive(false);
         _characterPreviewPage.SetActive(false);
+        _settingsPage.SetActive(false);
         _menuRoot.SetActive(false);
+        RefreshTimelineButton();
         return true;
     }
 
@@ -792,8 +821,15 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             _characterCardsPage.SetActive(page == WristMenuPage.CharacterCards);
         if (_characterPreviewPage != null)
             _characterPreviewPage.SetActive(page == WristMenuPage.CharacterPreview);
+        if (_settingsPage != null)
+            _settingsPage.SetActive(page == WristMenuPage.Settings);
 
-        if (page == WristMenuPage.Clothing)
+        if (page == WristMenuPage.Root)
+        {
+            RefreshTimelineButton();
+            _nextTimelineRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.Clothing)
         {
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
@@ -802,6 +838,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         {
             RefreshCharacterCardsPage();
             _nextCharacterRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.Settings)
+        {
+            RefreshSettingsPage();
         }
     }
 
@@ -900,6 +940,17 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         OpenFileBrowser(BrowserMode.LoadVmd, VRMmddService.DefaultVmdRoot, VRMmddService.DefaultVmdRoot);
     }
 
+    private void HandleToggleTimeline()
+    {
+        string status;
+        bool success = VRTimelineService.TogglePlayPause(out status);
+        RefreshTimelineButton();
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            4f);
+    }
+
     private IEnumerator SummonMainGuiAfterDelay(float delay)
     {
         float deadline = Time.unscaledTime + delay;
@@ -922,6 +973,11 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         {
             RefreshCharacterCardsPage();
             _nextCharacterRefresh = Time.unscaledTime + 0.25f;
+        }
+        if (_page == WristMenuPage.Root && Time.unscaledTime >= _nextTimelineRefresh)
+        {
+            RefreshTimelineButton();
+            _nextTimelineRefresh = Time.unscaledTime + 0.25f;
         }
     }
 

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KK VR Wrist Menu Showcase</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body {
+      color: #f7fbff;
+      background: #15191e;
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    .poster {
+      position: relative;
+      width: 2000px;
+      height: 1200px;
+      overflow: hidden;
+      background: #15191e;
+      border-top: 8px solid #52dbe8;
+    }
+    .poster::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+    }
+    .kicker {
+      position: absolute;
+      left: 82px;
+      top: 70px;
+      color: #52dbe8;
+      font-size: 25px;
+      font-weight: 700;
+    }
+    h1 {
+      position: absolute;
+      left: 78px;
+      top: 102px;
+      margin: 0;
+      font-size: 64px;
+      line-height: 1.08;
+      font-weight: 800;
+    }
+    .subtitle {
+      position: absolute;
+      left: 82px;
+      top: 187px;
+      margin: 0;
+      color: #aebcc7;
+      font-size: 25px;
+    }
+    .version {
+      position: absolute;
+      right: 78px;
+      top: 80px;
+      padding: 13px 22px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 8px;
+      color: #dce7ee;
+      background: rgba(255,255,255,.055);
+      font-size: 21px;
+    }
+    .main-stage { position: absolute; left: 76px; top: 270px; width: 840px; height: 750px; }
+    .main-stage .page { transform: scale(1.5); transform-origin: top left; }
+    .main-stage > .visual,
+    .main-stage > .light,
+    .main-stage > .audio { display: none; }
+    .detail-stage { position: absolute; left: 1015px; top: 266px; width: 920px; height: 830px; }
+    .detail-stage .page { position: absolute; transform: scale(.78); transform-origin: top left; }
+    .detail-stage .visual { left: 0; top: 0; }
+    .detail-stage .light { left: 464px; top: 0; }
+    .detail-stage .audio { left: 232px; top: 418px; }
+    .detail-label {
+      position: absolute;
+      color: #92a4b1;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .label-visual { left: 1020px; top: 235px; color: #52dbe8; }
+    .label-light { left: 1484px; top: 235px; color: #f6b74b; }
+    .label-audio { left: 1252px; top: 653px; color: #77e68b; }
+    .footer {
+      position: absolute;
+      left: 82px;
+      right: 82px;
+      bottom: 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #8fa0ad;
+      font-size: 20px;
+    }
+    .footer strong { color: #dbe6ed; }
+    .menu {
+      position: relative;
+      width: 560px;
+      height: 500px;
+      overflow: hidden;
+      border: 1px solid rgba(235,247,255,.21);
+      border-radius: 8px;
+      background: rgba(9,12,15,.91);
+      box-shadow: 0 22px 54px rgba(0,0,0,.48);
+    }
+    .menu::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(16,22,28,.54);
+      pointer-events: none;
+    }
+    .header {
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 58px;
+      border-bottom: 1px solid rgba(184,230,255,.16);
+      background: rgba(225,240,255,.075);
+    }
+    .header::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 7px;
+      height: 2px;
+      background: rgba(255,255,255,.28);
+    }
+    .title { position: absolute; left: 22px; top: 13px; font-size: 28px; font-weight: 700; }
+    .back {
+      position: absolute; left: 18px; top: 10px; width: 58px; height: 38px;
+      border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
+      background: rgba(255,255,255,.08); text-align: center; font-size: 28px; line-height: 36px;
+    }
+    .sub-title { left: 92px; }
+    .settings-button {
+      position: absolute; left: 418px; top: 12px; width: 118px; height: 34px;
+      display: grid; place-items: center; border-radius: 8px;
+      border: 1px solid rgba(240,250,255,.14); background: rgba(31,41,51,.72); font-size: 17px;
+    }
+    .section-title { position: absolute; left: 24px; width: 512px; height: 24px; font-size: 20px; font-weight: 700; }
+    .scene-title { top: 68px; color: #40dbeF; }
+    .mmd-title { top: 178px; color: #ffb840; }
+    .character-title { top: 290px; color: #78e68c; }
+    .button {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      white-space: pre-line;
+      border: 1px solid rgba(240,250,255,.14);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.26);
+      color: #fff;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+    .button::before {
+      content: "";
+      position: absolute;
+      left: 10px; right: 10px; top: 5px; height: 1px;
+      background: rgba(255,255,255,.16);
+    }
+    .cyan { background: rgba(18,54,64,.78); }
+    .amber { background: rgba(72,51,18,.74); }
+    .blue { background: rgba(30,43,76,.78); }
+    .green { background: rgba(19,61,36,.76); }
+    .neutral { background: rgba(29,39,48,.78); }
+    .scene-a { left: 24px; top: 98px; width: 248px; height: 68px; font-size: 20px; }
+    .scene-b { left: 288px; top: 98px; width: 248px; height: 68px; font-size: 20px; }
+    .mmd-a { left: 24px; top: 208px; width: 160px; height: 68px; font-size: 17px; }
+    .mmd-b { left: 200px; top: 208px; width: 160px; height: 68px; font-size: 17px; }
+    .mmd-c { left: 376px; top: 208px; width: 160px; height: 68px; font-size: 17px; }
+    .character-a { left: 24px; top: 320px; width: 248px; height: 62px; font-size: 19px; }
+    .character-b { left: 288px; top: 320px; width: 248px; height: 62px; font-size: 19px; }
+    .status {
+      position: absolute; left: 24px; top: 414px; width: 512px; height: 62px;
+      display: flex; align-items: center; padding: 0 14px;
+      border: 1px solid rgba(235,247,255,.12); border-radius: 8px;
+      background: rgba(200,220,234,.075); color: #c6dbe6; font-size: 18px;
+    }
+    .tabs { position: absolute; top: 62px; left: 24px; display: flex; gap: 16px; }
+    .tab {
+      width: 160px; height: 42px; display: grid; place-items: center;
+      border: 1px solid rgba(240,250,255,.14); border-radius: 8px; font-size: 18px; font-weight: 600;
+    }
+    .tab.visual-tab { background: rgba(18,54,64,.8); }
+    .tab.light-tab { background: rgba(72,51,18,.72); }
+    .tab.audio-tab { background: rgba(19,61,36,.72); }
+    .active::after { content: "  ●"; font-size: 13px; }
+    .setting-heading { position: absolute; left: 24px; top: 122px; font-size: 19px; font-weight: 700; }
+    .visual-heading { color: #40dbeF; }
+    .light-heading { color: #ffb840; top: 118px; }
+    .audio-heading { color: #78e68c; top: 112px; }
+    .swatches { position: absolute; left: 24px; top: 160px; display: flex; gap: 10.5px; }
+    .swatch {
+      width: 94px; height: 70px; display: grid; place-items: center;
+      border: 1px solid rgba(255,255,255,.2); border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.28); font-size: 17px; font-weight: 700;
+    }
+    .current-value {
+      position: absolute; left: 24px; top: 252px; width: 512px; height: 58px;
+      display: flex; align-items: center; padding: 0 14px;
+      border: 1px solid rgba(220,245,255,.12); border-radius: 8px;
+      background: rgba(180,215,235,.065); color: #c1dae7; font-size: 18px;
+    }
+    .light-controls { position: absolute; left: 24px; top: 154px; display: flex; gap: 12px; }
+    .light-control {
+      height: 54px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14);
+      border-radius: 8px; background: rgba(29,39,48,.78); font-size: 17px; font-weight: 600;
+    }
+    .light-toggle { width: 150px; background: rgba(72,51,18,.74); }
+    .step { width: 54px; font-size: 26px; }
+    .intensity { width: 82px; border: 0; background: transparent; font-size: 22px; }
+    .shadow-toggle { width: 132px; }
+    .color-heading { position: absolute; left: 24px; top: 226px; color: #b8cbd6; font-size: 18px; font-weight: 700; }
+    .light-swatches { top: 260px; }
+    .audio-rows { position: absolute; left: 24px; top: 146px; width: 512px; }
+    .audio-row { height: 40px; margin-bottom: 9px; display: flex; align-items: center; gap: 6px; }
+    .audio-name { width: 116px; font-size: 16px; }
+    .audio-step, .audio-toggle {
+      height: 40px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.13);
+      border-radius: 8px; background: rgba(20,38,45,.78); font-weight: 700;
+    }
+    .audio-step { width: 50px; font-size: 22px; }
+    .audio-value { width: 78px; text-align: center; color: #bfd8e6; font-size: 17px; }
+    .audio-toggle { width: 192px; background: rgba(19,61,36,.76); font-size: 16px; }
+    body.single { width: 1120px; height: 1000px; background: transparent; }
+    body.single .poster { width: 1120px; height: 1000px; border: 0; background: transparent; }
+    body.single .poster::before,
+    body.single .kicker,
+    body.single h1,
+    body.single .subtitle,
+    body.single .version,
+    body.single .detail-stage,
+    body.single .detail-label,
+    body.single .footer { display: none; }
+    body.single .main-stage { left: 0; top: 0; width: 1120px; height: 1000px; }
+    body.single .main-stage > .page {
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: none;
+      transform: scale(2);
+      transform-origin: top left;
+    }
+    body.single.view-root .main-stage > .root,
+    body.single.view-visual .main-stage > .visual,
+    body.single.view-light .main-stage > .light,
+    body.single.view-audio .main-stage > .audio { display: block; }
+  </style>
+</head>
+<body>
+  <main class="poster">
+    <div class="kicker">META QUEST 3 · KOIKATU CHARA STUDIO</div>
+    <h1>KK VR 手腕快捷菜单</h1>
+    <p class="subtitle">场景、Timeline、MMD、角色与工作室设置，都留在头显里完成</p>
+    <div class="version">v0.0.7 · Apple-style glass UI</div>
+
+    <section class="main-stage">
+      <div class="page root">
+        <div class="menu">
+          <div class="header"></div>
+          <div class="title">KK VR 快捷菜单</div>
+          <div class="settings-button">设置&nbsp; &gt;</div>
+          <div class="section-title scene-title">场景&nbsp; SCENE</div>
+          <div class="button cyan scene-a">大屏幕读取 &gt;<br>SCENE PREVIEW</div>
+          <div class="button cyan scene-b">保存场景 &gt;<br>SAVE SCENE</div>
+          <div class="section-title mmd-title">MMD</div>
+          <div class="button amber mmd-a">MMDD<br>播放 / 暂停</div>
+          <div class="button blue mmd-b">TIMELINE<br>播放</div>
+          <div class="button amber mmd-c">VMD<br>读取文件</div>
+          <div class="section-title character-title">角色&nbsp; CHARACTER</div>
+          <div class="button green character-a">角色卡 &gt;<br>LOAD / REPLACE</div>
+          <div class="button green character-b">角色换装 &gt;<br>CLOTHING</div>
+          <div class="status">就绪</div>
+        </div>
+      </div>
+      <div class="page visual">
+        <div class="menu">
+          <div class="header"></div><div class="back">&lt;</div><div class="title sub-title">工作室设置</div>
+          <div class="tabs"><div class="tab visual-tab active">画面</div><div class="tab light-tab">角色光</div><div class="tab audio-tab">声音</div></div>
+          <div class="setting-heading visual-heading">背景颜色&nbsp; BACKGROUND</div>
+          <div class="swatches"><div class="swatch" style="background:#11171c">墨黑</div><div class="swatch" style="background:#343d44">深灰</div><div class="swatch" style="background:#53636b">中灰</div><div class="swatch" style="background:#18314e">深蓝</div><div class="swatch" style="background:#a7aaab">浅灰</div></div>
+          <div class="current-value">当前背景色&nbsp; 深灰</div><div class="status">工作室设置</div>
+        </div>
+      </div>
+      <div class="page light">
+        <div class="menu">
+          <div class="header"></div><div class="back">&lt;</div><div class="title sub-title">工作室设置</div>
+          <div class="tabs"><div class="tab visual-tab">画面</div><div class="tab light-tab active">角色光</div><div class="tab audio-tab">声音</div></div>
+          <div class="setting-heading light-heading">角色光&nbsp; CHARACTER LIGHT</div>
+          <div class="light-controls"><div class="light-control light-toggle">角色光&nbsp; 开</div><div class="light-control step">−</div><div class="light-control intensity">1.0</div><div class="light-control step">+</div><div class="light-control shadow-toggle">阴影&nbsp; 开</div></div>
+          <div class="color-heading">灯光颜色&nbsp; COLOR</div>
+          <div class="swatches light-swatches"><div class="swatch" style="background:#8f674d">暖</div><div class="swatch" style="background:#8b877c">白</div><div class="swatch" style="background:#617888">冷</div><div class="swatch" style="background:#8b4c46">红</div><div class="swatch" style="background:#4e8260">绿</div></div>
+          <div class="status">角色光强度 1.0</div>
+        </div>
+      </div>
+      <div class="page audio">
+        <div class="menu">
+          <div class="header"></div><div class="back">&lt;</div><div class="title sub-title">工作室设置</div>
+          <div class="tabs"><div class="tab visual-tab">画面</div><div class="tab light-tab">角色光</div><div class="tab audio-tab active">声音</div></div>
+          <div class="setting-heading audio-heading">声音配置&nbsp; AUDIO</div>
+          <div class="audio-rows">
+            <div class="audio-row"><div class="audio-name">主音量</div><div class="audio-step">−</div><div class="audio-value">100%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div>
+            <div class="audio-row"><div class="audio-name">BGM</div><div class="audio-step">−</div><div class="audio-value">80%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div>
+            <div class="audio-row"><div class="audio-name">环境音</div><div class="audio-step">−</div><div class="audio-value">70%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div>
+            <div class="audio-row"><div class="audio-name">系统音效</div><div class="audio-step">−</div><div class="audio-value">80%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div>
+            <div class="audio-row"><div class="audio-name">游戏音效</div><div class="audio-step">−</div><div class="audio-value">90%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div>
+          </div>
+          <div class="status">声音配置</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-stage">
+      <div class="page visual"><div class="menu"><div class="header"></div><div class="back">&lt;</div><div class="title sub-title">工作室设置</div><div class="tabs"><div class="tab visual-tab active">画面</div><div class="tab light-tab">角色光</div><div class="tab audio-tab">声音</div></div><div class="setting-heading visual-heading">背景颜色&nbsp; BACKGROUND</div><div class="swatches"><div class="swatch" style="background:#11171c">墨黑</div><div class="swatch" style="background:#343d44">深灰</div><div class="swatch" style="background:#53636b">中灰</div><div class="swatch" style="background:#18314e">深蓝</div><div class="swatch" style="background:#a7aaab">浅灰</div></div><div class="current-value">当前背景色&nbsp; 深灰</div><div class="status">工作室设置</div></div></div>
+      <div class="page light"><div class="menu"><div class="header"></div><div class="back">&lt;</div><div class="title sub-title">工作室设置</div><div class="tabs"><div class="tab visual-tab">画面</div><div class="tab light-tab active">角色光</div><div class="tab audio-tab">声音</div></div><div class="setting-heading light-heading">角色光&nbsp; CHARACTER LIGHT</div><div class="light-controls"><div class="light-control light-toggle">角色光&nbsp; 开</div><div class="light-control step">−</div><div class="light-control intensity">1.0</div><div class="light-control step">+</div><div class="light-control shadow-toggle">阴影&nbsp; 开</div></div><div class="color-heading">灯光颜色&nbsp; COLOR</div><div class="swatches light-swatches"><div class="swatch" style="background:#8f674d">暖</div><div class="swatch" style="background:#8b877c">白</div><div class="swatch" style="background:#617888">冷</div><div class="swatch" style="background:#8b4c46">红</div><div class="swatch" style="background:#4e8260">绿</div></div><div class="status">角色光强度 1.0</div></div></div>
+      <div class="page audio"><div class="menu"><div class="header"></div><div class="back">&lt;</div><div class="title sub-title">工作室设置</div><div class="tabs"><div class="tab visual-tab">画面</div><div class="tab light-tab">角色光</div><div class="tab audio-tab active">声音</div></div><div class="setting-heading audio-heading">声音配置&nbsp; AUDIO</div><div class="audio-rows"><div class="audio-row"><div class="audio-name">主音量</div><div class="audio-step">−</div><div class="audio-value">100%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div><div class="audio-row"><div class="audio-name">BGM</div><div class="audio-step">−</div><div class="audio-value">80%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div><div class="audio-row"><div class="audio-name">环境音</div><div class="audio-step">−</div><div class="audio-value">70%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div><div class="audio-row"><div class="audio-name">系统音效</div><div class="audio-step">−</div><div class="audio-value">80%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div><div class="audio-row"><div class="audio-name">游戏音效</div><div class="audio-step">−</div><div class="audio-value">90%</div><div class="audio-step">+</div><div class="audio-toggle">开启</div></div></div><div class="status">声音配置</div></div></div>
+    </section>
+    <div class="detail-label label-visual">画面</div><div class="detail-label label-light">角色光</div><div class="detail-label label-audio">声音</div>
+    <div class="footer"><span><strong>VR 内直控</strong>&nbsp; · &nbsp;无需触碰被遮挡的原生设置窗口</span><span>Timeline 1.5.5 · CameraSync 0.1.5</span></div>
+  </main>
+  <script>
+    const view = new URLSearchParams(location.search).get("view");
+    if (view) {
+      document.body.classList.add("single", `view-${view}`);
+    }
+  </script>
+</body>
+</html>

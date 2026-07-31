@@ -54,9 +54,18 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
 - **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and starts at `E:\action`.
 - **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
+- **Timeline transport**: A single wrist button starts or pauses Timeline and mirrors its current play state. Timeline remains an optional dependency; the button reports unavailable when it is not installed.
 - **Character-card preview**: Selecting a female, male, or replacement card expands its real card image on the wrist before a separate confirmation runs Studio's native add or replace operation.
+- **Studio settings in VR**: The Settings submenu changes the camera background preset, character-light state/intensity/shadow/color, and Master/BGM/Environment/System/Game audio without opening Studio's obstructed desktop panels.
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
+
+![KK VR wrist quick menu and Studio settings](docs/images/kkvr_wrist_menu_showcase.png)
+
+### 8. Optional Timeline Camera Follow
+- [KK VR Camera Sync](https://github.com/YukyoMoe/KK_VR_CameraSync) can be installed as a separate companion plugin so the VR origin follows final Studio camera motion, including Timeline camera tracks.
+- The companion remains separate from the core DLL, so camera-follow behavior can be disabled or removed without changing hand tracking, laser input, or wrist-menu positioning.
+- `Preserve head tracking = true`, `Rotation follow mode = YawOnly`, and `Position follow mode = AllMotion` are the conservative starting values for an upright, tracked VR view.
 
 ---
 
@@ -73,6 +82,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 | **A Button** | Toggle all GUI visibility |
 | **X Button** | Toggle IK controls |
 | **Left Menu Button (short press)** | Open / close the wrist quick menu |
+| **Timeline button (Wrist menu)** | Start / pause Timeline |
 | **Left Joystick Click (Press)** | Toggle MMDD play / pause |
 | **Left Grip + Left Joystick Click** | Summon the main GUI in front of your head |
 | **Right Joystick Click (Press)** | Undo last action in Studio |
@@ -89,11 +99,17 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
   > - **Official HF Patch Repository**: [ManlyMarco/KK-HF_Patch](https://github.com/ManlyMarco/KK-HF_Patch)
 - **BepInEx** (v5.x recommended).
 - **OpenVR / SteamVR** runtime active.
+- **Timeline 1.5.x** (optional; required only for the wrist Timeline play/pause button).
 
 ### Installation
 1. Download the latest compiled release `KKCharaStudioVRPlugin.dll`.
 2. Place the DLL file in your game directory under `Koikatu3\BepInEx\plugins\` (or directly under BepInEx folder).
 3. Start the game in VR mode.
+
+For Timeline camera-follow support, install the optional
+[`KK_VR_CameraSync.dll`](https://github.com/YukyoMoe/KK_VR_CameraSync)
+under `BepInEx\plugins\KK_VR_CameraSync\`. It is intentionally not merged into
+the core plugin so it can be tested and rolled back independently.
 
 ### Configuration
 Access the settings menu inside VR or on the desktop window to customize:
@@ -103,6 +119,7 @@ Access the settings menu inside VR or on the desktop window to customize:
 - DynamicBone collider radius.
 - Comfort Vignette toggle and clear radius.
 - Wrist quick menu enable and scale.
+- Wrist Studio background, character-light, and audio controls.
 
 ---
 
