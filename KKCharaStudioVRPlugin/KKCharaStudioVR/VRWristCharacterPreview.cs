@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
+using VRGIN.Core;
 
 namespace KKCharaStudioVR;
 
@@ -16,11 +17,14 @@ public sealed partial class VRWristMenuController
 
     private RawImage _characterPreviewImage;
     private RectTransform _characterPreviewRect;
+    private Text _characterPreviewMessageText;
     private Text _characterPreviewNameText;
     private VRWristMenuButtonTarget _characterPreviewLoadButton;
     private VRWristMenuButtonTarget _characterPreviewReplaceButton;
     private Texture2D _characterPreviewTexture;
     private string _pendingCharacterCardPath;
+    private int _characterPreviewRequestId;
+    private bool _characterPreviewLoading;
     private BrowserMode _characterCardListMode;
     private string _characterCardListRoot;
     private string _characterCardListDirectory;
@@ -78,6 +82,19 @@ public sealed partial class VRWristMenuController
         _characterPreviewImage = previewObject.AddComponent<RawImage>();
         _characterPreviewImage.color = Color.white;
         _characterPreviewImage.raycastTarget = false;
+        _characterPreviewImage.enabled = false;
+
+        _characterPreviewMessageText = CreateText(
+            "CharacterPreviewMessage",
+            _characterPreviewPage.transform,
+            "请选择角色卡",
+            CharacterPreviewAreaX + 12f,
+            CharacterPreviewAreaY + 12f,
+            CharacterPreviewAreaWidth - 24f,
+            CharacterPreviewAreaHeight - 24f,
+            18,
+            TextAnchor.MiddleCenter,
+            new Color(0.72f, 0.84f, 0.9f, 1f));
 
         _characterPreviewNameText = CreateText(
             "CharacterPreviewName",
@@ -120,27 +137,47 @@ public sealed partial class VRWristMenuController
     private void OpenCharacterCardPreview(string path)
     {
         if (_operationInProgress)
+        {
+            SetStatus(
+                "上一项操作尚未完成",
+                new Color(1f, 0.72f, 0.25f, 1f),
+                4f);
             return;
+        }
 
         _characterCardListMode = _browserMode;
         _characterCardListRoot = _browserRoot;
         _characterCardListDirectory = _browserDirectory;
         _characterCardListOffset = _browserOffset;
+        int requestId = ++_characterPreviewRequestId;
+        _characterPreviewLoading = true;
         _pendingCharacterCardPath = null;
-        StartCoroutine(LoadCharacterCardPreviewAfterFrame(path));
-    }
-
-    private IEnumerator LoadCharacterCardPreviewAfterFrame(string path)
-    {
-        _operationInProgress = true;
+        ReleaseCharacterPreviewTexture();
+        ResetCharacterPreviewRect();
+        _characterPreviewNameText.text = string.IsNullOrEmpty(path)
+            ? "无效角色卡"
+            : Path.GetFileNameWithoutExtension(path);
+        _characterPreviewMessageText.text = "正在读取卡面预览…";
+        _characterPreviewMessageText.gameObject.SetActive(true);
+        SetCharacterPreviewActionsVisible(false);
+        ShowPage(WristMenuPage.CharacterPreview);
         SetStatus(
             "正在读取卡面预览…",
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
+        StartCoroutine(LoadCharacterCardPreviewAfterFrame(path, requestId));
+    }
+
+    private IEnumerator LoadCharacterCardPreviewAfterFrame(string path, int requestId)
+    {
         yield return null;
 
+        Texture2D texture = null;
         try
         {
+            if (requestId != _characterPreviewRequestId)
+                yield break;
+
             if (string.IsNullOrEmpty(path)
                 || !File.Exists(path)
                 || !string.Equals(
@@ -152,26 +189,39 @@ public sealed partial class VRWristMenuController
             }
 
             byte[] bytes = ReadPngPreviewBytes(path);
-            Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
             if (!texture.LoadImage(bytes))
             {
                 Destroy(texture);
+                texture = null;
                 throw new InvalidDataException("无法解码角色卡预览图");
+            }
+
+            if (requestId != _characterPreviewRequestId)
+            {
+                Destroy(texture);
+                texture = null;
+                yield break;
             }
 
             ReleaseCharacterPreviewTexture();
             _characterPreviewTexture = texture;
+            texture = null;
             _characterPreviewTexture.name = "KKVR_CharacterCardPreview";
             _characterPreviewTexture.filterMode = FilterMode.Bilinear;
             _characterPreviewTexture.wrapMode = TextureWrapMode.Clamp;
             _characterPreviewImage.texture = _characterPreviewTexture;
-            FitCharacterPreview(texture.width, texture.height);
+            _characterPreviewImage.enabled = true;
+            FitCharacterPreview(
+                _characterPreviewTexture.width,
+                _characterPreviewTexture.height);
 
             _pendingCharacterCardPath = path;
             _characterPreviewNameText.text = Path.GetFileNameWithoutExtension(path);
+            _characterPreviewMessageText.gameObject.SetActive(false);
             _characterPreviewLoadButton.SetLabel(GetCharacterPreviewLoadLabel());
             _characterPreviewReplaceButton.SetLabel("替换场景角色\nREPLACE");
-            ShowPage(WristMenuPage.CharacterPreview);
+            SetCharacterPreviewActionsVisible(true);
             SetStatus(
                 "角色卡预览已就绪",
                 new Color(0.35f, 1f, 0.62f, 1f),
@@ -179,6 +229,14 @@ public sealed partial class VRWristMenuController
         }
         catch (Exception ex)
         {
+            if (texture != null)
+                Destroy(texture);
+            if (requestId != _characterPreviewRequestId)
+                yield break;
+
+            _characterPreviewMessageText.text = "卡面读取失败\n请返回并选择其他卡片";
+            _characterPreviewMessageText.gameObject.SetActive(true);
+            VRLog.Warn("Character card preview failed for " + path + ": " + ex.Message);
             SetStatus(
                 "卡面预览失败：" + ex.Message,
                 new Color(1f, 0.38f, 0.34f, 1f),
@@ -186,8 +244,28 @@ public sealed partial class VRWristMenuController
         }
         finally
         {
-            _operationInProgress = false;
+            if (requestId == _characterPreviewRequestId)
+                _characterPreviewLoading = false;
         }
+    }
+
+    private void ResetCharacterPreviewRect()
+    {
+        if (_characterPreviewRect == null)
+            return;
+
+        _characterPreviewRect.anchoredPosition = new Vector2(
+            CharacterPreviewAreaX,
+            -CharacterPreviewAreaY);
+        _characterPreviewRect.sizeDelta = new Vector2(
+            CharacterPreviewAreaWidth,
+            CharacterPreviewAreaHeight);
+    }
+
+    private void SetCharacterPreviewActionsVisible(bool visible)
+    {
+        _characterPreviewLoadButton?.SetVisible(visible);
+        _characterPreviewReplaceButton?.SetVisible(visible);
     }
 
     private void FitCharacterPreview(int textureWidth, int textureHeight)
@@ -302,6 +380,9 @@ public sealed partial class VRWristMenuController
 
     private void HandleCharacterPreviewBack()
     {
+        ++_characterPreviewRequestId;
+        _characterPreviewLoading = false;
+
         if (_characterCardListMode != BrowserMode.AddFemale
             && _characterCardListMode != BrowserMode.AddMale)
         {
@@ -327,6 +408,14 @@ public sealed partial class VRWristMenuController
     {
         if (_operationInProgress)
             return false;
+        if (_characterPreviewLoading)
+        {
+            SetStatus(
+                "卡面仍在读取，请稍候",
+                new Color(1f, 0.72f, 0.25f, 1f),
+                4f);
+            return false;
+        }
         if (!string.IsNullOrEmpty(_pendingCharacterCardPath))
             return true;
 
@@ -340,7 +429,10 @@ public sealed partial class VRWristMenuController
     private void ReleaseCharacterPreviewTexture()
     {
         if (_characterPreviewImage != null)
+        {
             _characterPreviewImage.texture = null;
+            _characterPreviewImage.enabled = false;
+        }
         if (_characterPreviewTexture != null)
         {
             Destroy(_characterPreviewTexture);

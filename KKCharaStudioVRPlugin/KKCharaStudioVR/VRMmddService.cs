@@ -349,11 +349,7 @@ internal static class VRMmddService
         code.Append("if mc.HighHeels is None:\n");
         code.Append("    raise Exception('This MMDD motion controller has no High Heels support')\n");
         code.Append(action);
-        if (!string.IsNullOrEmpty(action))
-        {
-            code.Append("if not mmdd.isPlaying:\n");
-            code.Append("    mmdd.update(True)\n");
-        }
+        // High-heel setters apply immediately. MMDD start() updates the camera when Play is pressed.
         code.Append("rot = mc.getHeelzRotation()\n");
         code.Append("VRMmddStateBridge.ReportHighHeels(mc.CharName, mc.HighHeels.PluginName or 'Unknown', bool(mc.HighHeels.enable), bool(mc.ShoesDetect), float(rot[0]), float(rot[1]), float(rot[2]), bool(mc.ShoesOffset[0]), float(mc.ShoesOffset[1]), float(mc.ShoesOffset[2]))\n");
 
