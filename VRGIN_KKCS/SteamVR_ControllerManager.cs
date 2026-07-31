@@ -206,7 +206,10 @@ public class SteamVR_ControllerManager : MonoBehaviour
 			if (system != null)
 			{
 				ETrackedDeviceClass trackedDeviceClass = system.GetTrackedDeviceClass((uint)index);
-				if (trackedDeviceClass == ETrackedDeviceClass.Controller || trackedDeviceClass == ETrackedDeviceClass.GenericTracker)
+				// Hand objects must never bind to a body tracker. A tracker has a valid pose
+				// but no controller buttons, which leaves the cyan tool icon in the world
+				// while every hand action appears dead.
+				if (trackedDeviceClass == ETrackedDeviceClass.Controller)
 				{
 					this.connected[index] = true;
 					flag = !flag;

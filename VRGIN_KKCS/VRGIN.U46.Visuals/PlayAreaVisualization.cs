@@ -60,6 +60,8 @@ public class PlayAreaVisualization : ProtectedBehaviour
 
 	private Transform HeightIndicator;
 
+	private Material[] _IndicatorMaterials;
+
 	protected override void OnAwake()
 	{
 		//IL_00ad: Unknown result type (might be due to invalid IL or missing references)
@@ -70,10 +72,22 @@ public class PlayAreaVisualization : ProtectedBehaviour
 		HeightIndicator = GameObject.CreatePrimitive((PrimitiveType)2).transform;
 		HeightIndicator.SetParent(((Component)this).transform, false);
 		Transform[] array = (Transform[])(object)new Transform[2] { Indicator, HeightIndicator };
+		_IndicatorMaterials = new Material[array.Length];
 		for (int i = 0; i < array.Length; i++)
 		{
 			Renderer component = ((Component)array[i]).GetComponent<Renderer>();
-			component.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+			Material source = VR.Context.Materials.Sprite;
+			if (source != null)
+			{
+				_IndicatorMaterials[i] = new Material(source);
+				_IndicatorMaterials[i].name = "VRGIN Play Area Indicator";
+				_IndicatorMaterials[i].hideFlags = HideFlags.HideAndDontSave;
+				component.sharedMaterial = _IndicatorMaterials[i];
+			}
+			else
+			{
+				component.enabled = false;
+			}
 			component.reflectionProbeUsage = (ReflectionProbeUsage)0;
 			component.shadowCastingMode = (ShadowCastingMode)0;
 			component.receiveShadows = false;
@@ -127,6 +141,14 @@ public class PlayAreaVisualization : ProtectedBehaviour
 
 	protected virtual void OnDestroy()
 	{
+		if (_IndicatorMaterials == null)
+			return;
+		foreach (Material material in _IndicatorMaterials)
+		{
+			if (material != null)
+				Object.Destroy(material);
+		}
+		_IndicatorMaterials = null;
 	}
 
 	public void Enable()

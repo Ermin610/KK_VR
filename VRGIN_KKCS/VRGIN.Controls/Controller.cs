@@ -395,6 +395,7 @@ public abstract class Controller : ProtectedBehaviour
 		//IL_0117: Unknown result type (might be due to invalid IL or missing references)
 		//IL_013b: Unknown result type (might be due to invalid IL or missing references)
 		Canvas obj = (_Canvas = new GameObject().AddComponent<Canvas>());
+		((Object)((Component)obj).gameObject).name = "VRGIN_ToolCanvas";
 		obj.renderMode = (RenderMode)2;
 		((Component)obj).transform.SetParent(((Component)this).transform, false);
 		((Component)obj).GetComponent<RectTransform>().SetSizeWithCurrentAnchors((RectTransform.Axis)0, 950f);
@@ -404,6 +405,7 @@ public abstract class Controller : ProtectedBehaviour
 		((Component)obj).transform.localScale = new Vector3(4.930151E-05f, 4.930148E-05f, 0f);
 		((Component)obj).gameObject.layer = 0;
 		_AlphaConcealer = GameObject.CreatePrimitive((PrimitiveType)0);
+		_AlphaConcealer.name = "VRGIN_AlphaConcealer";
 		_AlphaConcealer.transform.SetParent(((Component)this).transform, false);
 		_AlphaConcealer.transform.localScale = new Vector3(0.05f, 0f, 0.05f);
 		_AlphaConcealer.transform.localPosition = new Vector3(0f, -0.0303f, 0.0142f);

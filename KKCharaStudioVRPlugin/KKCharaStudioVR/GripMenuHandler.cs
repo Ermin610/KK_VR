@@ -207,6 +207,10 @@ public class GripMenuHandler : ProtectedBehaviour
 
 	private Renderer _dotRenderer;
 
+	private Material _laserMaterial;
+
+	private Material _dotMaterial;
+
 	private Color _currentLaserColor = Color.cyan;
 
 	private Color _currentDotColor = Color.cyan;
@@ -260,6 +264,13 @@ public class GripMenuHandler : ProtectedBehaviour
 		}
 		set
 		{
+			if (Laser == null)
+			{
+				if (dotCursor != null)
+					dotCursor.SetActive(false);
+				mouseDownPosition = null;
+				return;
+			}
 			((Component)Laser).gameObject.SetActive(value);
 			if (dotCursor != null) dotCursor.SetActive(value);
 			if (value)
@@ -281,33 +292,53 @@ public class GripMenuHandler : ProtectedBehaviour
 		base.OnStart();
 		_Controller = ((Component)this).GetComponent<Controller>();
 		_ScaleVector = (Vector2)(new Vector2(1f, 1f));
-		InitLaser();
+		if (!InitLaser())
+		{
+			VRLog.Error("VR UI pointer disabled because no compatible material was available.");
+			enabled = false;
+		}
 	}
 
-	private void InitLaser()
+	private bool InitLaser()
 	{
-		Laser = new GameObject().AddComponent<LineRenderer>();
-		((Component)Laser).transform.SetParent(((Component)this).transform, false);
-		((Renderer)Laser).material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-		Material material = ((Renderer)Laser).material;
-		material.renderQueue += 5000;
-		Laser.SetColors(Color.cyan, Color.cyan);
-		((Component)Laser).transform.localRotation = Quaternion.Euler(60f, 0f, 0f);
-		Transform transform = ((Component)Laser).transform;
-		transform.position += ((Component)Laser).transform.forward * 0.07f;
-		Laser.SetVertexCount(2);
-		Laser.useWorldSpace = true;
-		Laser.SetWidth(0.002f, 0.002f);
+		DestroyPointerVisuals();
+		try
+		{
+			GameObject laserObject = new GameObject("KKVR_StudioUILaser");
+			laserObject.SetActive(false);
+			Laser = laserObject.AddComponent<LineRenderer>();
+			((Component)Laser).transform.SetParent(((Component)this).transform, false);
+			_laserMaterial = VRPointerVisuals.CreateMaterial("KKVR Studio UI Laser", Color.cyan);
+			if (_laserMaterial == null)
+				throw new InvalidOperationException("No pointer shader is available.");
+			((Renderer)Laser).sharedMaterial = _laserMaterial;
+			Laser.SetColors(Color.cyan, Color.cyan);
+			((Component)Laser).transform.localRotation = Quaternion.Euler(60f, 0f, 0f);
+			Transform laserTransform = ((Component)Laser).transform;
+			laserTransform.localPosition = laserTransform.localRotation * Vector3.forward * 0.07f;
+			Laser.SetVertexCount(2);
+			Laser.useWorldSpace = true;
+			Laser.SetWidth(0.002f, 0.002f);
 
-		dotCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-		dotCursor.transform.SetParent(((Component)this).transform, false);
-		dotCursor.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
-		Object.DestroyImmediate(dotCursor.GetComponent<Collider>());
-		_dotRenderer = dotCursor.GetComponent<Renderer>();
-		_dotRenderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-		_dotRenderer.material.renderQueue += 5000;
-		_dotRenderer.material.color = Color.cyan;
-		dotCursor.SetActive(false);
+			dotCursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+			dotCursor.name = "KKVR_StudioUICursor";
+			dotCursor.SetActive(false);
+			dotCursor.transform.SetParent(((Component)this).transform, false);
+			dotCursor.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+			Object.DestroyImmediate(dotCursor.GetComponent<Collider>());
+			_dotRenderer = dotCursor.GetComponent<Renderer>();
+			_dotMaterial = VRPointerVisuals.CreateMaterial("KKVR Studio UI Cursor", Color.cyan);
+			if (_dotRenderer == null || _dotMaterial == null)
+				throw new InvalidOperationException("No cursor renderer or material is available.");
+			_dotRenderer.sharedMaterial = _dotMaterial;
+			return true;
+		}
+		catch (Exception ex)
+		{
+			VRLog.Error("Failed to initialize VR UI pointer: " + ex.Message);
+			DestroyPointerVisuals();
+			return false;
+		}
 	}
 
 	protected override void OnUpdate()
@@ -349,6 +380,7 @@ public class GripMenuHandler : ProtectedBehaviour
 	private void OnDisable()
 	{
 		ReleasePointer(false);
+		LaserVisible = false;
 		if (ActiveMouseHandler == this)
 		{
 			ActiveMouseHandler = null;
@@ -359,9 +391,25 @@ public class GripMenuHandler : ProtectedBehaviour
 	{
 		ReleasePointer(false);
 		if (ActiveMouseHandler == this)
-		{
 			ActiveMouseHandler = null;
+		DestroyPointerVisuals();
+	}
+
+	private void DestroyPointerVisuals()
+	{
+		if (Laser != null)
+		{
+			Object.Destroy(((Component)Laser).gameObject);
+			Laser = null;
 		}
+		if (dotCursor != null)
+		{
+			Object.Destroy(dotCursor);
+			dotCursor = null;
+		}
+		_dotRenderer = null;
+		VRPointerVisuals.DestroyMaterial(ref _laserMaterial);
+		VRPointerVisuals.DestroyMaterial(ref _dotMaterial);
 	}
 
 	private void EnsureResizeHandler()

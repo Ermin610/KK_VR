@@ -164,7 +164,7 @@ namespace KKCharaStudioVR
             if (isTracked)
             {
                 SetNativeControllerVisible(h, shouldShowNativeController);
-                SetNativeAccessoriesVisible(h, shouldShowNativeController, false);
+                SetNativeAccessoriesVisible(h, shouldShowNativeController, !shouldShowNativeController);
             }
             else
             {
@@ -211,6 +211,12 @@ namespace KKCharaStudioVR
             {
                 SteamVR_Controller.Device device = SteamVR_Controller.Input((int)h.trackedObj.index);
                 if (device == null || !device.connected)
+                    return false;
+
+                CVRSystem system = OpenVR.System;
+                if (system == null
+                    || system.GetTrackedDeviceClass((uint)h.trackedObj.index)
+                        != ETrackedDeviceClass.Controller)
                     return false;
 
                 if (h.trackedObj.isValid || device.hasTracking)
@@ -280,9 +286,13 @@ namespace KKCharaStudioVR
             {
                 Transform child = controllerTransform.GetChild(i);
                 MeshFilter meshFilter = ((Component)child).GetComponent<MeshFilter>();
-                if (meshFilter != null
+                bool namedConcealer = child.name == "VRGIN_AlphaConcealer";
+                bool legacyConcealer = meshFilter != null
                     && meshFilter.sharedMesh != null
-                    && meshFilter.sharedMesh.name.Contains("Sphere"))
+                    && meshFilter.sharedMesh.name.Contains("Sphere")
+                    && Mathf.Abs(child.localScale.y) < 0.001f
+                    && child.localScale.x >= 0.04f;
+                if (namedConcealer || legacyConcealer)
                 {
                     ((Component)child).gameObject.SetActive(visible);
                 }

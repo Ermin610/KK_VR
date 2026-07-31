@@ -189,6 +189,8 @@ public class MenuHandler : ProtectedBehaviour
 
 	private LineRenderer Laser;
 
+	private Material _LaserMaterial;
+
 	private Vector2? mouseDownPosition;
 
 	private GUIQuad _Target;
@@ -227,6 +229,8 @@ public class MenuHandler : ProtectedBehaviour
 		{
 			//IL_007e: Unknown result type (might be due to invalid IL or missing references)
 			//IL_009a: Unknown result type (might be due to invalid IL or missing references)
+			if (!value && _LaserLock.IsValid)
+				_LaserLock.Release();
 			if (!(Laser != null))
 			{
 				return;
@@ -238,10 +242,6 @@ public class MenuHandler : ProtectedBehaviour
 				{
 					return;
 				}
-			}
-			else if (!value && _LaserLock.IsValid)
-			{
-				_LaserLock.Release();
 			}
 			((Component)Laser).gameObject.SetActive(value);
 			if (value)
@@ -282,6 +282,7 @@ public class MenuHandler : ProtectedBehaviour
 		//IL_011f: Unknown result type (might be due to invalid IL or missing references)
 		try
 		{
+			DestroyLaser();
 			if (!(_Controller != null))
 			{
 				_Controller = ((Component)this).GetComponent<Controller>();
@@ -292,11 +293,14 @@ public class MenuHandler : ProtectedBehaviour
 				VRLog.Error("Attach position not found for laser!");
 				val = ((Component)this).transform;
 			}
-			Laser = new GameObject().AddComponent<LineRenderer>();
+			GameObject laserObject = new GameObject("VRGIN_MenuLaser");
+			laserObject.SetActive(false);
+			Laser = laserObject.AddComponent<LineRenderer>();
 			((Component)Laser).transform.SetParent(val, false);
-			((Renderer)Laser).material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-			Material material = ((Renderer)Laser).material;
-			material.renderQueue += 5000;
+			_LaserMaterial = CreatePointerMaterial();
+			if (_LaserMaterial == null)
+				throw new InvalidOperationException("No compatible pointer material is available.");
+			((Renderer)Laser).sharedMaterial = _LaserMaterial;
 			Laser.SetColors(Color.cyan, Color.cyan);
 			if (SteamVR.instance.hmd_TrackingSystemName == "lighthouse")
 			{
@@ -311,6 +315,7 @@ public class MenuHandler : ProtectedBehaviour
 		catch (Exception obj)
 		{
 			VRLog.Error(obj);
+			DestroyLaser();
 		}
 	}
 
@@ -340,9 +345,60 @@ public class MenuHandler : ProtectedBehaviour
 
 	private void OnDisable()
 	{
-		if (_LaserLock.IsValid)
+		LaserVisible = false;
+	}
+
+	private void OnDestroy()
+	{
+		DestroyLaser();
+	}
+
+	private static Material CreatePointerMaterial()
+	{
+		Material source = null;
+		try
 		{
+			if (VR.Context != null && VR.Context.Materials != null)
+				source = VR.Context.Materials.UnlitTransparent;
+		}
+		catch
+		{
+			source = null;
+		}
+
+		Material material = null;
+		if (source != null && source.shader != null)
+			material = new Material(source);
+		else
+		{
+			Shader shader = Shader.Find("Unlit/Color")
+				?? Shader.Find("Unlit/Transparent")
+				?? Shader.Find("Sprites/Default");
+			if (shader != null)
+				material = new Material(shader);
+		}
+		if (material == null)
+			return null;
+
+		material.name = "VRGIN Menu Pointer";
+		material.hideFlags = HideFlags.HideAndDontSave;
+		material.renderQueue = 5000;
+		return material;
+	}
+
+	private void DestroyLaser()
+	{
+		if (_LaserLock.IsValid)
 			_LaserLock.Release();
+		if (Laser != null)
+		{
+			Object.Destroy(((Component)Laser).gameObject);
+			Laser = null;
+		}
+		if (_LaserMaterial != null)
+		{
+			Object.Destroy(_LaserMaterial);
+			_LaserMaterial = null;
 		}
 	}
 

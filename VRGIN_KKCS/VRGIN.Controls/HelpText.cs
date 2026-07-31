@@ -22,6 +22,8 @@ public class HelpText : ProtectedBehaviour
 
 	private LineRenderer _Line;
 
+	private Material _LineMaterial;
+
 	public static HelpText Create(string text, Transform target, Vector3 textOffset, Vector3? lineOffset = null)
 	{
 		//IL_0000: Unknown result type (might be due to invalid IL or missing references)
@@ -123,7 +125,19 @@ public class HelpText : ProtectedBehaviour
 		obj.alignment = (TextAnchor)4;
 		obj.text = _Text;
 		_Line = ((Component)this).gameObject.AddComponent<LineRenderer>();
-		((Renderer)_Line).material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+		Material lineSource = VR.Context.Materials.Sprite;
+		if (lineSource != null)
+		{
+			_LineMaterial = new Material(lineSource);
+			_LineMaterial.name = "VRGIN Help Line";
+			_LineMaterial.hideFlags = HideFlags.HideAndDontSave;
+			_LineMaterial.renderQueue = 5000;
+			((Renderer)_Line).sharedMaterial = _LineMaterial;
+		}
+		else
+		{
+			((Renderer)_Line).enabled = false;
+		}
 		_Line.SetColors(Color.cyan, Color.cyan);
 		_Line.useWorldSpace = false;
 		_Line.SetVertexCount(4);
@@ -150,5 +164,14 @@ public class HelpText : ProtectedBehaviour
 	protected override void OnUpdate()
 	{
 		base.OnUpdate();
+	}
+
+	private void OnDestroy()
+	{
+		if (_LineMaterial != null)
+		{
+			Object.Destroy(_LineMaterial);
+			_LineMaterial = null;
+		}
 	}
 }

@@ -441,7 +441,20 @@ public abstract class ControlMode : ProtectedBehaviour
 
 	protected virtual void InitializeScreenCapture()
 	{
-		_CapturePanorama = ((Component)VR.Camera.SteamCam).gameObject.AddComponent<VRCapturePanorama>();
+		try
+		{
+			if (Type.GetType("System.Drawing.Bitmap, System.Drawing", false) == null)
+			{
+				VRLog.Warn("Panorama capture disabled because System.Drawing is unavailable.");
+				return;
+			}
+			_CapturePanorama = ((Component)VR.Camera.SteamCam).gameObject.AddComponent<VRCapturePanorama>();
+		}
+		catch (Exception ex)
+		{
+			_CapturePanorama = null;
+			VRLog.Warn("Panorama capture could not initialize: " + ex.Message);
+		}
 	}
 
 	protected override void OnUpdate()

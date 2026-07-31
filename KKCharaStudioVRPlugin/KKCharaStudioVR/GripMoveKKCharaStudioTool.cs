@@ -155,7 +155,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 			}
 
 			gripMenuHandler = ((Component)this).gameObject.AddComponent<GripMenuHandler>();
-			((Behaviour)gripMenuHandler).enabled = false;
+			((Behaviour)gripMenuHandler).enabled = true;
 		}
 		catch (Exception obj)
 		{
@@ -176,6 +176,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 		_isLeftHand = ((Component)this).GetComponent<VRGIN.Controls.LeftController>() != null;
 		ActiveTools.Add(this);
 		_lastHandModelEnabled = _settings != null && _settings.HandModelEnabled;
+		ApplyHandModelState(_lastHandModelEnabled);
 	}
 
 	protected override void OnDisable()

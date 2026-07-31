@@ -59,6 +59,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private LineRenderer _laser;
     private GameObject _cursor;
     private Renderer _cursorRenderer;
+    private Material _laserMaterial;
+    private Material _cursorMaterial;
     private Transform _rightTransform;
     private int _visibleLayer;
     private int _colliderLayer;
@@ -130,10 +132,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         SetOpen(false);
         if (_menuRoot != null)
             Destroy(_menuRoot);
-        if (_laser != null)
-            Destroy(_laser.gameObject);
-        if (_cursor != null)
-            Destroy(_cursor);
+        DestroyPointerVisuals();
         if (_roundedSprite != null)
             Destroy(_roundedSprite);
         if (_roundedTexture != null)
@@ -193,8 +192,15 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void SetOpen(bool open)
     {
-        if (open && !EnsureMenu())
+        if (open && (!EnsureMenu() || !EnsurePointer()))
+        {
+            _isOpen = false;
+            SetPointerVisible(false);
+            if (_menuRoot != null)
+                _menuRoot.SetActive(false);
+            VRLog.Error("Wrist menu stayed closed because its controller pointer could not initialize.");
             return;
+        }
 
         _isOpen = open;
         _poseInitialized = false;
@@ -721,10 +727,16 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void UpdatePointer()
     {
         SteamVR_Controller.Device rightDevice = GetDevice(VR.Mode?.Right);
-        if (rightDevice == null || !EnsurePointer())
+        if (rightDevice == null)
         {
             SetHoveredButton(null);
             SetPointerVisible(false);
+            return;
+        }
+        if (!EnsurePointer())
+        {
+            VRLog.Error("Wrist menu closed after its controller pointer became unavailable.");
+            SetOpen(false);
             return;
         }
 
@@ -767,8 +779,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             ? new Color(0.25f, 1f, 0.82f, 1f)
             : new Color(0.2f, 0.78f, 0.95f, 1f);
         _laser.SetColors(pointerColor, pointerColor);
-        if (_cursorRenderer != null)
-            _cursorRenderer.material.color = pointerColor;
+        if (_cursorMaterial != null && _cursorMaterial.HasProperty("_Color"))
+            _cursorMaterial.color = pointerColor;
 
         if (target != null && rightDevice.GetPressDown(EVRButtonId.k_EButton_Axis1))
         {
@@ -785,26 +797,45 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         Transform right = ((Component)VR.Mode.Right).transform;
         if (_laser == null)
         {
-            GameObject laserObject = new GameObject("KKVR_WristMenuLaser");
-            laserObject.layer = _visibleLayer;
-            _laser = laserObject.AddComponent<LineRenderer>();
-            _laser.useWorldSpace = true;
-            _laser.SetVertexCount(2);
-            _laser.SetWidth(0.002f, 0.002f);
-            _laser.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-            _laser.material.renderQueue += 5000;
+            try
+            {
+                GameObject laserObject = new GameObject("KKVR_WristMenuLaser");
+                laserObject.SetActive(false);
+                laserObject.layer = _visibleLayer;
+                _laser = laserObject.AddComponent<LineRenderer>();
+                _laser.useWorldSpace = true;
+                _laser.SetVertexCount(2);
+                _laser.SetWidth(0.002f, 0.002f);
+                _laserMaterial = VRPointerVisuals.CreateMaterial(
+                    "KKVR Wrist Menu Laser",
+                    new Color(0.2f, 0.78f, 0.95f, 1f));
+                if (_laserMaterial == null)
+                    throw new InvalidOperationException("No pointer shader is available.");
+                _laser.sharedMaterial = _laserMaterial;
 
-            _cursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            _cursor.name = "KKVR_WristMenuCursor";
-            _cursor.layer = _visibleLayer;
-            _cursor.transform.SetParent(transform, false);
-            _cursor.transform.localScale = Vector3.one * 0.008f;
-            Collider cursorCollider = _cursor.GetComponent<Collider>();
-            if (cursorCollider != null)
-                Destroy(cursorCollider);
-            _cursorRenderer = _cursor.GetComponent<Renderer>();
-            _cursorRenderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-            _cursorRenderer.material.renderQueue += 5000;
+                _cursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                _cursor.name = "KKVR_WristMenuCursor";
+                _cursor.SetActive(false);
+                _cursor.layer = _visibleLayer;
+                _cursor.transform.SetParent(transform, false);
+                _cursor.transform.localScale = Vector3.one * 0.008f;
+                Collider cursorCollider = _cursor.GetComponent<Collider>();
+                if (cursorCollider != null)
+                    Destroy(cursorCollider);
+                _cursorRenderer = _cursor.GetComponent<Renderer>();
+                _cursorMaterial = VRPointerVisuals.CreateMaterial(
+                    "KKVR Wrist Menu Cursor",
+                    new Color(0.2f, 0.78f, 0.95f, 1f));
+                if (_cursorRenderer == null || _cursorMaterial == null)
+                    throw new InvalidOperationException("No cursor renderer or material is available.");
+                _cursorRenderer.sharedMaterial = _cursorMaterial;
+            }
+            catch (Exception ex)
+            {
+                VRLog.Error("Failed to initialize wrist pointer: " + ex.Message);
+                DestroyPointerVisuals();
+                return false;
+            }
         }
 
         if (_rightTransform != right)
@@ -817,6 +848,24 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         }
 
         return true;
+    }
+
+    private void DestroyPointerVisuals()
+    {
+        if (_laser != null)
+        {
+            Destroy(_laser.gameObject);
+            _laser = null;
+        }
+        if (_cursor != null)
+        {
+            Destroy(_cursor);
+            _cursor = null;
+        }
+        _cursorRenderer = null;
+        _rightTransform = null;
+        VRPointerVisuals.DestroyMaterial(ref _laserMaterial);
+        VRPointerVisuals.DestroyMaterial(ref _cursorMaterial);
     }
 
     private void SetPointerVisible(bool visible)

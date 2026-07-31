@@ -55,7 +55,7 @@ public class DefaultMaterialPalette : IMaterialPalette
 
 	private Material CreateSprite()
 	{
-		return Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
+		return UnlitTransparent != null ? new Material(UnlitTransparent) : null;
 	}
 
 	private Shader CreateStandardShader()
