@@ -129,7 +129,8 @@ public sealed partial class VRWristMenuController
             TextAnchor.MiddleLeft,
             new Color(0.25f, 0.86f, 0.94f, 1f));
 
-        const float swatchWidth = 94f;
+        const float swatchWidth = 76f;
+        const float swatchSpacing = 87.2f;
         for (int i = 0; i < VRStudioSettingsService.BackgroundPresetCount; i++)
         {
             int preset = i;
@@ -137,7 +138,7 @@ public sealed partial class VRWristMenuController
             CreateButton(
                 "BackgroundPreset" + i,
                 VRStudioSettingsService.GetBackgroundPresetName(i),
-                24f + i * 104.5f,
+                24f + i * swatchSpacing,
                 160f,
                 Darken(color, 0.78f),
                 Brighten(color, 0.18f),
@@ -145,7 +146,7 @@ public sealed partial class VRWristMenuController
                 _settingsVisualPanel.transform,
                 swatchWidth,
                 70f,
-                17);
+                16);
         }
 
         Image valueBackground = CreateImage(

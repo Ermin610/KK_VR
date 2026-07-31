@@ -22,12 +22,13 @@ internal static class VRStudioSettingsService
         new Color(0.16f, 0.19f, 0.22f, 1f),
         new Color(0.32f, 0.38f, 0.42f, 1f),
         new Color(0.08f, 0.17f, 0.28f, 1f),
-        new Color(0.82f, 0.84f, 0.84f, 1f)
+        new Color(0.82f, 0.84f, 0.84f, 1f),
+        new Color(0f, 180f / 255f, 0f, 1f)
     };
 
     private static readonly string[] BackgroundNames =
     {
-        "墨黑", "深灰", "中灰", "深蓝", "浅灰"
+        "墨黑", "深灰", "中灰", "深蓝", "浅灰", "绿幕"
     };
 
     private static readonly Color[] CharacterLightPresets =

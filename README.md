@@ -54,9 +54,10 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
 - **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and starts at `E:\action`.
 - **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
+- **MMDD VR controls**: The MMD submenu exposes play/pause, Fixed FOV on/off and value adjustment, plus MMDD's original automatic/manual high-heels controls for the selected character.
 - **Timeline transport**: A single wrist button starts or pauses Timeline and mirrors its current play state. Timeline remains an optional dependency; the button reports unavailable when it is not installed.
 - **Character-card preview**: Selecting a female, male, or replacement card expands its real card image on the wrist before a separate confirmation runs Studio's native add or replace operation.
-- **Studio settings in VR**: The Settings submenu changes the camera background preset, character-light state/intensity/shadow/color, and Master/BGM/Environment/System/Game audio without opening Studio's obstructed desktop panels.
+- **Studio settings in VR**: The Settings submenu changes the camera background preset (including an exact RGB `0, 180, 0` green screen), character-light state/intensity/shadow/color, and Master/BGM/Environment/System/Game audio without opening Studio's obstructed desktop panels.
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
 
@@ -65,7 +66,8 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 ### 8. Optional Timeline Camera Follow
 - [KK VR Camera Sync](https://github.com/YukyoMoe/KK_VR_CameraSync) can be installed as a separate companion plugin so the VR origin follows final Studio camera motion, including Timeline camera tracks.
 - The companion remains separate from the core DLL, so camera-follow behavior can be disabled or removed without changing hand tracking, laser input, or wrist-menu positioning.
-- `Preserve head tracking = true`, `Rotation follow mode = YawOnly`, and `Position follow mode = AllMotion` are the conservative starting values for an upright, tracked VR view.
+- Camera Sync `0.2.0` detects Timeline playback without a hard dependency, aligns the neutral HMD pose once when playback starts, follows full Timeline rotation, and converts animated desktop FOV into distance using MMDD's Fixed FOV formula.
+- Generic Studio movement remains on the conservative tracked defaults outside Timeline playback, and each Timeline-specific behavior has its own config switch for rollback.
 
 ---
 
@@ -80,8 +82,8 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 | **Grip (Middle Finger)** | Grab character IK targets / Drag UI panels |
 | **Trigger (Index Finger)** | Click VR UI / Select objects in workspace |
 | **A Button** | Toggle all GUI visibility |
-| **X Button** | Toggle IK controls |
-| **Left Menu Button (short press)** | Open / close the wrist quick menu |
+| **X Button (short press)** | Open / close the wrist quick menu |
+| **IK button (Wrist menu)** | Show / hide IK controls |
 | **Timeline button (Wrist menu)** | Start / pause Timeline |
 | **Left Joystick Click (Press)** | Toggle MMDD play / pause |
 | **Left Grip + Left Joystick Click** | Summon the main GUI in front of your head |

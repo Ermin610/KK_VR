@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Globalization;
 using System.Text;
 
 namespace KKCharaStudioVR;
@@ -7,6 +8,9 @@ namespace KKCharaStudioVR;
 internal static class VRMmddService
 {
     public const string DefaultVmdRoot = @"E:\action";
+    public const float DefaultFixedFov = 53.13f;
+    public const float MinFixedFov = 20f;
+    public const float MaxFixedFov = 120f;
 
     public static bool TogglePlayPause(out string status)
     {
@@ -23,6 +27,114 @@ internal static class VRMmddService
 
         status = "MMDD 无法控制：" + error;
         return false;
+    }
+
+    public static bool RefreshFixedFov(out string status)
+    {
+        return ExecuteFixedFovAction(string.Empty, "MMDD Fixed FOV state", out status);
+    }
+
+    public static bool ToggleFixedFov(out string status)
+    {
+        return ExecuteFixedFovAction(
+            "config.useFixedFOV = not current_fixed_fov\n",
+            "MMDD Fixed FOV toggle",
+            out status);
+    }
+
+    public static bool SetFixedFov(float value, out string status)
+    {
+        value = Math.Max(MinFixedFov, Math.Min(MaxFixedFov, value));
+        return ExecuteFixedFovAction(
+            "config.useFixedFOV = current_fixed_fov\n"
+            + "config.useFixedFOVValue = "
+            + value.ToString("R", CultureInfo.InvariantCulture)
+            + "\n",
+            "MMDD Fixed FOV value",
+            out status);
+    }
+
+    public static bool RefreshHighHeels(out string status)
+    {
+        return ExecuteHighHeelsAction(string.Empty, "MMDD high heels state", out status);
+    }
+
+    public static bool ToggleHighHeelsMode(out string status)
+    {
+        const string action =
+            "if mc.HighHeels.enable:\n"
+            + "    mc.HighHeels.refreshHeelInfo()\n"
+            + "    mc.enableHeelzCtrl(False)\n"
+            + "else:\n"
+            + "    mc.enableHeelzCtrl(True)\n";
+        return ExecuteHighHeelsAction(action, "MMDD high heels mode", out status);
+    }
+
+    public static bool ResetHighHeels(out string status)
+    {
+        const string action =
+            "if mc.HighHeels.enable:\n"
+            + "    raise Exception('Switch High Heels to manual mode first')\n"
+            + "mc.HighHeels.refreshHeelInfo()\n"
+            + "defaults = mc.HighHeels.defaultRotate\n"
+            + "mc.setHeelzRotation(defaults[0], defaults[1], defaults[2])\n";
+        return ExecuteHighHeelsAction(action, "MMDD high heels reset", out status);
+    }
+
+    public static bool ToggleHighHeelsShoesDetect(out string status)
+    {
+        const string action =
+            "if mc.HighHeels.enable:\n"
+            + "    raise Exception('Switch High Heels to manual mode first')\n"
+            + "mc.ShoesDetect = not mc.ShoesDetect\n";
+        return ExecuteHighHeelsAction(action, "MMDD shoe detection toggle", out status);
+    }
+
+    public static bool ToggleShoesOffset(out string status)
+    {
+        const string action =
+            "mc.enableShoesOffsetCtrl(not mc.ShoesOffset[0])\n";
+        return ExecuteHighHeelsAction(action, "MMDD shoe offset toggle", out status);
+    }
+
+    public static bool AdjustHighHeelsRotation(int component, float delta, out string status)
+    {
+        if (component < 0 || component > 2)
+        {
+            status = "未知的高跟鞋角度";
+            return false;
+        }
+
+        string[] arguments = { "value, None, None", "None, value, None", "None, None, value" };
+        string action =
+            "if mc.HighHeels.enable:\n"
+            + "    raise Exception('Switch High Heels to manual mode first')\n"
+            + "rot = mc.getHeelzRotation()\n"
+            + "value = max(-180.0, min(180.0, rot["
+            + component
+            + "] + "
+            + delta.ToString("R", CultureInfo.InvariantCulture)
+            + "))\n"
+            + "mc.setHeelzRotation("
+            + arguments[component]
+            + ")\n";
+        return ExecuteHighHeelsAction(action, "MMDD high heels angle", out status);
+    }
+
+    public static bool AdjustShoesOffset(bool shoesOn, float delta, out string status)
+    {
+        int index = shoesOn ? 1 : 2;
+        string action =
+            "mc.ShoesOffset["
+            + index
+            + "] = max(-1.0, min(1.0, mc.ShoesOffset["
+            + index
+            + "] + "
+            + delta.ToString("R", CultureInfo.InvariantCulture)
+            + "))\n"
+            + "if mc.ShoesOffset[0]:\n"
+            + "    mc.setShoesOffset()\n";
+        return ExecuteHighHeelsAction(action, "MMDD shoe offset value", out status);
     }
 
     public static bool LoadVmdPackage(
@@ -143,6 +255,9 @@ internal static class VRMmddService
         code.Append("    camera_ctrl.switchMinFramePeriod = config.switchMinFramePeriod\n");
         code.Append("    camera_ctrl.switchMaxFramePeriod = config.switchMaxFramePeriod\n");
         code.Append("    camera_ctrl.switchProbability = config.switchProbability\n");
+        code.Append("    camera_ctrl.fixedFOV = config.useFixedFOVValue\n");
+        code.Append("    if config.useFixedFOV:\n");
+        code.Append("        camera_ctrl.postProcess.add('fixed_fov')\n");
         code.Append("    mmdd.lastVmdFilename = camera_path if not motion_path else motion_path\n");
         code.Append("if audio_path:\n");
         code.Append("    audio_error = mmdd.loadWavFile(audio_path, False)\n");
@@ -153,6 +268,181 @@ internal static class VRMmddService
         code.Append("mmdd.update(True)\n");
         code.Append("game.visible = 0\n");
         return code.ToString();
+    }
+
+    private static bool ExecuteFixedFovAction(
+        string action,
+        string operation,
+        out string status)
+    {
+        VRMmddStateBridge.ResetFixedFov();
+        StringBuilder code = new StringBuilder();
+        code.Append(BuildBootstrapCode());
+        code.Append(BuildStateBridgeImportCode());
+        code.Append(BuildCurrentFixedFovCode());
+        code.Append(action);
+        if (!string.IsNullOrEmpty(action))
+        {
+            code.Append("for cc in mmdd.cameraControllers:\n");
+            code.Append("    if hasattr(cc, 'postProcess'):\n");
+            code.Append("        cc.fixedFOV = config.useFixedFOVValue\n");
+            code.Append("        if config.useFixedFOV:\n");
+            code.Append("            cc.postProcess.add('fixed_fov')\n");
+            code.Append("        else:\n");
+            code.Append("            cc.postProcess.discard('fixed_fov')\n");
+            code.Append("if not mmdd.isPlaying:\n");
+            code.Append("    mmdd.update(True)\n");
+            code.Append("mmddirector.saveConfig(game)\n");
+        }
+        code.Append(BuildFixedFovReportCode());
+
+        string error;
+        if (!VRPythonBridge.TryExecute(code.ToString(), operation, out error))
+        {
+            status = "Fixed FOV 无法控制：" + error;
+            return false;
+        }
+
+        if (!VRMmddStateBridge.FixedFovReported)
+        {
+            status = "MMDD 没有返回 Fixed FOV 状态";
+            return false;
+        }
+
+        status = "Fixed FOV "
+            + (VRMmddStateBridge.FixedFovEnabled ? "已开启  " : "已关闭  ")
+            + VRMmddStateBridge.FixedFovValue.ToString("F2", CultureInfo.InvariantCulture);
+        return true;
+    }
+
+    private static bool ExecuteHighHeelsAction(
+        string action,
+        string operation,
+        out string status)
+    {
+        int objectKey;
+        string targetName;
+        if (!TryResolveHighHeelsTarget(out objectKey, out targetName, out status))
+            return false;
+
+        VRMmddStateBridge.ResetHighHeels();
+        StringBuilder code = new StringBuilder();
+        code.Append(BuildBootstrapCode());
+        code.Append(BuildStateBridgeImportCode());
+        code.Append("target_key = ").Append(objectKey).Append("\n");
+        code.Append("all_actors = [x.as_actor for x in game.scene_get_all_females()] + [x.as_actor for x in game.scene_get_all_males()]\n");
+        code.Append("target_actors = [actor for actor in all_actors if actor.objctrl.objectInfo.dicKey == target_key]\n");
+        code.Append("if len(target_actors) != 1:\n");
+        code.Append("    raise Exception('The selected Studio character is no longer available')\n");
+        code.Append("mc = mmdd.getMotionController(target_actors[0])\n");
+        code.Append("if mc is None:\n");
+        code.Append("    raise Exception('Load a motion VMD for this character first')\n");
+        code.Append("if mc.HighHeels is None:\n");
+        code.Append("    raise Exception('This MMDD motion controller has no High Heels support')\n");
+        code.Append(action);
+        if (!string.IsNullOrEmpty(action))
+        {
+            code.Append("if not mmdd.isPlaying:\n");
+            code.Append("    mmdd.update(True)\n");
+        }
+        code.Append("rot = mc.getHeelzRotation()\n");
+        code.Append("VRMmddStateBridge.ReportHighHeels(mc.CharName, mc.HighHeels.PluginName or 'Unknown', bool(mc.HighHeels.enable), bool(mc.ShoesDetect), float(rot[0]), float(rot[1]), float(rot[2]), bool(mc.ShoesOffset[0]), float(mc.ShoesOffset[1]), float(mc.ShoesOffset[2]))\n");
+
+        string error;
+        if (!VRPythonBridge.TryExecute(code.ToString(), operation, out error))
+        {
+            status = targetName + "：" + TranslateHighHeelsError(error);
+            return false;
+        }
+
+        if (!VRMmddStateBridge.HighHeelsReported)
+        {
+            status = targetName + "：MMDD 没有返回高跟鞋状态";
+            return false;
+        }
+
+        status = VRMmddStateBridge.HighHeelsTargetName
+            + "：高跟鞋 "
+            + (VRMmddStateBridge.HighHeelsAutoMode ? "自动" : "手动");
+        return true;
+    }
+
+    private static bool TryResolveHighHeelsTarget(
+        out int objectKey,
+        out string targetName,
+        out string status)
+    {
+        objectKey = 0;
+        targetName = "当前角色";
+        int[] selectedKeys = VRVmdTargetService.GetSelectedObjectKeys();
+        if (selectedKeys.Length == 1)
+        {
+            objectKey = selectedKeys[0];
+            targetName = "选中角色";
+            status = null;
+            return true;
+        }
+
+        if (selectedKeys.Length > 1)
+        {
+            status = "高跟鞋一次只能调整一个角色";
+            return false;
+        }
+
+        string targetStatus;
+        var targets = VRVmdTargetService.GetAllTargets(out targetStatus);
+        if (targets.Count == 1)
+        {
+            objectKey = targets[0].ObjectKey;
+            targetName = VRCharacterClothingService.GetCharacterName(targets[0].Character);
+            status = null;
+            return true;
+        }
+
+        status = targets.Count == 0
+            ? (targetStatus ?? "当前场景没有角色")
+            : "请先在工作室树中只选择一个角色";
+        return false;
+    }
+
+    private static string BuildStateBridgeImportCode()
+    {
+        return
+            "import clr\n"
+            + "clr.AddReference('KKCharaStudioVRPlugin')\n"
+            + "from KKCharaStudioVR import VRMmddStateBridge\n";
+    }
+
+    private static string BuildFixedFovReportCode()
+    {
+        return
+            BuildCurrentFixedFovCode()
+            + "VRMmddStateBridge.ReportFixedFov(bool(current_fixed_fov), float(current_fixed_fov_value), int(len(mmdd.cameraControllers)))\n";
+    }
+
+    private static string BuildCurrentFixedFovCode()
+    {
+        return
+            "current_fixed_fov = bool(config.useFixedFOV)\n"
+            + "current_fixed_fov_value = float(config.useFixedFOVValue)\n"
+            + "for current_cc in mmdd.cameraControllers:\n"
+            + "    if hasattr(current_cc, 'postProcess'):\n"
+            + "        current_fixed_fov = 'fixed_fov' in current_cc.postProcess\n"
+            + "        current_fixed_fov_value = float(current_cc.fixedFOV)\n"
+            + "        break\n";
+    }
+
+    private static string TranslateHighHeelsError(string error)
+    {
+        if (string.IsNullOrEmpty(error))
+            return "高跟鞋控制失败";
+        if (error.IndexOf("Load a motion VMD", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "请先给这个角色读取动作 VMD";
+        if (error.IndexOf("manual mode", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "请先切换到手动骨骼调节";
+        if (error.IndexOf("no High Heels support", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "当前动作控制器不支持高跟鞋调节";
+        return "高跟鞋控制失败：" + error;
     }
 
     private static bool ValidateOptionalFile(string path, string extension, out string status)

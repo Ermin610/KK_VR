@@ -45,12 +45,6 @@ public class VRQuickActions : MonoBehaviour
             ToggleAllGUI();
         }
 
-        // X 按钮（左手） —— 隐藏/显示所有 IK 控制器轴向与抓取标记
-        if (leftController != null && leftController.GetPressDown(EVRButtonId.k_EButton_A))
-        {
-            ToggleIKVisibility();
-        }
-
         // 左摇杆按下逻辑分支
         if (leftController != null && leftController.GetPressDown(EVRButtonId.k_EButton_Axis0))
         {
@@ -367,6 +361,13 @@ public class VRQuickActions : MonoBehaviour
             }
         }
         VRLog.Info($"Toggled IK Controls visibility to: {ikVisible}");
+    }
+
+    public bool ToggleIkControls(out string status)
+    {
+        ToggleIKVisibility();
+        status = ikVisible ? "IK 控制器已显示" : "IK 控制器已隐藏";
+        return true;
     }
 
     private void ToggleMMDDPlayPause()

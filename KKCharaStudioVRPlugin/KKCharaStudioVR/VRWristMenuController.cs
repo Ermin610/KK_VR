@@ -28,6 +28,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         SceneSave,
         CharacterCards,
         CharacterPreview,
+        MmdSettings,
+        HighHeels,
         Settings
     }
 
@@ -142,20 +144,20 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             return;
         }
 
-        if (leftDevice.GetPressDown(EVRButtonId.k_EButton_ApplicationMenu))
+        if (leftDevice.GetPressDown(EVRButtonId.k_EButton_A))
         {
             _menuPressActive = true;
             _menuPressChorded = false;
             _menuPressStarted = Time.unscaledTime;
         }
 
-        if (_menuPressActive && leftDevice.GetPress(EVRButtonId.k_EButton_ApplicationMenu))
+        if (_menuPressActive && leftDevice.GetPress(EVRButtonId.k_EButton_A))
         {
             _menuPressChorded |= leftDevice.GetPress(EVRButtonId.k_EButton_Grip)
                 || leftDevice.GetPress(EVRButtonId.k_EButton_Axis1);
         }
 
-        if (!_menuPressActive || !leftDevice.GetPressUp(EVRButtonId.k_EButton_ApplicationMenu))
+        if (!_menuPressActive || !leftDevice.GetPressUp(EVRButtonId.k_EButton_A))
             return;
 
         float duration = Time.unscaledTime - _menuPressStarted;
@@ -236,6 +238,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _sceneSavePage = CreateRectObject("SceneSavePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterCardsPage = CreateRectObject("CharacterCardsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterPreviewPage = CreateRectObject("CharacterPreviewPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _mmdPage = CreateRectObject("MmdPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _highHeelsPage = CreateRectObject("HighHeelsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _settingsPage = CreateRectObject("SettingsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
         CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 382f, 40f, 28,
@@ -283,13 +287,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         CreateText("MmdSection", _rootPage.transform, "MMD", 24f, 178f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
         CreateButton(
-            "ToggleMmd",
-            "MMDD\n播放 / 暂停",
+            "OpenMmdSettings",
+            "MMDD  >\n播放 / VR 设置",
             24f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
-            HandleToggleMmd,
+            HandleOpenMmdSettings,
             _rootPage.transform,
             160f,
             68f,
@@ -330,27 +334,41 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleOpenCharacterCards,
             _rootPage.transform,
-            248f,
+            160f,
             62f,
-            20);
+            17);
         CreateButton(
             "OpenClothing",
             "角色换装  >\nCLOTHING",
-            288f,
+            200f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleOpenClothing,
             _rootPage.transform,
-            248f,
+            160f,
             62f,
-            20);
+            17);
+        CreateButton(
+            "ToggleIkVisibility",
+            "IK 控制器\n显示 / 隐藏",
+            376f,
+            320f,
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            HandleToggleIkVisibility,
+            _rootPage.transform,
+            160f,
+            62f,
+            17);
 
         BuildClothingPage();
         BuildBrowserPage();
         BuildSceneSavePage();
         BuildCharacterCardsPage();
         BuildCharacterPreviewPage();
+        BuildMmdSettingsPage();
+        BuildHighHeelsPage();
         BuildSettingsPage();
 
         Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, GlassSurfaceColor);
@@ -363,6 +381,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _sceneSavePage.SetActive(false);
         _characterCardsPage.SetActive(false);
         _characterPreviewPage.SetActive(false);
+        _mmdPage.SetActive(false);
+        _highHeelsPage.SetActive(false);
         _settingsPage.SetActive(false);
         _menuRoot.SetActive(false);
         RefreshTimelineButton();
@@ -821,6 +841,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             _characterCardsPage.SetActive(page == WristMenuPage.CharacterCards);
         if (_characterPreviewPage != null)
             _characterPreviewPage.SetActive(page == WristMenuPage.CharacterPreview);
+        if (_mmdPage != null)
+            _mmdPage.SetActive(page == WristMenuPage.MmdSettings);
+        if (_highHeelsPage != null)
+            _highHeelsPage.SetActive(page == WristMenuPage.HighHeels);
         if (_settingsPage != null)
             _settingsPage.SetActive(page == WristMenuPage.Settings);
 
@@ -838,6 +862,14 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         {
             RefreshCharacterCardsPage();
             _nextCharacterRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.MmdSettings)
+        {
+            RefreshMmdSettingsPage();
+        }
+        else if (page == WristMenuPage.HighHeels)
+        {
+            RefreshHighHeelsPage();
         }
         else if (page == WristMenuPage.Settings)
         {
@@ -874,6 +906,25 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         ShowPage(WristMenuPage.Clothing);
         SetStatus("角色换装", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+    }
+
+    private void HandleToggleIkVisibility()
+    {
+        string status;
+        bool success;
+        if (VRQuickActions.Instance == null)
+        {
+            status = "IK 控制器尚未初始化";
+            success = false;
+        }
+        else
+        {
+            success = VRQuickActions.Instance.ToggleIkControls(out status);
+        }
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            4f);
     }
 
     private void HandleBackToRoot()
