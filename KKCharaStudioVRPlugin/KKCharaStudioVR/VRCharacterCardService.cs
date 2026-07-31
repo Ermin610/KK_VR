@@ -8,8 +8,7 @@ namespace KKCharaStudioVR;
 internal enum VRCharacterCardMode
 {
     AddFemale,
-    AddMale,
-    ReplaceSelected
+    AddMale
 }
 
 internal static class VRCharacterCardService
@@ -33,26 +32,16 @@ internal static class VRCharacterCardService
             return true;
         }
 
-        OCIChar character;
-        if (!VRCharacterClothingService.TryGetSelectedCharacter(out character, out status))
-            return false;
-
-        root = character.sex == 0 ? MaleRoot : FemaleRoot;
-        status = "替换：" + VRCharacterClothingService.GetCharacterName(character);
-        return true;
+        status = "未知的角色卡分类";
+        return false;
     }
 
-    public static bool Execute(VRCharacterCardMode mode, string path, out string status)
+    public static bool ExecuteAdd(VRCharacterCardMode mode, string path, out string status)
     {
         try
         {
-            if (string.IsNullOrEmpty(path)
-                || !File.Exists(path)
-                || !string.Equals(Path.GetExtension(path), ".png", StringComparison.OrdinalIgnoreCase))
-            {
-                status = "角色卡文件无效";
+            if (!ValidateCardPath(path, out status))
                 return false;
-            }
 
             Studio.Studio studio = Singleton<Studio.Studio>.Instance;
             if (studio == null)
@@ -68,6 +57,8 @@ internal static class VRCharacterCardService
                     status = "请选择女性角色卡";
                     return false;
                 }
+                if (!ValidateCardData(path, 1, out status))
+                    return false;
 
                 studio.AddFemale(path);
                 status = "已添加女角色：" + Path.GetFileNameWithoutExtension(path);
@@ -81,14 +72,34 @@ internal static class VRCharacterCardService
                     status = "请选择男性角色卡";
                     return false;
                 }
+                if (!ValidateCardData(path, 0, out status))
+                    return false;
 
                 studio.AddMale(path);
                 status = "已添加男角色：" + Path.GetFileNameWithoutExtension(path);
                 return true;
             }
 
+            status = "未知的角色卡读取方式";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            status = "角色卡读取失败：" + ex.Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
+    public static bool ExecuteReplace(int objectKey, string path, out string status)
+    {
+        try
+        {
+            if (!ValidateCardPath(path, out status))
+                return false;
+
             OCIChar character;
-            if (!VRCharacterClothingService.TryGetSelectedCharacter(out character, out status))
+            if (!TryGetCharacter(objectKey, out character, out status))
                 return false;
 
             string expectedRoot = character.sex == 0 ? MaleRoot : FemaleRoot;
@@ -97,6 +108,8 @@ internal static class VRCharacterCardService
                 status = character.sex == 0 ? "男性角色只能替换为男卡" : "女性角色只能替换为女卡";
                 return false;
             }
+            if (!ValidateCardData(path, (byte)character.sex, out status))
+                return false;
 
             string previousName = VRCharacterClothingService.GetCharacterName(character);
             character.ChangeChara(path);
@@ -105,9 +118,70 @@ internal static class VRCharacterCardService
         }
         catch (Exception ex)
         {
-            status = "角色卡操作失败：" + ex.Message;
+            status = "角色替换失败：" + ex.Message;
             VRLog.Error(status);
             return false;
         }
+    }
+
+    public static bool TryGetCharacter(int objectKey, out OCIChar character, out string status)
+    {
+        character = null;
+        try
+        {
+            Studio.Studio studio = Singleton<Studio.Studio>.Instance;
+            ObjectCtrlInfo item;
+            if (studio == null
+                || studio.dicObjectCtrl == null
+                || !studio.dicObjectCtrl.TryGetValue(objectKey, out item))
+            {
+                status = "所选角色已不在当前场景";
+                return false;
+            }
+
+            character = item as OCIChar;
+            if (character == null)
+            {
+                status = "所选对象不是角色";
+                return false;
+            }
+
+            status = VRCharacterClothingService.GetCharacterName(character);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "无法读取场景角色：" + ex.Message;
+            return false;
+        }
+    }
+
+    private static bool ValidateCardPath(string path, out string status)
+    {
+        if (string.IsNullOrEmpty(path)
+            || !File.Exists(path)
+            || !string.Equals(Path.GetExtension(path), ".png", StringComparison.OrdinalIgnoreCase))
+        {
+            status = "角色卡文件无效";
+            return false;
+        }
+
+        status = null;
+        return true;
+    }
+
+    private static bool ValidateCardData(string path, byte sex, out string status)
+    {
+        ChaFileControl card = new ChaFileControl();
+        if (!card.LoadCharaFile(path, sex, noLoadPng: true))
+        {
+            status = sex == 0
+                ? "文件不是有效的男性角色卡"
+                : "文件不是有效的女性角色卡";
+            return false;
+        }
+
+        status = null;
+        return true;
     }
 }

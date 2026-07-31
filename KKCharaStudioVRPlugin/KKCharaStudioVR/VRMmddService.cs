@@ -54,12 +54,12 @@ internal static class VRMmddService
             out status);
     }
 
-    public static bool RefreshHighHeels(out string status)
+    public static bool RefreshHighHeels(int objectKey, out string status)
     {
-        return ExecuteHighHeelsAction(string.Empty, "MMDD high heels state", out status);
+        return ExecuteHighHeelsAction(objectKey, string.Empty, "MMDD high heels state", out status);
     }
 
-    public static bool ToggleHighHeelsMode(out string status)
+    public static bool ToggleHighHeelsMode(int objectKey, out string status)
     {
         const string action =
             "if mc.HighHeels.enable:\n"
@@ -67,10 +67,10 @@ internal static class VRMmddService
             + "    mc.enableHeelzCtrl(False)\n"
             + "else:\n"
             + "    mc.enableHeelzCtrl(True)\n";
-        return ExecuteHighHeelsAction(action, "MMDD high heels mode", out status);
+        return ExecuteHighHeelsAction(objectKey, action, "MMDD high heels mode", out status);
     }
 
-    public static bool ResetHighHeels(out string status)
+    public static bool ResetHighHeels(int objectKey, out string status)
     {
         const string action =
             "if mc.HighHeels.enable:\n"
@@ -78,26 +78,30 @@ internal static class VRMmddService
             + "mc.HighHeels.refreshHeelInfo()\n"
             + "defaults = mc.HighHeels.defaultRotate\n"
             + "mc.setHeelzRotation(defaults[0], defaults[1], defaults[2])\n";
-        return ExecuteHighHeelsAction(action, "MMDD high heels reset", out status);
+        return ExecuteHighHeelsAction(objectKey, action, "MMDD high heels reset", out status);
     }
 
-    public static bool ToggleHighHeelsShoesDetect(out string status)
+    public static bool ToggleHighHeelsShoesDetect(int objectKey, out string status)
     {
         const string action =
             "if mc.HighHeels.enable:\n"
             + "    raise Exception('Switch High Heels to manual mode first')\n"
             + "mc.ShoesDetect = not mc.ShoesDetect\n";
-        return ExecuteHighHeelsAction(action, "MMDD shoe detection toggle", out status);
+        return ExecuteHighHeelsAction(objectKey, action, "MMDD shoe detection toggle", out status);
     }
 
-    public static bool ToggleShoesOffset(out string status)
+    public static bool ToggleShoesOffset(int objectKey, out string status)
     {
         const string action =
             "mc.enableShoesOffsetCtrl(not mc.ShoesOffset[0])\n";
-        return ExecuteHighHeelsAction(action, "MMDD shoe offset toggle", out status);
+        return ExecuteHighHeelsAction(objectKey, action, "MMDD shoe offset toggle", out status);
     }
 
-    public static bool AdjustHighHeelsRotation(int component, float delta, out string status)
+    public static bool AdjustHighHeelsRotation(
+        int objectKey,
+        int component,
+        float delta,
+        out string status)
     {
         if (component < 0 || component > 2)
         {
@@ -118,10 +122,14 @@ internal static class VRMmddService
             + "mc.setHeelzRotation("
             + arguments[component]
             + ")\n";
-        return ExecuteHighHeelsAction(action, "MMDD high heels angle", out status);
+        return ExecuteHighHeelsAction(objectKey, action, "MMDD high heels angle", out status);
     }
 
-    public static bool AdjustShoesOffset(bool shoesOn, float delta, out string status)
+    public static bool AdjustShoesOffset(
+        int objectKey,
+        bool shoesOn,
+        float delta,
+        out string status)
     {
         int index = shoesOn ? 1 : 2;
         string action =
@@ -134,7 +142,7 @@ internal static class VRMmddService
             + "))\n"
             + "if mc.ShoesOffset[0]:\n"
             + "    mc.setShoesOffset()\n";
-        return ExecuteHighHeelsAction(action, "MMDD shoe offset value", out status);
+        return ExecuteHighHeelsAction(objectKey, action, "MMDD shoe offset value", out status);
     }
 
     public static bool LoadVmdPackage(
@@ -316,14 +324,15 @@ internal static class VRMmddService
     }
 
     private static bool ExecuteHighHeelsAction(
+        int objectKey,
         string action,
         string operation,
         out string status)
     {
-        int objectKey;
-        string targetName;
-        if (!TryResolveHighHeelsTarget(out objectKey, out targetName, out status))
+        VRVmdActorTarget target;
+        if (!VRVmdTargetService.TryGetTarget(objectKey, out target, out status))
             return false;
+        string targetName = target.DisplayName;
 
         VRMmddStateBridge.ResetHighHeels();
         StringBuilder code = new StringBuilder();
@@ -365,44 +374,6 @@ internal static class VRMmddService
             + "：高跟鞋 "
             + (VRMmddStateBridge.HighHeelsAutoMode ? "自动" : "手动");
         return true;
-    }
-
-    private static bool TryResolveHighHeelsTarget(
-        out int objectKey,
-        out string targetName,
-        out string status)
-    {
-        objectKey = 0;
-        targetName = "当前角色";
-        int[] selectedKeys = VRVmdTargetService.GetSelectedObjectKeys();
-        if (selectedKeys.Length == 1)
-        {
-            objectKey = selectedKeys[0];
-            targetName = "选中角色";
-            status = null;
-            return true;
-        }
-
-        if (selectedKeys.Length > 1)
-        {
-            status = "高跟鞋一次只能调整一个角色";
-            return false;
-        }
-
-        string targetStatus;
-        var targets = VRVmdTargetService.GetAllTargets(out targetStatus);
-        if (targets.Count == 1)
-        {
-            objectKey = targets[0].ObjectKey;
-            targetName = VRCharacterClothingService.GetCharacterName(targets[0].Character);
-            status = null;
-            return true;
-        }
-
-        status = targets.Count == 0
-            ? (targetStatus ?? "当前场景没有角色")
-            : "请先在工作室树中只选择一个角色";
-        return false;
     }
 
     private static string BuildStateBridgeImportCode()

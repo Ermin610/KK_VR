@@ -7,12 +7,12 @@ using VRGIN.Helpers;
 namespace KKCharaStudioVR;
 
 [BepInProcess("CharaStudio")]
-[BepInPlugin("KKCharaStudioVRPlugin.KKCharaStudioVRPlugin", "KKCharaStudioVRPlugin", "0.0.8")]
+[BepInPlugin("KKCharaStudioVRPlugin.KKCharaStudioVRPlugin", "KKCharaStudioVRPlugin", "0.0.9")]
 public class KKCharaStudioVRPlugin : BaseUnityPlugin
 {
 	public const string NAME = "KKCharaStudioVRPlugin";
 
-	public const string VERSION = "0.0.8";
+	public const string VERSION = "0.0.9";
 
 	[DllImport("user32.dll")]
 	private static extern bool SetForegroundWindow(IntPtr hWnd);

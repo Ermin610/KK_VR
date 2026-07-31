@@ -21,9 +21,10 @@ public sealed partial class VRWristMenuController
         LoadVmd,
         SelectVmdActor,
         SelectVmdCamera,
+        SelectHighHeelsActor,
+        SelectCharacterReplaceActor,
         AddFemale,
-        AddMale,
-        ReplaceCharacter
+        AddMale
     }
 
     private readonly VRWristMenuButtonTarget[] _browserEntryButtons =
@@ -33,7 +34,6 @@ public sealed partial class VRWristMenuController
     private Text _browserTitleText;
     private Text _browserPathText;
     private Text _browserScrollText;
-    private Text _characterSelectionText;
     private BrowserMode _browserMode;
     private VRCharacterCardMode _characterCardMode;
     private string _browserRoot;
@@ -46,7 +46,6 @@ public sealed partial class VRWristMenuController
     private int _browserOffset;
     private int _browserStickDirection;
     private float _nextBrowserStickScroll;
-    private float _nextCharacterRefresh;
     private bool _operationInProgress;
 
     private void BuildBrowserPage()
@@ -213,108 +212,47 @@ public sealed partial class VRWristMenuController
             TextAnchor.MiddleLeft,
             Color.white);
 
-        Image selectionBackground = CreateImage(
-            "CharacterCardSelectionBackground",
-            _characterCardsPage.transform,
-            24f,
-            66f,
-            512f,
-            42f,
-            new Color(0.55f, 0.9f, 0.7f, 0.065f));
-        ApplyGlassEffects(selectionBackground, new Color(0.72f, 1f, 0.82f, 0.13f), false, 0f);
-        _characterSelectionText = CreateText(
-            "CharacterCardSelection",
-            _characterCardsPage.transform,
-            "未选择角色",
-            38f,
-            70f,
-            484f,
-            34f,
-            18,
-            TextAnchor.MiddleLeft,
-            new Color(0.7f, 0.8f, 0.74f, 1f));
-
         CreateText(
-            "CharacterAddSection",
+            "CharacterCardLibrarySection",
             _characterCardsPage.transform,
-            "添加角色  ADD",
+            "角色卡分类  CHARACTER CARDS",
             24f,
-            122f,
+            76f,
             512f,
-            24f,
+            28f,
             18,
             TextAnchor.MiddleLeft,
             new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "CharacterAddFemale",
-            "添加女角色\nFEMALE",
+            "女性角色卡  >\nFEMALE CARDS",
             24f,
-            152f,
+            116f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             () => OpenCharacterBrowser(VRCharacterCardMode.AddFemale),
             _characterCardsPage.transform,
-            248f,
-            62f,
-            19);
+            512f,
+            96f,
+            22);
         CreateButton(
             "CharacterAddMale",
-            "添加男角色\nMALE",
-            288f,
-            152f,
+            "男性角色卡  >\nMALE CARDS",
+            24f,
+            232f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             () => OpenCharacterBrowser(VRCharacterCardMode.AddMale),
             _characterCardsPage.transform,
-            248f,
-            62f,
-            19);
-
-        CreateText(
-            "CharacterReplaceSection",
-            _characterCardsPage.transform,
-            "替换当前角色  REPLACE",
-            24f,
-            234f,
             512f,
-            24f,
-            18,
-            TextAnchor.MiddleLeft,
-            new Color(0.25f, 0.86f, 0.94f, 1f));
-        CreateButton(
-            "CharacterReplaceSelected",
-            "替换选中角色  >\nREPLACE SELECTED",
-            24f,
-            264f,
-            new Color(0.08f, 0.15f, 0.18f, 0.5f),
-            new Color(0.12f, 0.32f, 0.39f, 0.76f),
-            () => OpenCharacterBrowser(VRCharacterCardMode.ReplaceSelected),
-            _characterCardsPage.transform,
-            512f,
-            72f,
-            20);
+            96f,
+            22);
     }
 
     private void HandleOpenCharacterCards()
     {
         ShowPage(WristMenuPage.CharacterCards);
         SetStatus("角色卡", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
-    }
-
-    private void RefreshCharacterCardsPage()
-    {
-        if (_characterSelectionText == null)
-            return;
-
-        Studio.OCIChar character;
-        string selectionStatus;
-        bool hasCharacter = VRCharacterClothingService.TryGetSelectedCharacter(
-            out character,
-            out selectionStatus);
-        _characterSelectionText.text = hasCharacter ? "当前角色  " + selectionStatus : selectionStatus;
-        _characterSelectionText.color = hasCharacter
-            ? new Color(0.62f, 1f, 0.72f, 1f)
-            : new Color(1f, 0.45f, 0.4f, 1f);
     }
 
     private void OpenCharacterBrowser(VRCharacterCardMode mode)
@@ -330,9 +268,7 @@ public sealed partial class VRWristMenuController
         _characterCardMode = mode;
         BrowserMode browserMode = mode == VRCharacterCardMode.AddFemale
             ? BrowserMode.AddFemale
-            : mode == VRCharacterCardMode.AddMale
-                ? BrowserMode.AddMale
-                : BrowserMode.ReplaceCharacter;
+            : BrowserMode.AddMale;
         OpenFileBrowser(browserMode, root, root);
         if (!string.IsNullOrEmpty(status))
             SetStatus(status, new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
@@ -370,7 +306,9 @@ public sealed partial class VRWristMenuController
     private void RefreshBrowserEntries()
     {
         if ((_browserMode == BrowserMode.SelectVmdActor
-                || _browserMode == BrowserMode.SelectVmdCamera)
+                || _browserMode == BrowserMode.SelectVmdCamera
+                || _browserMode == BrowserMode.SelectHighHeelsActor
+                || _browserMode == BrowserMode.SelectCharacterReplaceActor)
             && _browserFixedEntries != null)
         {
             _browserEntries = _browserFixedEntries;
@@ -388,7 +326,6 @@ public sealed partial class VRWristMenuController
                     break;
                 case BrowserMode.AddFemale:
                 case BrowserMode.AddMale:
-                case BrowserMode.ReplaceCharacter:
                     extensions = new[] { ".png" };
                     break;
                 default:
@@ -451,12 +388,14 @@ public sealed partial class VRWristMenuController
                 return "选择动作目标";
             case BrowserMode.SelectVmdCamera:
                 return "选择镜头 VMD";
+            case BrowserMode.SelectHighHeelsActor:
+                return "高跟鞋：选择角色";
+            case BrowserMode.SelectCharacterReplaceActor:
+                return "替换：选择场景角色";
             case BrowserMode.AddFemale:
-                return "添加女角色";
+                return "女性角色卡";
             case BrowserMode.AddMale:
-                return "添加男角色";
-            case BrowserMode.ReplaceCharacter:
-                return "替换角色卡";
+                return "男性角色卡";
             default:
                 return "文件";
         }
@@ -464,7 +403,9 @@ public sealed partial class VRWristMenuController
 
     private string BuildBrowserPathLabel()
     {
-        if (_browserMode == BrowserMode.SelectVmdActor)
+        if (_browserMode == BrowserMode.SelectVmdActor
+            || _browserMode == BrowserMode.SelectHighHeelsActor
+            || _browserMode == BrowserMode.SelectCharacterReplaceActor)
             return "当前场景角色";
         if (_browserMode == BrowserMode.SelectVmdCamera)
             return "同目录镜头";
@@ -505,6 +446,24 @@ public sealed partial class VRWristMenuController
 
     private void HandleBrowserBack()
     {
+        if (_browserMode == BrowserMode.SelectHighHeelsActor)
+        {
+            int objectKey;
+            string status;
+            if (TryGetHighHeelsTarget(out objectKey, out status))
+                ShowPage(WristMenuPage.HighHeels);
+            else
+                ShowPage(WristMenuPage.MmdSettings);
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectCharacterReplaceActor)
+        {
+            ShowPage(WristMenuPage.CharacterPreview);
+            SetStatus("角色卡预览", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            return;
+        }
+
         if (_browserMode == BrowserMode.SelectVmdActor
             || _browserMode == BrowserMode.SelectVmdCamera)
         {
@@ -530,8 +489,7 @@ public sealed partial class VRWristMenuController
         }
 
         if (_browserMode == BrowserMode.AddFemale
-            || _browserMode == BrowserMode.AddMale
-            || _browserMode == BrowserMode.ReplaceCharacter)
+            || _browserMode == BrowserMode.AddMale)
         {
             ShowPage(WristMenuPage.CharacterCards);
             SetStatus("角色卡", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
@@ -575,12 +533,52 @@ public sealed partial class VRWristMenuController
                     _pendingAudioPath,
                     _pendingVmdActorKeys);
                 break;
+            case BrowserMode.SelectHighHeelsActor:
+                HandleHighHeelsActorSelection(entry);
+                break;
+            case BrowserMode.SelectCharacterReplaceActor:
+                HandleCharacterReplaceActorSelection(entry);
+                break;
             case BrowserMode.AddFemale:
             case BrowserMode.AddMale:
-            case BrowserMode.ReplaceCharacter:
                 OpenCharacterCardPreview(entry.FullPath);
                 break;
         }
+    }
+
+    private bool OpenActorTargetBrowser(
+        BrowserMode mode,
+        List<VRVmdActorTarget> targets,
+        string prompt,
+        out string status)
+    {
+        if (targets == null || targets.Count == 0)
+        {
+            status = "当前场景没有可选角色";
+            return false;
+        }
+
+        _browserMode = mode;
+        _browserRoot = string.Empty;
+        _browserDirectory = string.Empty;
+        _browserFixedEntries = new List<VRWristFileEntry>();
+        foreach (VRVmdActorTarget target in targets)
+        {
+            _browserFixedEntries.Add(new VRWristFileEntry
+            {
+                DisplayName = target.DisplayName,
+                IsActorTarget = true,
+                ObjectKey = target.ObjectKey
+            });
+        }
+
+        _browserOffset = 0;
+        _browserStickDirection = 0;
+        RefreshBrowserEntries();
+        ShowPage(WristMenuPage.Browser);
+        status = prompt;
+        SetStatus(prompt, new Color(1f, 0.72f, 0.25f, 1f), 0f);
+        return true;
     }
 
     private void HandleVmdSelection(VRWristFileEntry entry)
@@ -767,15 +765,42 @@ public sealed partial class VRWristMenuController
             success ? 7f : 8f);
     }
 
-    private IEnumerator ExecuteCharacterCardAfterFrame(string path)
+    private IEnumerator ExecuteCharacterAddAfterFrame(string path)
     {
+        if (_operationInProgress)
+            yield break;
+
         _operationInProgress = true;
         SetStatus("正在读取角色卡…", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         yield return null;
 
         string status;
-        bool success = VRCharacterCardService.Execute(_characterCardMode, path, out status);
+        bool success = VRCharacterCardService.ExecuteAdd(_characterCardMode, path, out status);
         _operationInProgress = false;
+        ShowPage(WristMenuPage.CharacterPreview);
+        if (success)
+            VRLog.Info(status);
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            success ? 6f : 8f);
+    }
+
+    private IEnumerator ExecuteCharacterReplacementAfterFrame(string path, int objectKey)
+    {
+        if (_operationInProgress)
+            yield break;
+
+        _operationInProgress = true;
+        SetStatus("正在替换场景角色…", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        yield return null;
+
+        string status;
+        bool success = VRCharacterCardService.ExecuteReplace(objectKey, path, out status);
+        _operationInProgress = false;
+        ShowPage(WristMenuPage.CharacterPreview);
+        if (success)
+            VRLog.Info(status);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),

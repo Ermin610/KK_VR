@@ -10,12 +10,14 @@ public sealed partial class VRWristMenuController
     private VRWristMenuButtonTarget _fixedFovToggleButton;
     private Text _fixedFovValueText;
     private Text _fixedFovCameraCountText;
-    private Text _highHeelsTargetText;
+    private VRWristMenuButtonTarget _highHeelsTargetButton;
     private VRWristMenuButtonTarget _highHeelsModeButton;
     private VRWristMenuButtonTarget _highHeelsShoesDetectButton;
     private VRWristMenuButtonTarget _shoesOffsetToggleButton;
     private readonly Text[] _highHeelsAngleTexts = new Text[3];
     private readonly Text[] _shoesOffsetTexts = new Text[2];
+    private int _highHeelsTargetObjectKey = -1;
+    private Studio.OCIChar _highHeelsTargetCharacter;
 
     private void BuildMmdSettingsPage()
     {
@@ -188,26 +190,18 @@ public sealed partial class VRWristMenuController
             TextAnchor.MiddleLeft,
             Color.white);
 
-        Image targetBackground = CreateImage(
-            "HighHeelsTargetBackground",
-            _highHeelsPage.transform,
+        _highHeelsTargetButton = CreateButton(
+            "HighHeelsTarget",
+            "选择场景角色  >",
             24f,
             60f,
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            HandleChooseHighHeelsTarget,
+            _highHeelsPage.transform,
             512f,
             42f,
-            new Color(0.55f, 0.9f, 0.7f, 0.065f));
-        ApplyGlassEffects(targetBackground, new Color(0.72f, 1f, 0.82f, 0.13f), false, 0f);
-        _highHeelsTargetText = CreateText(
-            "HighHeelsTarget",
-            _highHeelsPage.transform,
-            "目标角色  --",
-            38f,
-            63f,
-            484f,
-            36f,
-            16,
-            TextAnchor.MiddleLeft,
-            new Color(0.7f, 0.8f, 0.74f, 1f));
+            16);
 
         _highHeelsModeButton = CreateButton(
             "HighHeelsMode",
@@ -385,7 +379,59 @@ public sealed partial class VRWristMenuController
 
     private void HandleOpenHighHeels()
     {
-        SetStatus("正在读取 MMDD 高跟鞋状态", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        VRVmdActorTarget target;
+        string status;
+        if (_highHeelsTargetObjectKey >= 0
+            && VRVmdTargetService.TryGetTarget(
+                _highHeelsTargetObjectKey,
+                out target,
+                out status)
+            && object.ReferenceEquals(_highHeelsTargetCharacter, target.Character))
+        {
+            SetStatus("正在读取 " + target.DisplayName + " 的高跟鞋状态", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            ShowPage(WristMenuPage.HighHeels);
+            return;
+        }
+
+        _highHeelsTargetObjectKey = -1;
+        _highHeelsTargetCharacter = null;
+        HandleChooseHighHeelsTarget();
+    }
+
+    private void HandleChooseHighHeelsTarget()
+    {
+        string status;
+        var targets = VRVmdTargetService.GetAllTargets(out status);
+        if (targets.Count == 0)
+        {
+            ReportMmdResult(false, status ?? "当前场景没有角色");
+            return;
+        }
+
+        OpenActorTargetBrowser(
+            BrowserMode.SelectHighHeelsActor,
+            targets,
+            "请选择要调整高跟鞋的角色",
+            out status);
+    }
+
+    private void HandleHighHeelsActorSelection(VRWristFileEntry entry)
+    {
+        if (!entry.IsActorTarget)
+            return;
+
+        VRVmdActorTarget target;
+        string status;
+        if (!VRVmdTargetService.TryGetTarget(entry.ObjectKey, out target, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+
+        _highHeelsTargetObjectKey = entry.ObjectKey;
+        _highHeelsTargetCharacter = target.Character;
+        VRMmddStateBridge.ResetHighHeels();
+        SetStatus("高跟鞋目标：" + target.DisplayName, new Color(0.35f, 1f, 0.62f, 1f), 0f);
         ShowPage(WristMenuPage.HighHeels);
     }
 
@@ -451,7 +497,16 @@ public sealed partial class VRWristMenuController
     private void RefreshHighHeelsPage()
     {
         string status;
-        bool success = VRMmddService.RefreshHighHeels(out status);
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            VRMmddStateBridge.ResetHighHeels();
+            RefreshHighHeelsVisuals();
+            ReportMmdResult(false, status);
+            return;
+        }
+
+        bool success = VRMmddService.RefreshHighHeels(objectKey, out status);
         RefreshHighHeelsVisuals();
         if (!success)
             ReportMmdResult(false, status);
@@ -460,12 +515,29 @@ public sealed partial class VRWristMenuController
     private void RefreshHighHeelsVisuals()
     {
         bool available = VRMmddStateBridge.HighHeelsReported;
-        if (_highHeelsTargetText != null)
+        if (_highHeelsTargetButton != null)
         {
-            _highHeelsTargetText.text = available
-                ? "目标  " + VRMmddStateBridge.HighHeelsTargetName
+            string targetLabel = "选择场景角色  >";
+            if (available)
+            {
+                targetLabel = VRMmddStateBridge.HighHeelsTargetName
                     + "  /  " + VRMmddStateBridge.HighHeelsPluginName
-                : "目标角色  --";
+                    + "  >";
+            }
+            else if (_highHeelsTargetObjectKey >= 0)
+            {
+                VRVmdActorTarget target;
+                string status;
+                if (VRVmdTargetService.TryGetTarget(
+                    _highHeelsTargetObjectKey,
+                    out target,
+                    out status)
+                    && object.ReferenceEquals(_highHeelsTargetCharacter, target.Character))
+                {
+                    targetLabel = target.DisplayName + "  >";
+                }
+            }
+            _highHeelsTargetButton.SetLabel(targetLabel);
         }
         if (_highHeelsModeButton != null)
         {
@@ -509,36 +581,72 @@ public sealed partial class VRWristMenuController
     private void HandleToggleHighHeelsMode()
     {
         string status;
-        ReportMmdResult(VRMmddService.ToggleHighHeelsMode(out status), status);
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+        ReportMmdResult(VRMmddService.ToggleHighHeelsMode(objectKey, out status), status);
         RefreshHighHeelsVisuals();
     }
 
     private void HandleResetHighHeels()
     {
         string status;
-        ReportMmdResult(VRMmddService.ResetHighHeels(out status), status);
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+        ReportMmdResult(VRMmddService.ResetHighHeels(objectKey, out status), status);
         RefreshHighHeelsVisuals();
     }
 
     private void HandleToggleHighHeelsShoesDetect()
     {
         string status;
-        ReportMmdResult(VRMmddService.ToggleHighHeelsShoesDetect(out status), status);
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+        ReportMmdResult(
+            VRMmddService.ToggleHighHeelsShoesDetect(objectKey, out status),
+            status);
         RefreshHighHeelsVisuals();
     }
 
     private void HandleToggleShoesOffset()
     {
         string status;
-        ReportMmdResult(VRMmddService.ToggleShoesOffset(out status), status);
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+        ReportMmdResult(VRMmddService.ToggleShoesOffset(objectKey, out status), status);
         RefreshHighHeelsVisuals();
     }
 
     private void HandleAdjustHighHeelsRotation(int component, float delta)
     {
         string status;
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
         ReportMmdResult(
-            VRMmddService.AdjustHighHeelsRotation(component, delta, out status),
+            VRMmddService.AdjustHighHeelsRotation(
+                objectKey,
+                component,
+                delta,
+                out status),
             status);
         RefreshHighHeelsVisuals();
     }
@@ -546,8 +654,37 @@ public sealed partial class VRWristMenuController
     private void HandleAdjustShoesOffset(bool shoesOn, float delta)
     {
         string status;
-        ReportMmdResult(VRMmddService.AdjustShoesOffset(shoesOn, delta, out status), status);
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+        ReportMmdResult(
+            VRMmddService.AdjustShoesOffset(objectKey, shoesOn, delta, out status),
+            status);
         RefreshHighHeelsVisuals();
+    }
+
+    private bool TryGetHighHeelsTarget(out int objectKey, out string status)
+    {
+        objectKey = _highHeelsTargetObjectKey;
+        if (objectKey < 0)
+        {
+            status = "请先在手环中选择场景角色";
+            return false;
+        }
+
+        VRVmdActorTarget target;
+        if (VRVmdTargetService.TryGetTarget(objectKey, out target, out status)
+            && object.ReferenceEquals(_highHeelsTargetCharacter, target.Character))
+            return true;
+
+        status = "场景角色已变化，请重新选择高跟鞋目标";
+        _highHeelsTargetObjectKey = -1;
+        _highHeelsTargetCharacter = null;
+        VRMmddStateBridge.ResetHighHeels();
+        return false;
     }
 
     private void ReportMmdResult(bool success, string status)

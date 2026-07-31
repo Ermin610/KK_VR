@@ -858,11 +858,6 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
-        else if (page == WristMenuPage.CharacterCards)
-        {
-            RefreshCharacterCardsPage();
-            _nextCharacterRefresh = Time.unscaledTime + 0.25f;
-        }
         else if (page == WristMenuPage.MmdSettings)
         {
             RefreshMmdSettingsPage();
@@ -1019,11 +1014,6 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         {
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
-        }
-        if (_page == WristMenuPage.CharacterCards && Time.unscaledTime >= _nextCharacterRefresh)
-        {
-            RefreshCharacterCardsPage();
-            _nextCharacterRefresh = Time.unscaledTime + 0.25f;
         }
         if (_page == WristMenuPage.Root && Time.unscaledTime >= _nextTimelineRefresh)
         {

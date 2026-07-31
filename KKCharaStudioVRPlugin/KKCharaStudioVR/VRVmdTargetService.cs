@@ -98,6 +98,48 @@ internal static class VRVmdTargetService
         }
     }
 
+    public static bool TryGetTarget(
+        int objectKey,
+        out VRVmdActorTarget target,
+        out string status)
+    {
+        target = null;
+        try
+        {
+            Studio.Studio studio = Singleton<Studio.Studio>.Instance;
+            ObjectCtrlInfo item;
+            if (studio == null
+                || studio.dicObjectCtrl == null
+                || !studio.dicObjectCtrl.TryGetValue(objectKey, out item))
+            {
+                status = "所选角色已不在当前场景";
+                return false;
+            }
+
+            OCIChar character = item as OCIChar;
+            if (character == null)
+            {
+                status = "所选对象不是角色";
+                return false;
+            }
+
+            target = new VRVmdActorTarget
+            {
+                ObjectKey = objectKey,
+                Character = character,
+                DisplayName = VRCharacterClothingService.GetCharacterName(character)
+            };
+            status = target.DisplayName;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "无法读取场景角色：" + ex.Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
     public static bool TrySelectTarget(int objectKey, out string status)
     {
         try

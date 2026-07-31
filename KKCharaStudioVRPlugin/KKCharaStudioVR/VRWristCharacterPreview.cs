@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,15 +9,22 @@ namespace KKCharaStudioVR;
 
 public sealed partial class VRWristMenuController
 {
-    private const float CharacterPreviewAreaWidth = 250f;
-    private const float CharacterPreviewAreaHeight = 326f;
+    private const float CharacterPreviewAreaX = 168f;
+    private const float CharacterPreviewAreaY = 58f;
+    private const float CharacterPreviewAreaWidth = 224f;
+    private const float CharacterPreviewAreaHeight = 260f;
 
     private RawImage _characterPreviewImage;
     private RectTransform _characterPreviewRect;
     private Text _characterPreviewNameText;
-    private VRWristMenuButtonTarget _characterPreviewConfirmButton;
+    private VRWristMenuButtonTarget _characterPreviewLoadButton;
+    private VRWristMenuButtonTarget _characterPreviewReplaceButton;
     private Texture2D _characterPreviewTexture;
     private string _pendingCharacterCardPath;
+    private BrowserMode _characterCardListMode;
+    private string _characterCardListRoot;
+    private string _characterCardListDirectory;
+    private int _characterCardListOffset;
 
     private void BuildCharacterPreviewPage()
     {
@@ -47,8 +55,8 @@ public sealed partial class VRWristMenuController
         Image previewBackground = CreateImage(
             "CharacterPreviewBackground",
             _characterPreviewPage.transform,
-            24f,
-            70f,
+            CharacterPreviewAreaX,
+            CharacterPreviewAreaY,
             CharacterPreviewAreaWidth,
             CharacterPreviewAreaHeight,
             new Color(0.02f, 0.03f, 0.035f, 0.72f));
@@ -61,8 +69,8 @@ public sealed partial class VRWristMenuController
         GameObject previewObject = CreateRectObject(
             "CharacterPreviewImage",
             _characterPreviewPage.transform,
-            24f,
-            70f,
+            CharacterPreviewAreaX,
+            CharacterPreviewAreaY,
             CharacterPreviewAreaWidth,
             CharacterPreviewAreaHeight,
             _visibleLayer);
@@ -75,44 +83,50 @@ public sealed partial class VRWristMenuController
             "CharacterPreviewName",
             _characterPreviewPage.transform,
             "尚未选择角色卡",
-            298f,
-            76f,
-            238f,
-            70f,
-            18,
-            TextAnchor.MiddleLeft,
+            24f,
+            322f,
+            512f,
+            28f,
+            17,
+            TextAnchor.MiddleCenter,
             new Color(0.72f, 0.9f, 0.96f, 1f));
 
-        _characterPreviewConfirmButton = CreateButton(
-            "CharacterPreviewConfirm",
-            "确认\nCONFIRM",
-            298f,
-            168f,
+        _characterPreviewLoadButton = CreateButton(
+            "CharacterPreviewLoad",
+            "读取新角色\nLOAD",
+            24f,
+            356f,
             new Color(0.075f, 0.24f, 0.14f, 0.5f),
             new Color(0.11f, 0.46f, 0.24f, 0.78f),
-            HandleCharacterPreviewConfirm,
+            HandleCharacterPreviewLoad,
             _characterPreviewPage.transform,
-            238f,
-            82f,
-            21);
-        CreateButton(
-            "CharacterPreviewReturn",
-            "返回卡片列表\nBACK TO CARDS",
-            298f,
-            272f,
+            248f,
+            50f,
+            17);
+        _characterPreviewReplaceButton = CreateButton(
+            "CharacterPreviewReplace",
+            "替换场景角色\nREPLACE",
+            288f,
+            356f,
             new Color(0.08f, 0.15f, 0.18f, 0.5f),
             new Color(0.12f, 0.32f, 0.39f, 0.76f),
-            HandleCharacterPreviewBack,
+            HandleCharacterPreviewReplace,
             _characterPreviewPage.transform,
-            238f,
-            64f,
-            18);
+            248f,
+            50f,
+            17);
     }
 
     private void OpenCharacterCardPreview(string path)
     {
         if (_operationInProgress)
             return;
+
+        _characterCardListMode = _browserMode;
+        _characterCardListRoot = _browserRoot;
+        _characterCardListDirectory = _browserDirectory;
+        _characterCardListOffset = _browserOffset;
+        _pendingCharacterCardPath = null;
         StartCoroutine(LoadCharacterCardPreviewAfterFrame(path));
     }
 
@@ -155,10 +169,11 @@ public sealed partial class VRWristMenuController
 
             _pendingCharacterCardPath = path;
             _characterPreviewNameText.text = Path.GetFileNameWithoutExtension(path);
-            _characterPreviewConfirmButton.SetLabel(GetCharacterPreviewConfirmLabel());
+            _characterPreviewLoadButton.SetLabel(GetCharacterPreviewLoadLabel());
+            _characterPreviewReplaceButton.SetLabel("替换场景角色\nREPLACE");
             ShowPage(WristMenuPage.CharacterPreview);
             SetStatus(
-                "确认卡面后再执行角色操作",
+                "角色卡预览已就绪",
                 new Color(0.35f, 1f, 0.62f, 1f),
                 0f);
         }
@@ -186,8 +201,8 @@ public sealed partial class VRWristMenuController
         float width = textureWidth * scale;
         float height = textureHeight * scale;
         _characterPreviewRect.anchoredPosition = new Vector2(
-            24f + (CharacterPreviewAreaWidth - width) * 0.5f,
-            -(70f + (CharacterPreviewAreaHeight - height) * 0.5f));
+            CharacterPreviewAreaX + (CharacterPreviewAreaWidth - width) * 0.5f,
+            -(CharacterPreviewAreaY + (CharacterPreviewAreaHeight - height) * 0.5f));
         _characterPreviewRect.sizeDelta = new Vector2(width, height);
     }
 
@@ -215,39 +230,111 @@ public sealed partial class VRWristMenuController
         return bytes;
     }
 
-    private string GetCharacterPreviewConfirmLabel()
+    private string GetCharacterPreviewLoadLabel()
     {
-        switch (_characterCardMode)
-        {
-            case VRCharacterCardMode.AddFemale:
-                return "确认添加女角色\nADD FEMALE";
-            case VRCharacterCardMode.AddMale:
-                return "确认添加男角色\nADD MALE";
-            default:
-                return "确认替换角色\nREPLACE";
-        }
+        return _characterCardMode == VRCharacterCardMode.AddMale
+            ? "读取为新男角色\nLOAD MALE"
+            : "读取为新女角色\nLOAD FEMALE";
     }
 
-    private void HandleCharacterPreviewConfirm()
+    private void HandleCharacterPreviewLoad()
     {
-        if (string.IsNullOrEmpty(_pendingCharacterCardPath))
+        if (!HasPendingCharacterCard())
+            return;
+
+        StartCoroutine(ExecuteCharacterAddAfterFrame(_pendingCharacterCardPath));
+    }
+
+    private void HandleCharacterPreviewReplace()
+    {
+        if (!HasPendingCharacterCard())
+            return;
+
+        string targetStatus;
+        List<VRVmdActorTarget> targets = VRVmdTargetService.GetAllTargets(out targetStatus);
+        int expectedSex = _characterCardMode == VRCharacterCardMode.AddMale ? 0 : 1;
+        targets.RemoveAll(target => target.Character == null || target.Character.sex != expectedSex);
+        if (targets.Count == 0)
         {
             SetStatus(
-                "尚未选择角色卡",
+                expectedSex == 0
+                    ? "当前场景没有可替换的男角色"
+                    : "当前场景没有可替换的女角色",
                 new Color(1f, 0.38f, 0.34f, 1f),
-                5f);
+                7f);
             return;
         }
-        StartCoroutine(ExecuteCharacterCardAfterFrame(_pendingCharacterCardPath));
+
+        OpenActorTargetBrowser(
+            BrowserMode.SelectCharacterReplaceActor,
+            targets,
+            "请选择要替换的场景角色",
+            out targetStatus);
+    }
+
+    private void HandleCharacterReplaceActorSelection(VRWristFileEntry entry)
+    {
+        if (!entry.IsActorTarget || !HasPendingCharacterCard())
+            return;
+
+        VRVmdActorTarget target;
+        string status;
+        if (!VRVmdTargetService.TryGetTarget(entry.ObjectKey, out target, out status))
+        {
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+            return;
+        }
+
+        int expectedSex = _characterCardMode == VRCharacterCardMode.AddMale ? 0 : 1;
+        if (target.Character.sex != expectedSex)
+        {
+            SetStatus(
+                "角色卡与目标角色性别不一致",
+                new Color(1f, 0.38f, 0.34f, 1f),
+                7f);
+            return;
+        }
+
+        StartCoroutine(ExecuteCharacterReplacementAfterFrame(
+            _pendingCharacterCardPath,
+            entry.ObjectKey));
     }
 
     private void HandleCharacterPreviewBack()
     {
+        if (_characterCardListMode != BrowserMode.AddFemale
+            && _characterCardListMode != BrowserMode.AddMale)
+        {
+            ShowPage(WristMenuPage.CharacterCards);
+            return;
+        }
+
+        _browserMode = _characterCardListMode;
+        _browserRoot = _characterCardListRoot;
+        _browserDirectory = _characterCardListDirectory;
+        _browserFixedEntries = null;
+        _browserOffset = _characterCardListOffset;
+        _browserStickDirection = 0;
+        RefreshBrowserEntries();
         ShowPage(WristMenuPage.Browser);
         SetStatus(
-            "选择角色卡可展开卡面预览",
+            "角色卡列表",
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
+    }
+
+    private bool HasPendingCharacterCard()
+    {
+        if (_operationInProgress)
+            return false;
+        if (!string.IsNullOrEmpty(_pendingCharacterCardPath))
+            return true;
+
+        SetStatus(
+            "尚未选择角色卡",
+            new Color(1f, 0.38f, 0.34f, 1f),
+            5f);
+        return false;
     }
 
     private void ReleaseCharacterPreviewTexture()

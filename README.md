@@ -54,9 +54,9 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
 - **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and starts at `E:\action`.
 - **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
-- **MMDD VR controls**: The MMD submenu exposes play/pause, Fixed FOV on/off and value adjustment, plus MMDD's original automatic/manual high-heels controls for the selected character.
+- **MMDD VR controls**: The MMD submenu exposes play/pause, Fixed FOV on/off and value adjustment, plus MMDD's original automatic/manual high-heels controls with an in-wrist scene-character picker.
 - **Timeline transport**: A single wrist button starts or pauses Timeline and mirrors its current play state. Timeline remains an optional dependency; the button reports unavailable when it is not installed.
-- **Character-card preview**: Selecting a female, male, or replacement card expands its real card image on the wrist before a separate confirmation runs Studio's native add or replace operation.
+- **Character-card preview**: Selecting a female or male card opens its real card image on a dedicated wrist page. Buttons below the image either load it as a new character or open an in-wrist same-sex scene-character picker before replacement.
 - **Studio settings in VR**: The Settings submenu changes the camera background preset (including an exact RGB `0, 180, 0` green screen), character-light state/intensity/shadow/color, and Master/BGM/Environment/System/Game audio without opening Studio's obstructed desktop panels.
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
