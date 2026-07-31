@@ -113,6 +113,10 @@ internal static class VRCharacterCardService
 
             string previousName = VRCharacterClothingService.GetCharacterName(character);
             character.ChangeChara(path);
+            TransientHead transientHead = ((UnityEngine.Component)character.charInfo)
+                .GetComponent<TransientHead>();
+            if (transientHead != null)
+                transientHead.RefreshAfterCharacterChange();
             status = previousName + " 已替换为：" + VRCharacterClothingService.GetCharacterName(character);
             return true;
         }

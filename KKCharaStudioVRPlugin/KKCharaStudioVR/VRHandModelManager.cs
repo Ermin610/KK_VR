@@ -35,6 +35,11 @@ namespace KKCharaStudioVR
             public bool lastRenderModelHidden;
             public Rigidbody cachedRigidbody;
             public bool isOfficialModel;
+            public bool requestedVisible = true;
+            public bool trackingStateInitialized;
+            public bool wasTracked;
+            public bool nativeAccessoriesStateInitialized;
+            public bool nativeAccessoriesVisible;
         }
 
         private HandContext leftHand;
@@ -107,8 +112,12 @@ namespace KKCharaStudioVR
         public void SetHandVisible(bool isLeft, bool visible)
         {
             HandContext h = isLeft ? leftHand : rightHand;
-            if (h != null && h.root != null)
-                h.root.SetActive(visible);
+            if (h == null)
+                return;
+
+            h.requestedVisible = visible;
+            if (h.root != null && !visible)
+                h.root.SetActive(false);
         }
 
         public void SetVisible(bool visible)
@@ -140,52 +149,31 @@ namespace KKCharaStudioVR
         {
             if (h == null || h.root == null) return;
 
-            // Check if controller tracking is valid
-            bool isTracked = false;
-            try
+            bool isTracked = HasUsableTracking(h);
+            ReportTrackingTransition(h, isTracked);
+
+            bool handModelEnabled = settings != null ? settings.HandModelEnabled : true;
+            bool shouldShowCustomHand = isTracked && handModelEnabled && h.requestedVisible;
+            if (h.root.activeSelf != shouldShowCustomHand)
+                h.root.SetActive(shouldShowCustomHand);
+
+            // Never reveal the native controller at an invalid pose. SteamVR commonly
+            // leaves that model at the tracking origin, which can put a large cyan mesh
+            // directly inside the HMD view when a controller disconnects.
+            bool shouldShowNativeController = isTracked && !shouldShowCustomHand;
+            if (isTracked)
             {
-                if (h.trackedObj != null && h.trackedObj.transform != null)
-                {
-                    bool isZero = h.trackedObj.transform.localPosition.sqrMagnitude < 0.000001f;
-                    isTracked = !isZero && h.trackedObj.index != SteamVR_TrackedObject.EIndex.None;
-                }
+                SetNativeControllerVisible(h, shouldShowNativeController);
+                SetNativeAccessoriesVisible(h, shouldShowNativeController, false);
             }
-            catch (Exception ex)
+            else
             {
-                VRLog.Error("Error checking tracking state in UpdateSingleHand: " + ex.Message);
-            }
-            bool shouldBeActive = isTracked && (settings != null ? settings.HandModelEnabled : true);
-            
-            // Hide the hand model if not tracked
-            if (h.root.activeSelf != shouldBeActive)
-            {
-                h.root.SetActive(shouldBeActive);
+                ForceHideNativeController(h);
+                SetNativeAccessoriesVisible(h, false, true);
             }
 
-            if (!shouldBeActive)
-            {
-                // If the hand is inactive, make sure we restore the VRGIN controller model
-                if (h.cachedController != null && h.lastRenderModelHidden)
-                {
-                    h.lastRenderModelHidden = false;
-                    h.cachedController.SetRenderModelVisible(true);
-                }
+            if (!shouldShowCustomHand)
                 return;
-            }
-
-            if (h.cachedController != null)
-            {
-                bool shouldHideRenderModel = h.root.activeSelf;
-                if (shouldHideRenderModel != h.lastRenderModelHidden)
-                {
-                    h.lastRenderModelHidden = shouldHideRenderModel;
-                    h.cachedController.SetRenderModelVisible(!shouldHideRenderModel);
-                }
-            }
-
-            // 不在这里控制可见性——由工具的 OnEnable/OnDisable 通过 SetHandVisible 管理
-            // 如果手部不可见，跳过动画更新
-            if (!h.root.activeSelf) return;
 
             // Apply custom offset and rotation
             bool isLeft = (h == leftHand);
@@ -212,6 +200,108 @@ namespace KKCharaStudioVR
             }
             UpdateHandAnimation(h);
         }
+
+        private static bool HasUsableTracking(HandContext h)
+        {
+            if (h == null || h.trackedObj == null || h.trackedObj.transform == null
+                || h.trackedObj.index == SteamVR_TrackedObject.EIndex.None)
+                return false;
+
+            try
+            {
+                SteamVR_Controller.Device device = SteamVR_Controller.Input((int)h.trackedObj.index);
+                if (device == null || !device.connected)
+                    return false;
+
+                if (h.trackedObj.isValid || device.hasTracking)
+                    return true;
+
+                // Some Virtual Desktop/OpenVR combinations report bPoseIsValid late.
+                // Retain their non-zero pose fallback, but reject explicit loss states.
+                bool hasFallbackPose = h.trackedObj.transform.localPosition.sqrMagnitude >= 0.000001f;
+                return hasFallbackPose
+                    && !device.outOfRange
+                    && !device.calibrating
+                    && !device.uninitialized;
+            }
+            catch (Exception ex)
+            {
+                VRLog.Error("Error checking controller tracking: " + ex.Message);
+                return false;
+            }
+        }
+
+        private static void SetNativeControllerVisible(HandContext h, bool visible)
+        {
+            if (h == null || h.cachedController == null)
+                return;
+
+            bool hidden = !visible;
+            if (h.lastRenderModelHidden == hidden)
+                return;
+
+            h.lastRenderModelHidden = hidden;
+            h.cachedController.SetRenderModelVisible(visible);
+        }
+
+        private static void ForceHideNativeController(HandContext h)
+        {
+            if (h == null || h.cachedController == null)
+                return;
+
+            // Other VRGIN tools also toggle this renderer. Reassert the hidden
+            // state while tracking is invalid instead of trusting a stale cache.
+            h.lastRenderModelHidden = true;
+            h.cachedController.SetRenderModelVisible(false);
+        }
+
+        private static void SetNativeAccessoriesVisible(
+            HandContext h,
+            bool visible,
+            bool force)
+        {
+            if (h == null || h.cachedController == null)
+                return;
+            if (!force
+                && h.nativeAccessoriesStateInitialized
+                && h.nativeAccessoriesVisible == visible)
+                return;
+
+            h.nativeAccessoriesStateInitialized = true;
+            h.nativeAccessoriesVisible = visible;
+            Transform controllerTransform = ((Component)h.cachedController).transform;
+            foreach (Canvas canvas in ((Component)h.cachedController)
+                .GetComponentsInChildren<Canvas>(true))
+            {
+                ((Component)canvas).gameObject.SetActive(visible);
+            }
+
+            for (int i = 0; i < controllerTransform.childCount; i++)
+            {
+                Transform child = controllerTransform.GetChild(i);
+                MeshFilter meshFilter = ((Component)child).GetComponent<MeshFilter>();
+                if (meshFilter != null
+                    && meshFilter.sharedMesh != null
+                    && meshFilter.sharedMesh.name.Contains("Sphere"))
+                {
+                    ((Component)child).gameObject.SetActive(visible);
+                }
+            }
+        }
+
+        private static void ReportTrackingTransition(HandContext h, bool isTracked)
+        {
+            if (h.trackingStateInitialized && h.wasTracked == isTracked)
+                return;
+
+            h.trackingStateInitialized = true;
+            h.wasTracked = isTracked;
+            string side = h == null || h.root == null ? "Unknown" : h.root.name;
+            if (isTracked)
+                VRLog.Info(side + " tracking restored.");
+            else
+                VRLog.Warn(side + " tracking lost; hiding all controller meshes.");
+        }
         
         private Transform FindDeepChild(Transform parent, string name)
         {
@@ -231,6 +321,7 @@ namespace KKCharaStudioVR
             ctx.trackedObj = tracked;
             ctx.cachedController = tracked.GetComponent<VRGIN.Controls.Controller>();
             ctx.lastRenderModelHidden = false;
+            ctx.requestedVisible = settings != null ? settings.HandModelEnabled : true;
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
             ctx.root.transform.SetParent(tracked.transform, false);
 

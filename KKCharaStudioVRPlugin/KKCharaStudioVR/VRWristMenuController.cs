@@ -10,6 +10,7 @@ namespace KKCharaStudioVR;
 public sealed partial class VRWristMenuController : MonoBehaviour
 {
     private const float MenuPressMaxDuration = 0.45f;
+    private const float TrackingLossCloseDelay = 0.35f;
     private const float BaseMenuScale = 0.00045f;
     private const float MenuWidth = 560f;
     private const float MenuHeight = 500f;
@@ -67,6 +68,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private float _menuPressStarted;
     private float _statusUntil;
     private float _nextClothingRefresh;
+    private float _trackingUnavailableSince = -1f;
     private WristMenuPage _page;
 
     private void Awake()
@@ -89,6 +91,21 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         if (!_isOpen)
             return;
+
+        if (!HasTrackedMenuControllers())
+        {
+            SetHoveredButton(null);
+            SetPointerVisible(false);
+            if (_trackingUnavailableSince < 0f)
+                _trackingUnavailableSince = Time.unscaledTime;
+            else if (Time.unscaledTime - _trackingUnavailableSince >= TrackingLossCloseDelay)
+            {
+                VRLog.Warn("Wrist menu closed after controller tracking was lost.");
+                SetOpen(false);
+            }
+            return;
+        }
+        _trackingUnavailableSince = -1f;
 
         if (!EnsureMenu())
         {
@@ -137,7 +154,9 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void HandleMenuButton()
     {
-        SteamVR_Controller.Device leftDevice = GetDevice(VR.Mode?.Left);
+        // While open, accept X even if positional tracking is temporarily invalid so
+        // the menu can always release its input lock.
+        SteamVR_Controller.Device leftDevice = GetDevice(VR.Mode?.Left, !_isOpen);
         if (leftDevice == null)
         {
             _menuPressActive = false;
@@ -177,6 +196,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         _isOpen = open;
         _poseInitialized = false;
+        _trackingUnavailableSince = -1f;
         SetHoveredButton(null);
         SetPointerVisible(false);
 
@@ -1031,14 +1051,45 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _statusUntil = duration > 0f ? Time.unscaledTime + duration : 0f;
     }
 
-    private static SteamVR_Controller.Device GetDevice(VRGIN.Controls.Controller controller)
+    private bool HasTrackedMenuControllers()
     {
-        if (controller == null || !controller.IsTracking)
+        return GetDevice(VR.Mode?.Left, true) != null
+            && GetDevice(VR.Mode?.Right, true) != null;
+    }
+
+    private static SteamVR_Controller.Device GetDevice(
+        VRGIN.Controls.Controller controller,
+        bool requireTracking = true)
+    {
+        if (controller == null)
             return null;
         SteamVR_TrackedObject tracked = ((Component)controller).GetComponent<SteamVR_TrackedObject>();
         if (tracked == null || tracked.index == SteamVR_TrackedObject.EIndex.None)
             return null;
-        return SteamVR_Controller.Input((int)tracked.index);
+
+        try
+        {
+            SteamVR_Controller.Device device = SteamVR_Controller.Input((int)tracked.index);
+            if (device == null || !device.connected)
+                return null;
+            if (!requireTracking)
+                return device;
+            if (controller.IsTracking || tracked.isValid || device.hasTracking)
+                return device;
+
+            bool hasFallbackPose = tracked.transform.localPosition.sqrMagnitude >= 0.000001f;
+            return hasFallbackPose
+                && !device.outOfRange
+                && !device.calibrating
+                && !device.uninitialized
+                ? device
+                : null;
+        }
+        catch (Exception ex)
+        {
+            VRLog.Error("Unable to read controller state: " + ex.Message);
+            return null;
+        }
     }
 
     private static Font ResolveFont()

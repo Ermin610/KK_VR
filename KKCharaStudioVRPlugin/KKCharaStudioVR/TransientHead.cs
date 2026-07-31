@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -55,14 +56,83 @@ public class TransientHead : ProtectedBehaviour
 
 	public void Reinitialize()
 	{
-		headTransform = GetHead(avatar);
-		eyesTransform = GetEyes(avatar);
-		root = ((ChaInfo)avatar).objRoot.transform;
-		m_tongues = (Renderer[])(object)(from renderer in ((Component)root).GetComponentsInChildren<SkinnedMeshRenderer>()
+		bool restoreHiddenState = hidden;
+		Renderer[] previousTongues = m_tongues;
+		Transform newHeadTransform = GetHead(avatar);
+		Transform newEyesTransform = GetEyes(avatar);
+		Transform newRoot = ((ChaInfo)avatar).objRoot.transform;
+		Renderer[] newTongues = (Renderer[])(object)(from renderer in ((Component)newRoot).GetComponentsInChildren<SkinnedMeshRenderer>()
 			where ((UnityEngine.Object)renderer).name.ToLower().StartsWith("cm_o_tang") || ((UnityEngine.Object)renderer).name == "cf_o_tang"
 			select renderer into tongue
 			where ((Renderer)tongue).enabled
 			select tongue).ToArray();
+
+		headTransform = newHeadTransform;
+		eyesTransform = newEyesTransform;
+		root = newRoot;
+		if (!restoreHiddenState)
+		{
+			rendererList.Clear();
+			m_tongues = newTongues;
+			return;
+		}
+
+		// ChangeChara may rebuild face and hair over several frames. Keep valid old
+		// references for a future SHOW, while also collecting newly enabled renderers.
+		rendererList.RemoveAll(renderer => renderer == null);
+		foreach (Renderer renderer in ((Component)headTransform).GetComponentsInChildren<Renderer>())
+		{
+			if (!renderer.enabled)
+				continue;
+			if (!rendererList.Contains(renderer))
+				rendererList.Add(renderer);
+			renderer.enabled = false;
+		}
+
+		List<Renderer> hiddenTongues = new List<Renderer>();
+		if (previousTongues != null)
+		{
+			foreach (Renderer tongue in previousTongues)
+			{
+				if (tongue != null && !hiddenTongues.Contains(tongue))
+					hiddenTongues.Add(tongue);
+			}
+		}
+		foreach (Renderer tongue in newTongues)
+		{
+			if (tongue != null && !hiddenTongues.Contains(tongue))
+				hiddenTongues.Add(tongue);
+			if (tongue != null)
+				tongue.enabled = false;
+		}
+		m_tongues = hiddenTongues.ToArray();
+		hidden = true;
+	}
+
+	public void RefreshAfterCharacterChange()
+	{
+		StartCoroutine(RefreshAfterCharacterChangeCo());
+	}
+
+	private IEnumerator RefreshAfterCharacterChangeCo()
+	{
+		Exception lastError = null;
+		for (int frame = 0; frame < 8; frame++)
+		{
+			try
+			{
+				Reinitialize();
+				lastError = null;
+			}
+			catch (Exception ex)
+			{
+				lastError = ex;
+			}
+			yield return null;
+		}
+
+		if (lastError != null)
+			VRLog.Warn("Unable to restore transient head after character change: " + lastError.Message);
 	}
 
 	public static Transform GetHead(ChaControl human)
