@@ -4,9 +4,9 @@ A customized interaction and physics overhaul plugin for Koikatu (Koikatsu) Char
 
 > [!TIP]
 > **Quick Download / 快速下载**:
-> You can download the complete pre-configured integration modpack containing BepInEx, patchers, Unity VR support, and our optimized plugin DLL together with a step-by-step setup tutorial directly from the [Releases Page](https://github.com/Ermin610/KK_VR/releases/tag/v0.2.0)!
+> You can download the complete pre-configured integration modpack containing BepInEx, patchers, Unity VR support, and our optimized plugin DLL together with a step-by-step setup tutorial directly from the [Releases Page](https://github.com/Ermin610/KK_VR/releases/tag/v0.3.0)!
 > 
-> 您可以在 [Release 发布页](https://github.com/Ermin610/KK_VR/releases/tag/v0.2.0) 直接一键下载包含 BepInEx、补丁加载器、Unity VR 支持、我们重构优化后的最新 DLL 以及**完整三语步骤教程**的整包！
+> 您可以在 [Release 发布页](https://github.com/Ermin610/KK_VR/releases/tag/v0.3.0) 直接一键下载包含 BepInEx、补丁加载器、Unity VR 支持、我们重构优化后的最新 DLL 以及**完整三语步骤教程**的整包！
 
 This plugin transforms the studio VR control feeling from clunky legacy wand controls into a premium, responsive, and immersive experience similar to **Virt-A-Mate (VaM)** and **VRChat**.
 
@@ -53,7 +53,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Three-language interface**: Simplified Chinese is the default, with Japanese and English available under Settings > General. The selected language applies immediately and persists across launches.
 - **Focused submenus**: Scene commands, character cards, clothing presets, and MMD controls stay organized in the compact wrist interface.
 - **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
-- **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and starts at `E:\action`.
+- **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and remembers the motion root selected by the user.
 - **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
 - **MMDD VR controls**: The MMD submenu exposes play/pause, Fixed FOV on/off and value adjustment, plus MMDD's original automatic/manual high-heels controls with an in-wrist scene-character picker.
 - **Timeline transport**: A single wrist button starts or pauses Timeline and mirrors its current play state. Timeline remains an optional dependency; the button reports unavailable when it is not installed.
@@ -62,7 +62,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
 
-![KK VR wrist quick menu and Studio settings](docs/images/kkvr_wrist_menu_showcase.png)
+![KK VR wrist quick menu](post_assets/v0.0.14/KKVR_主界面_UI.png)
 
 ### 8. Optional Timeline Camera Follow
 - [KK VR Camera Sync](https://github.com/YukyoMoe/KK_VR_CameraSync) can be installed as a separate companion plugin so the VR origin follows final Studio camera motion, including Timeline camera tracks.

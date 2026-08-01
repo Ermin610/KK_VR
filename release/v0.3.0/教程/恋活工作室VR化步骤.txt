@@ -1,0 +1,75 @@
+========================================================================
+             恋活工作室 VR 化步骤教程 / Setup Tutorial / セットアップ
+========================================================================
+
+------------------------------------------------------------------------
+[简体中文 / Simplified Chinese]
+------------------------------------------------------------------------
+前置要求：请确保已安装 SteamVR，并在操作前备份游戏目录中的同名文件。
+
+1. 导入 BepIn4Patcher 补丁加载器
+   - 解压“文件1 BepInEx_win_x64_5.4.23.2 .zip”，将解压出的所有文件复制并替换到游戏根目录下。
+   - 重要步骤：双击启动一次游戏本体（Koikatu.exe），用于在游戏根目录下自动生成 BepInEx/patchers 文件夹，生成后即可关闭游戏。
+   - 解压“文件2 BepInEx.BepIn4Patcher.zip”，将解压出的所有文件复制到“游戏根目录/BepInEx/patchers/”文件夹下。
+
+2. 主游戏 (MainGame) VR 化
+   - 解压“文件3 KK_MainGameVR-1.2.0.zip”，将解压出的所有文件复制并替换到游戏根目录下。（如果是 Steam 版本，请一并复制 Koikatsu Party_Data 文件夹。）
+
+3. 工作室 (CharaStudio) VR 化与 Ermin 插件安装
+   - 解压“文件4 globalgamemanagers(已修补VR支持).zip”，将 globalgamemanagers 复制并替换到“游戏根目录/CharaStudio_Data/”文件夹下。
+   - 解压“文件5 KKCharaStudioVRPlugin_Ermin_Quest3_Fix.zip”，将根目录内的所有内容复制并替换到游戏根目录下。该文件已包含 Ermin v0.0.14 插件、最新 VRGIN_KKCS 与所需运行文件。
+   - 开启 SteamVR 后，双击游戏根目录中的 StartCharaStudioVR.bat 启动；也可为 CharaStudio.exe 创建快捷方式，并在目标末尾追加“ --studiovr”。
+   - 进入 VR 后，短按左手柄 X 键打开或关闭腕表菜单；使用右手射线指向按钮并按扳机确认，文件列表可用右摇杆上下滚动。
+   - 腕表可直接处理场景、角色卡、服装、IK、MMD/VMD、固定视野、高跟鞋参数与工作室设置；界面语言可在“设置 > 通用”中切换为简体中文、日本語或 English。
+
+提示：如果游戏缺少基础插件、依赖模组或衣服卡片包，推荐安装官方 HF Patch 整合补丁包进行完整性修复与补充。
+HF Patch GitHub 官方发布地址：https://github.com/ManlyMarco/KK-HF_Patch
+
+
+------------------------------------------------------------------------
+[English / 英文]
+------------------------------------------------------------------------
+Prerequisite: Make sure SteamVR is installed, and back up files with the same names before installation.
+
+1. BepIn4Patcher Installation
+   - Extract "文件1 BepInEx_win_x64_5.4.23.2 .zip", then copy all extracted files to the game root directory and overwrite when prompted.
+   - Crucial step: Launch the main game (Koikatu.exe) once so it creates the BepInEx/patchers folder, then close the game.
+   - Extract "文件2 BepInEx.BepIn4Patcher.zip", then copy all extracted files into "Game Root/BepInEx/patchers/".
+
+2. Main Game VR Integration
+   - Extract "文件3 KK_MainGameVR-1.2.0.zip", then copy all extracted files to the game root directory and overwrite when prompted. Steam users should also copy the Koikatsu Party_Data folder.
+
+3. Chara Studio VR Integration & Ermin Plugin Setup
+   - Extract "文件4 globalgamemanagers(已修补VR支持).zip", then copy globalgamemanagers into "Game Root/CharaStudio_Data/" and overwrite the existing file.
+   - Extract "文件5 KKCharaStudioVRPlugin_Ermin_Quest3_Fix.zip", then copy everything inside its root folder to the game root directory. It contains Ermin plugin v0.0.14, the current VRGIN_KKCS, and the required runtime files.
+   - Start SteamVR, then run StartCharaStudioVR.bat from the game root. Alternatively, create a shortcut to CharaStudio.exe and append " --studiovr" to its Target field.
+   - In VR, short-press the left-controller X button to open or close the wrist menu. Aim with the right-hand ray and press Trigger to select; use the right stick up or down to scroll file lists.
+   - The wrist menu provides scene, character-card, clothing, IK, MMD/VMD, Fixed FOV, high-heels, and Studio controls. Change the interface language under "Settings > General".
+
+Tip: If essential base plugins, dependencies, clothing, or card mods are missing, install the official HF Patch to complete or repair the game setup.
+Official HF Patch GitHub repository: https://github.com/ManlyMarco/KK-HF_Patch
+
+
+------------------------------------------------------------------------
+[日本語 / Japanese]
+------------------------------------------------------------------------
+前提条件：SteamVR がインストールされていることを確認し、導入前に同名ファイルをバックアップしてください。
+
+1. BepIn4Patcher パッチャーの導入
+   - 「文件1 BepInEx_win_x64_5.4.23.2 .zip」を解凍し、すべてのファイルをゲームのルートディレクトリへコピーして上書きします。
+   - 重要：ゲーム本体（Koikatu.exe）を一度起動し、BepInEx/patchers フォルダーを自動生成させてからゲームを終了します。
+   - 「文件2 BepInEx.BepIn4Patcher.zip」を解凍し、すべてのファイルを「ゲームのルートディレクトリ/BepInEx/patchers/」へコピーします。
+
+2. ゲーム本体 (MainGame) の VR 化
+   - 「文件3 KK_MainGameVR-1.2.0.zip」を解凍し、すべてのファイルをゲームのルートディレクトリへコピーして上書きします。Steam 版では Koikatsu Party_Data フォルダーもコピーしてください。
+
+3. キャラスタジオ (CharaStudio) の VR 化と Ermin プラグインの導入
+   - 「文件4 globalgamemanagers(已修补VR支持).zip」を解凍し、globalgamemanagers を「ゲームのルートディレクトリ/CharaStudio_Data/」へコピーして上書きします。
+   - 「文件5 KKCharaStudioVRPlugin_Ermin_Quest3_Fix.zip」を解凍し、ルートフォルダー内のすべてをゲームのルートディレクトリへコピーして上書きします。Ermin v0.0.14、最新の VRGIN_KKCS、必要なランタイムが含まれています。
+   - SteamVR を起動後、ゲームのルートディレクトリにある StartCharaStudioVR.bat を実行します。CharaStudio.exe のショートカットへ「 --studiovr」を追加して起動することもできます。
+   - VR 内では左コントローラーの X ボタンを短く押してリストメニューを開閉します。右手のレイでボタンを指し、トリガーで決定します。ファイル一覧は右スティックの上下でスクロールできます。
+   - リストメニューからシーン、キャラカード、服装、IK、MMD/VMD、固定視野、ハイヒール、スタジオ設定を操作できます。表示言語は「設定 > 一般」で切り替えられます。
+
+ヒント：基本プラグイン、依存 Mod、衣装やカードが不足している場合は、公式 HF Patch 統合パックでゲーム環境を補完してください。
+公式 HF Patch GitHub リリースリンク：https://github.com/ManlyMarco/KK-HF_Patch
+========================================================================

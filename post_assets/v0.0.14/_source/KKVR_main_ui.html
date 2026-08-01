@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KK VR v0.0.14 主界面</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --text: #f7f9fc;
+      --secondary: #aeb8c6;
+      --tertiary: #778393;
+      --cyan: #40dbeF;
+      --amber: #ffb840;
+      --green: #78e68c;
+      --line: rgba(224, 239, 255, .16);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 1120px;
+      height: 1000px;
+      margin: 0;
+      overflow: hidden;
+      background: #090d12;
+    }
+
+    body {
+      font-family: "SF Pro Display", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    .stage {
+      width: 1120px;
+      height: 1000px;
+      transform-origin: top left;
+    }
+
+    .menu {
+      position: relative;
+      width: 560px;
+      height: 500px;
+      overflow: hidden;
+      transform: scale(2);
+      transform-origin: top left;
+      border: 1px solid rgba(228, 240, 255, .22);
+      border-radius: 18px;
+      background:
+        radial-gradient(120% 82% at 50% -25%, rgba(128, 160, 196, .16), transparent 65%),
+        linear-gradient(180deg, rgba(22, 28, 36, .985), rgba(9, 13, 18, .992));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .15),
+        inset 0 -1px 0 rgba(255, 255, 255, .035),
+        0 18px 42px rgba(0, 0, 0, .44);
+    }
+
+    .header {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 58px;
+      border-bottom: 1px solid rgba(184, 214, 240, .13);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .035));
+    }
+
+    .header::before {
+      content: "";
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      top: 7px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .28), transparent);
+    }
+
+    .brand {
+      position: absolute;
+      left: 24px;
+      top: 7px;
+      font-size: 28px;
+      line-height: 31px;
+      font-weight: 720;
+      letter-spacing: -.6px;
+    }
+
+    .caption {
+      position: absolute;
+      left: 25px;
+      top: 35px;
+      font-size: 11px;
+      line-height: 15px;
+      color: var(--tertiary);
+      font-weight: 500;
+      letter-spacing: .35px;
+    }
+
+    .settings {
+      position: absolute;
+      left: 418px;
+      top: 12px;
+      width: 118px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(225, 240, 255, .14);
+      border-radius: 11px;
+      background: linear-gradient(180deg, rgba(62, 77, 93, .44), rgba(27, 36, 46, .56));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .075), 0 2px 8px rgba(0, 0, 0, .22);
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .section-title {
+      position: absolute;
+      left: 24px;
+      width: 512px;
+      height: 24px;
+      font-size: 20px;
+      line-height: 24px;
+      font-weight: 700;
+      letter-spacing: .15px;
+    }
+
+    .scene-title { top: 68px; color: var(--cyan); }
+    .mmd-title { top: 178px; color: var(--amber); }
+    .character-title { top: 290px; color: var(--green); }
+
+    .button {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid rgba(230, 244, 255, .14);
+      border-radius: 12px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 3px 10px rgba(0, 0, 0, .25);
+      text-align: center;
+    }
+
+    .button::before {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 6px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent);
+    }
+
+    .button .primary {
+      font-weight: 680;
+      line-height: 1.18;
+      letter-spacing: -.2px;
+    }
+
+    .button .secondary {
+      margin-top: 5px;
+      color: rgba(240, 247, 255, .67);
+      font-weight: 500;
+      line-height: 1.1;
+    }
+
+    .cyan {
+      background: linear-gradient(180deg, rgba(20, 70, 82, .70), rgba(13, 47, 57, .68));
+      border-color: rgba(78, 197, 216, .24);
+    }
+
+    .amber {
+      background: linear-gradient(180deg, rgba(91, 64, 22, .68), rgba(58, 40, 13, .70));
+      border-color: rgba(231, 176, 72, .23);
+    }
+
+    .green {
+      background: linear-gradient(180deg, rgba(24, 77, 44, .69), rgba(14, 52, 30, .72));
+      border-color: rgba(101, 214, 129, .23);
+    }
+
+    .scene-a,
+    .scene-b {
+      top: 98px;
+      width: 248px;
+      height: 68px;
+    }
+
+    .scene-a { left: 24px; }
+    .scene-b { left: 288px; }
+    .scene-a .primary,
+    .scene-b .primary { font-size: 20px; }
+    .scene-a .secondary,
+    .scene-b .secondary { font-size: 13px; }
+
+    .mmd-tool {
+      left: 24px;
+      top: 208px;
+      width: 512px;
+      height: 68px;
+    }
+
+    .mmd-tool .primary { font-size: 19px; }
+    .mmd-tool .secondary { font-size: 14px; }
+
+    .character-a,
+    .character-b,
+    .character-c {
+      top: 320px;
+      width: 160px;
+      height: 62px;
+    }
+
+    .character-a { left: 24px; }
+    .character-b { left: 200px; }
+    .character-c { left: 376px; }
+    .character-a .primary,
+    .character-b .primary,
+    .character-c .primary { font-size: 17px; }
+    .character-a .secondary,
+    .character-b .secondary,
+    .character-c .secondary { font-size: 11px; }
+
+    .status {
+      position: absolute;
+      left: 24px;
+      top: 416px;
+      width: 512px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      border: 1px solid rgba(222, 239, 255, .10);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(184, 211, 233, .075), rgba(123, 151, 174, .045));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      margin-left: 16px;
+      margin-right: 12px;
+      border-radius: 50%;
+      background: #6fd4ff;
+      box-shadow: 0 0 10px rgba(111, 212, 255, .45);
+    }
+
+    .status-text {
+      color: var(--secondary);
+      font-size: 17px;
+      line-height: 48px;
+      font-weight: 500;
+    }
+
+    .author {
+      position: absolute;
+      right: 24px;
+      top: 477px;
+      height: 17px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--tertiary);
+      font-size: 9px;
+    }
+
+    .author::before {
+      content: "";
+      width: 54px;
+      height: 1px;
+      margin-right: 2px;
+      background: rgba(190, 217, 242, .13);
+    }
+
+    .author strong {
+      color: var(--secondary);
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: .6px;
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <section class="menu" aria-label="KK VR 手腕快捷菜单主界面">
+      <div class="header"></div>
+      <div class="brand">KK VR</div>
+      <div class="caption">工作室快捷控制</div>
+      <div class="settings">设置&nbsp;&nbsp;›</div>
+
+      <div class="section-title scene-title">场景</div>
+      <div class="button cyan scene-a">
+        <div class="primary">载入场景&nbsp; ›</div>
+        <div class="secondary">浏览并打开场景卡</div>
+      </div>
+      <div class="button cyan scene-b">
+        <div class="primary">保存场景&nbsp; ›</div>
+        <div class="secondary">新建场景卡</div>
+      </div>
+
+      <div class="section-title mmd-title">MMD</div>
+      <div class="button amber mmd-tool">
+        <div class="primary">MMD 工具&nbsp; ›</div>
+        <div class="secondary">动作、镜头和高跟鞋</div>
+      </div>
+
+      <div class="section-title character-title">角色</div>
+      <div class="button green character-a">
+        <div class="primary">角色卡&nbsp; ›</div>
+        <div class="secondary">添加或替换角色</div>
+      </div>
+      <div class="button green character-b">
+        <div class="primary">服装状态&nbsp; ›</div>
+        <div class="secondary">快速切换穿脱</div>
+      </div>
+      <div class="button green character-c">
+        <div class="primary">IK 控制器</div>
+        <div class="secondary">显示或隐藏辅助点</div>
+      </div>
+
+      <div class="status">
+        <div class="status-dot"></div>
+        <div class="status-text">就绪</div>
+      </div>
+
+      <div class="author"><span>作者</span><strong>ERMIN</strong></div>
+    </section>
+  </main>
+</body>
+</html>
