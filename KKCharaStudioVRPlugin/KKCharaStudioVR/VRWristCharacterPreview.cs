@@ -28,6 +28,10 @@ public sealed partial class VRWristMenuController
     private Text _characterPreviewTitleText;
     private VRWristMenuButtonTarget _characterPreviewLoadButton;
     private VRWristMenuButtonTarget _characterPreviewReplaceButton;
+    private VRWristMenuButtonTarget _coordinateClothesOnlyButton;
+    private VRWristMenuButtonTarget _coordinateCustomButton;
+    private VRWristMenuButtonTarget _coordinateFullButton;
+    private VRWristMenuButtonTarget _coordinateUndoButton;
     private Texture2D _characterPreviewTexture;
     private string _pendingCharacterCardPath;
     private int _characterPreviewRequestId;
@@ -37,7 +41,10 @@ public sealed partial class VRWristMenuController
     private string _characterCardListDirectory;
     private int _characterCardListOffset;
     private CardPreviewKind _cardPreviewKind;
-    private bool _pendingCoordinateProtectHair = true;
+    private VRCoordinateReplaceMode _pendingCoordinateReplaceMode = VRCoordinateReplaceMode.ClothesOnly;
+    private int[] _pendingCoordinateAccessorySlots = new int[0];
+    private int _lastCoordinateUndoObjectKey = -1;
+    private Studio.OCIChar _lastCoordinateUndoCharacter;
 
     private void BuildCharacterPreviewPage()
     {
@@ -141,6 +148,58 @@ public sealed partial class VRWristMenuController
             248f,
             50f,
             17);
+
+        const float coordinateButtonWidth = 122f;
+        _coordinateClothesOnlyButton = CreateButton(
+            "CoordinateClothesOnly",
+            L("只换衣服\n不动饰品", "服だけ変更\nアクセは維持", "Clothes only\nKeep accessories"),
+            24f,
+            356f,
+            new Color(0.075f, 0.24f, 0.14f, 0.5f),
+            new Color(0.11f, 0.46f, 0.24f, 0.78f),
+            HandleCoordinateClothesOnly,
+            _characterPreviewPage.transform,
+            coordinateButtonWidth,
+            50f,
+            15);
+        _coordinateCustomButton = CreateButton(
+            "CoordinateCustomAccessories",
+            L("自选饰品\n追加空槽", "アクセ選択\n空き枠へ追加", "Pick accessories\nAdd to empty slots"),
+            154f,
+            356f,
+            new Color(0.07f, 0.19f, 0.24f, 0.5f),
+            new Color(0.1f, 0.4f, 0.5f, 0.78f),
+            HandleCoordinateCustomAccessories,
+            _characterPreviewPage.transform,
+            coordinateButtonWidth,
+            50f,
+            15);
+        _coordinateFullButton = CreateButton(
+            "CoordinateFullReplace",
+            L("完整替换\n会覆盖饰品", "完全適用\nアクセ上書き", "Full replace\nOverwrite accessories"),
+            284f,
+            356f,
+            new Color(0.28f, 0.13f, 0.08f, 0.5f),
+            new Color(0.58f, 0.25f, 0.1f, 0.8f),
+            HandleCoordinateFullReplace,
+            _characterPreviewPage.transform,
+            coordinateButtonWidth,
+            50f,
+            14);
+        _coordinateUndoButton = CreateButton(
+            "CoordinateUndo",
+            L("撤销\n上次换装", "元に戻す\n直前の着替え", "Undo\nLast outfit"),
+            414f,
+            356f,
+            new Color(0.17f, 0.15f, 0.23f, 0.5f),
+            new Color(0.34f, 0.28f, 0.52f, 0.78f),
+            HandleCoordinateUndo,
+            _characterPreviewPage.transform,
+            coordinateButtonWidth,
+            50f,
+            15);
+
+        SetCoordinatePreviewActionsVisible(false);
     }
 
     private void OpenCharacterCardPreview(string path)
@@ -255,16 +314,7 @@ public sealed partial class VRWristMenuController
             _characterPreviewMessageText.gameObject.SetActive(false);
             if (_cardPreviewKind == CardPreviewKind.Coordinate)
             {
-                _characterPreviewLoadButton.SetLabel(
-                    L(
-                        "智能换装\n保护现有发饰",
-                        "安全に着替え\n髪アクセを保護",
-                        "Smart replace\nProtect hair accessories"));
-                _characterPreviewReplaceButton.SetLabel(
-                    L(
-                        "完整替换\n含饰品与妆容",
-                        "完全適用\nアクセ・メイク込み",
-                        "Full replace\nAccessories + makeup"));
+                SetCoordinatePreviewActionsVisible(true);
             }
             else
             {
@@ -276,9 +326,9 @@ public sealed partial class VRWristMenuController
             SetStatus(
                 _cardPreviewKind == CardPreviewKind.Coordinate
                     ? L(
-                        "服装卡预览已就绪，建议使用保护发饰的安全替换",
-                        "衣装カードの準備完了。髪アクセ保護を推奨します",
-                        "Outfit preview is ready; smart replace protects hair accessories")
+                        "服装卡预览已就绪，默认使用“只换衣服”最安全",
+                        "衣装カードの準備完了。「服だけ変更」が最も安全です",
+                        "Outfit preview is ready; Clothes only is the safest option")
                     : L("角色卡预览已就绪", "プレビューの準備完了", "Character preview is ready"),
                 new Color(0.35f, 1f, 0.62f, 1f),
                 0f);
@@ -329,8 +379,18 @@ public sealed partial class VRWristMenuController
 
     private void SetCharacterPreviewActionsVisible(bool visible)
     {
-        _characterPreviewLoadButton?.SetVisible(visible);
-        _characterPreviewReplaceButton?.SetVisible(visible);
+        bool showCharacterActions = visible && _cardPreviewKind == CardPreviewKind.Character;
+        _characterPreviewLoadButton?.SetVisible(showCharacterActions);
+        _characterPreviewReplaceButton?.SetVisible(showCharacterActions);
+        SetCoordinatePreviewActionsVisible(visible && _cardPreviewKind == CardPreviewKind.Coordinate);
+    }
+
+    private void SetCoordinatePreviewActionsVisible(bool visible)
+    {
+        _coordinateClothesOnlyButton?.SetVisible(visible);
+        _coordinateCustomButton?.SetVisible(visible);
+        _coordinateFullButton?.SetVisible(visible);
+        _coordinateUndoButton?.SetVisible(visible);
     }
 
     private void FitCharacterPreview(int textureWidth, int textureHeight)
@@ -363,7 +423,9 @@ public sealed partial class VRWristMenuController
 
         if (_cardPreviewKind == CardPreviewKind.Coordinate)
         {
-            OpenCoordinateTargetBrowser(protectHairAccessories: true);
+            OpenCoordinateTargetBrowser(
+                VRCoordinateReplaceMode.ClothesOnly,
+                new int[0]);
             return;
         }
 
@@ -377,7 +439,9 @@ public sealed partial class VRWristMenuController
 
         if (_cardPreviewKind == CardPreviewKind.Coordinate)
         {
-            OpenCoordinateTargetBrowser(protectHairAccessories: false);
+            OpenCoordinateTargetBrowser(
+                VRCoordinateReplaceMode.Full,
+                new int[0]);
             return;
         }
 
@@ -403,7 +467,52 @@ public sealed partial class VRWristMenuController
             out targetStatus);
     }
 
-    private void OpenCoordinateTargetBrowser(bool protectHairAccessories)
+    private void HandleCoordinateClothesOnly()
+    {
+        if (!HasPendingCharacterCard())
+            return;
+        OpenCoordinateTargetBrowser(VRCoordinateReplaceMode.ClothesOnly, new int[0]);
+    }
+
+    private void HandleCoordinateCustomAccessories()
+    {
+        if (!HasPendingCharacterCard())
+            return;
+        OpenCoordinateAccessorySelector();
+    }
+
+    private void HandleCoordinateFullReplace()
+    {
+        if (!HasPendingCharacterCard())
+            return;
+        OpenCoordinateTargetBrowser(VRCoordinateReplaceMode.Full, new int[0]);
+    }
+
+    private void HandleCoordinateUndo()
+    {
+        if (_operationInProgress)
+            return;
+        if (_lastCoordinateUndoObjectKey < 0 || _lastCoordinateUndoCharacter == null)
+        {
+            SetStatus(
+                L("还没有可撤销的换装", "元に戻せる着替えはありません", "There is no outfit change to undo"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                6f);
+            return;
+        }
+
+        StartCoroutine(ExecuteCoordinateReplacementAfterFrame(
+            null,
+            _lastCoordinateUndoObjectKey,
+            _lastCoordinateUndoCharacter,
+            VRCoordinateReplaceMode.ClothesOnly,
+            new int[0],
+            true));
+    }
+
+    private void OpenCoordinateTargetBrowser(
+        VRCoordinateReplaceMode mode,
+        int[] selectedAccessorySlots)
     {
         string targetStatus;
         List<VRVmdActorTarget> targets = VRVmdTargetService.GetAllTargets(out targetStatus);
@@ -416,16 +525,22 @@ public sealed partial class VRWristMenuController
             return;
         }
 
-        _pendingCoordinateProtectHair = protectHairAccessories;
+        _pendingCoordinateReplaceMode = mode;
+        _pendingCoordinateAccessorySlots = selectedAccessorySlots ?? new int[0];
         OpenActorTargetBrowser(
             BrowserMode.SelectCoordinateReplaceActor,
             targets,
-            protectHairAccessories
+            mode == VRCoordinateReplaceMode.ClothesOnly
                 ? L(
-                    "选择角色：载入卡片配饰，并保护现有发饰",
-                    "キャラを選択：カードのアクセを読み込み、現在の髪アクセを保護します",
-                    "Select a character; card accessories load while current hair accessories are protected")
-                : L(
+                    "选择角色：只换衣服，现有饰品保持不变",
+                    "キャラを選択：服だけ変更し、現在のアクセは維持します",
+                    "Select a character: change clothes only and keep every current accessory")
+                : mode == VRCoordinateReplaceMode.SelectedAccessories
+                    ? L(
+                        "选择角色：已选饰品只追加到空槽，不覆盖现有饰品",
+                        "キャラを選択：選択アクセは空き枠へ追加し、現在のアクセは上書きしません",
+                        "Select a character: picked accessories are added to empty slots without overwriting existing ones")
+                    : L(
                     "选择角色：将覆盖全部饰品（含发饰）、妆容及坐标扩展数据",
                     "キャラを選択：全アクセ（髪アクセ含む）、メイク、コーディネート拡張データを上書きします",
                     "Select a character: all accessories (including hair), makeup, and coordinate extension data will be overwritten"),
@@ -477,7 +592,9 @@ public sealed partial class VRWristMenuController
             _pendingCharacterCardPath,
             entry.ObjectKey,
             target.Character,
-            _pendingCoordinateProtectHair));
+            _pendingCoordinateReplaceMode,
+            _pendingCoordinateAccessorySlots,
+            false));
     }
 
     private void HandleCharacterPreviewBack()

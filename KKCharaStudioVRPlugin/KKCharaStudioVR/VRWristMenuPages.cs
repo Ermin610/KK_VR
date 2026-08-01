@@ -26,6 +26,7 @@ public sealed partial class VRWristMenuController
         SelectHighHeelsActor,
         SelectCharacterReplaceActor,
         SelectCoordinateReplaceActor,
+        SelectCoordinateAccessories,
         CoordinateCards,
         AddFemale,
         AddMale
@@ -57,6 +58,11 @@ public sealed partial class VRWristMenuController
     private string _vmdRootPickerPreviousRoot;
     private string _vmdRootPickerPreviousDirectory;
     private int _vmdRootPickerPreviousOffset;
+    private VRWristMenuButtonTarget _browserGenderSwitchButton;
+    private readonly HashSet<int> _selectedCoordinateAccessorySlots = new HashSet<int>();
+    private List<VRWristFileEntry> _coordinateAccessoryEntries =
+        new List<VRWristFileEntry>();
+    private int _coordinateAccessoryOffset;
 
     private void BuildBrowserPage()
     {
@@ -96,6 +102,19 @@ public sealed partial class VRWristMenuController
             38f,
             16);
         _browserHeaderActionButton.SetVisible(false);
+        _browserGenderSwitchButton = CreateButton(
+            "BrowserGenderSwitch",
+            L("男卡", "男性", "Male"),
+            466f,
+            10f,
+            new Color(0.12f, 0.16f, 0.2f, 0.42f),
+            new Color(0.22f, 0.34f, 0.42f, 0.72f),
+            HandleBrowserGenderSwitch,
+            _browserPage.transform,
+            70f,
+            38f,
+            14);
+        _browserGenderSwitchButton.SetVisible(false);
 
         Image pathBackground = CreateImage(
             "BrowserPathBackground",
@@ -274,12 +293,17 @@ public sealed partial class VRWristMenuController
 
     private void HandleOpenCharacterCards()
     {
-        ShowPage(WristMenuPage.CharacterCards);
-        SetStatus(L("角色卡", "キャラカード", "Character cards"), new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        OpenCharacterBrowser(VRCharacterCardMode.AddFemale);
     }
 
     private void OpenCharacterBrowser(VRCharacterCardMode mode)
     {
+        SetStatus(
+            mode == VRCharacterCardMode.AddFemale
+                ? L("女性角色卡", "女性キャラカード", "Female character cards")
+                : L("男性角色卡", "男性キャラカード", "Male character cards"),
+            new Color(0.47f, 0.9f, 0.55f, 1f),
+            0f);
         string root;
         string status;
         if (!VRCharacterCardService.TryGetBrowserRoot(mode, out root, out status))
@@ -315,6 +339,107 @@ public sealed partial class VRWristMenuController
                 "Choose an outfit card to preview and apply it safely"),
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
+    }
+
+    private void OpenCoordinateAccessorySelector()
+    {
+        if (string.IsNullOrEmpty(_pendingCharacterCardPath))
+        {
+            SetStatus(
+                L("尚未选择服装卡", "衣装カードが未選択です", "No outfit card is selected"),
+                new Color(1f, 0.38f, 0.34f, 1f),
+                5f);
+            return;
+        }
+
+        List<VRCoordinateAccessorySlotInfo> slots;
+        string status;
+        if (!VRCoordinateCardService.TryGetCoordinateAccessorySlots(
+            _pendingCharacterCardPath,
+            out slots,
+            out status))
+        {
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 8f);
+            return;
+        }
+        if (slots.Count == 0)
+        {
+            SetStatus(
+                L("这张服装卡没有可选饰品", "この衣装カードには選択できるアクセがありません", "This outfit card has no selectable accessories"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                7f);
+            return;
+        }
+
+        _coordinateAccessoryEntries = new List<VRWristFileEntry>(slots.Count);
+        _selectedCoordinateAccessorySlots.Clear();
+        foreach (VRCoordinateAccessorySlotInfo slot in slots)
+        {
+            string slotNumber = (slot.SlotIndex + 1).ToString("00");
+            string displayName = string.IsNullOrEmpty(slot.DisplayName)
+                ? L("饰品 ", "アクセ ", "Accessory ") + slotNumber
+                : slot.DisplayName;
+            _coordinateAccessoryEntries.Add(new VRWristFileEntry
+            {
+                DisplayName = L("槽位 ", "スロット ", "Slot ")
+                    + slotNumber
+                    + "  "
+                    + displayName,
+                ObjectKey = slot.SlotIndex
+            });
+        }
+
+        ShowCoordinateAccessorySelector(0);
+        SetStatus(
+            L(
+                "点击饰品进行勾选；应用后只会追加到空槽",
+                "アクセを選択してください。適用時は空き枠にのみ追加します",
+                "Pick accessories; they will only be added to empty slots"),
+            new Color(0.47f, 0.9f, 0.55f, 1f),
+            0f);
+    }
+
+    private void ShowCoordinateAccessorySelector(int offset)
+    {
+        _browserMode = BrowserMode.SelectCoordinateAccessories;
+        _browserRoot = null;
+        _browserDirectory = null;
+        _browserFixedEntries = _coordinateAccessoryEntries;
+        _browserEntries = _coordinateAccessoryEntries;
+        _browserOffset = Mathf.Clamp(
+            offset,
+            0,
+            Math.Max(0, _browserEntries.Count - BrowserVisibleRows));
+        _browserStickDirection = 0;
+        RefreshBrowserVisuals();
+        ShowPage(WristMenuPage.Browser);
+    }
+
+    private void HandleCoordinateAccessoryToggle(VRWristFileEntry entry)
+    {
+        if (entry == null)
+            return;
+        if (!_selectedCoordinateAccessorySlots.Add(entry.ObjectKey))
+            _selectedCoordinateAccessorySlots.Remove(entry.ObjectKey);
+        RefreshBrowserVisuals();
+    }
+
+    private void HandleConfirmCoordinateAccessories()
+    {
+        if (_selectedCoordinateAccessorySlots.Count == 0)
+        {
+            SetStatus(
+                L("请至少选择一个饰品", "アクセを1つ以上選択してください", "Select at least one accessory"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                5f);
+            return;
+        }
+
+        int[] selected = new int[_selectedCoordinateAccessorySlots.Count];
+        _selectedCoordinateAccessorySlots.CopyTo(selected);
+        Array.Sort(selected);
+        _coordinateAccessoryOffset = _browserOffset;
+        OpenCoordinateTargetBrowser(VRCoordinateReplaceMode.SelectedAccessories, selected);
     }
 
     private void OpenFileBrowser(BrowserMode mode, string root, string directory)
@@ -361,7 +486,8 @@ public sealed partial class VRWristMenuController
                 || _browserMode == BrowserMode.SelectClothingActor
                 || _browserMode == BrowserMode.SelectHighHeelsActor
                 || _browserMode == BrowserMode.SelectCharacterReplaceActor
-                || _browserMode == BrowserMode.SelectCoordinateReplaceActor)
+                || _browserMode == BrowserMode.SelectCoordinateReplaceActor
+                || _browserMode == BrowserMode.SelectCoordinateAccessories)
             && _browserFixedEntries != null)
         {
             _browserEntries = _browserFixedEntries;
@@ -409,14 +535,34 @@ public sealed partial class VRWristMenuController
         bool hasCurrentFolder = _browserMode == BrowserMode.SelectVmdRoot
             && !string.IsNullOrEmpty(_browserDirectory)
             && Directory.Exists(_browserDirectory);
-        bool showHeaderAction = _browserMode == BrowserMode.LoadVmd || hasCurrentFolder;
+        bool showHeaderAction = _browserMode == BrowserMode.LoadVmd
+            || hasCurrentFolder
+            || _browserMode == BrowserMode.SelectCoordinateAccessories;
         _browserHeaderActionButton.SetVisible(showHeaderAction);
+        bool showGenderSwitch = _browserMode == BrowserMode.AddFemale
+            || _browserMode == BrowserMode.AddMale;
+        _browserGenderSwitchButton.SetVisible(showGenderSwitch);
+        if (showGenderSwitch)
+        {
+            _browserGenderSwitchButton.SetLabel(
+                _browserMode == BrowserMode.AddFemale
+                    ? L("男卡", "男性", "Male")
+                    : L("女卡", "女性", "Female"));
+        }
         if (showHeaderAction)
         {
-            _browserHeaderActionButton.SetLabel(
-                _browserMode == BrowserMode.LoadVmd
-                    ? L("更换目录", "フォルダー変更", "Change folder")
-                    : L("使用此目录", "このフォルダーを使用", "Use this folder"));
+            if (_browserMode == BrowserMode.SelectCoordinateAccessories)
+            {
+                _browserHeaderActionButton.SetLabel(
+                    L("下一步 ", "次へ ", "Next ") + _selectedCoordinateAccessorySlots.Count);
+            }
+            else
+            {
+                _browserHeaderActionButton.SetLabel(
+                    _browserMode == BrowserMode.LoadVmd
+                        ? L("更换目录", "フォルダー変更", "Change folder")
+                        : L("使用此目录", "このフォルダーを使用", "Use this folder"));
+            }
         }
         int firstVisible = _browserEntries.Count == 0 ? 0 : _browserOffset + 1;
         int lastVisible = Math.Min(_browserEntries.Count, _browserOffset + BrowserVisibleRows);
@@ -466,6 +612,8 @@ public sealed partial class VRWristMenuController
                 return L("替换：选择场景角色", "置換：シーンのキャラを選択", "Replace: Select scene character");
             case BrowserMode.SelectCoordinateReplaceActor:
                 return L("服装卡：选择场景角色", "衣装カード：キャラ選択", "Outfit card: Select character");
+            case BrowserMode.SelectCoordinateAccessories:
+                return L("自选饰品", "アクセ選択", "Pick accessories");
             case BrowserMode.CoordinateCards:
                 return L("服装卡", "衣装カード", "Outfit cards");
             case BrowserMode.AddFemale:
@@ -485,6 +633,11 @@ public sealed partial class VRWristMenuController
             || _browserMode == BrowserMode.SelectCharacterReplaceActor
             || _browserMode == BrowserMode.SelectCoordinateReplaceActor)
             return L("当前场景角色", "現在のシーンキャラ", "Current scene characters");
+        if (_browserMode == BrowserMode.SelectCoordinateAccessories)
+        {
+            return L("仅追加到空槽  ·  已选 ", "空き枠にのみ追加  ·  選択 ", "Empty slots only  ·  Selected ")
+                + _selectedCoordinateAccessorySlots.Count;
+        }
         if (_browserMode == BrowserMode.SelectVmdCamera)
             return L("同目录镜头", "同じフォルダーのカメラ", "Cameras in this folder");
         if (_browserMode == BrowserMode.SelectVmdRoot)
@@ -503,6 +656,11 @@ public sealed partial class VRWristMenuController
 
     private string BuildEntryLabel(VRWristFileEntry entry)
     {
+        if (_browserMode == BrowserMode.SelectCoordinateAccessories)
+        {
+            return (_selectedCoordinateAccessorySlots.Contains(entry.ObjectKey) ? "[✓]  " : "[ ]  ")
+                + entry.DisplayName;
+        }
         if (entry.IsSkipAction)
             return L("不载入镜头\n仅使用角色动作", "カメラを読込まない\nモーションのみ", "Do not load camera\nMotion only");
         if (entry.IsActorTarget)
@@ -577,9 +735,31 @@ public sealed partial class VRWristMenuController
 
         if (_browserMode == BrowserMode.SelectCoordinateReplaceActor)
         {
+            if (_pendingCoordinateReplaceMode == VRCoordinateReplaceMode.SelectedAccessories
+                && _coordinateAccessoryEntries.Count > 0)
+            {
+                ShowCoordinateAccessorySelector(_coordinateAccessoryOffset);
+                SetStatus(
+                    L("自选饰品", "アクセ選択", "Pick accessories"),
+                    new Color(0.47f, 0.9f, 0.55f, 1f),
+                    0f);
+            }
+            else
+            {
+                ShowPage(WristMenuPage.CharacterPreview);
+                SetStatus(L("服装卡预览", "衣装カードのプレビュー", "Outfit card preview"),
+                    new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            }
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectCoordinateAccessories)
+        {
             ShowPage(WristMenuPage.CharacterPreview);
-            SetStatus(L("服装卡预览", "衣装カードのプレビュー", "Outfit card preview"),
-                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            SetStatus(
+                L("未应用任何饰品", "アクセは適用されていません", "No accessories were applied"),
+                new Color(0.47f, 0.9f, 0.55f, 1f),
+                4f);
             return;
         }
 
@@ -613,12 +793,13 @@ public sealed partial class VRWristMenuController
             }
         }
 
-        if (_browserMode == BrowserMode.AddFemale
-            || _browserMode == BrowserMode.AddMale)
+        if (_browserMode == BrowserMode.AddMale)
         {
-            ShowPage(WristMenuPage.CharacterCards);
-            SetStatus(L("角色卡", "キャラカード", "Character cards"),
-                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            OpenCharacterBrowser(VRCharacterCardMode.AddFemale);
+        }
+        else if (_browserMode == BrowserMode.AddFemale)
+        {
+            HandleBackToRoot();
         }
         else if (_browserMode == BrowserMode.CoordinateCards)
         {
@@ -677,6 +858,9 @@ public sealed partial class VRWristMenuController
             case BrowserMode.SelectCoordinateReplaceActor:
                 HandleCoordinateReplaceActorSelection(entry);
                 break;
+            case BrowserMode.SelectCoordinateAccessories:
+                HandleCoordinateAccessoryToggle(entry);
+                break;
             case BrowserMode.CoordinateCards:
                 OpenCoordinateCardPreview(entry.FullPath);
                 break;
@@ -689,6 +873,12 @@ public sealed partial class VRWristMenuController
 
     private void HandleBrowserHeaderAction()
     {
+        if (_browserMode == BrowserMode.SelectCoordinateAccessories)
+        {
+            HandleConfirmCoordinateAccessories();
+            return;
+        }
+
         if (_browserMode == BrowserMode.LoadVmd)
         {
             OpenVmdRootPicker(true);
@@ -714,6 +904,14 @@ public sealed partial class VRWristMenuController
         {
             return null;
         }
+    }
+
+    private void HandleBrowserGenderSwitch()
+    {
+        if (_browserMode == BrowserMode.AddFemale)
+            OpenCharacterBrowser(VRCharacterCardMode.AddMale);
+        else if (_browserMode == BrowserMode.AddMale)
+            OpenCharacterBrowser(VRCharacterCardMode.AddFemale);
     }
 
     private void OpenVmdRootPicker(bool returnToVmdBrowser, bool returnToMmdSettings = false)
@@ -1151,26 +1349,38 @@ public sealed partial class VRWristMenuController
         string path,
         int objectKey,
         Studio.OCIChar expectedCharacter,
-        bool protectHairAccessories)
+        VRCoordinateReplaceMode mode,
+        int[] selectedAccessorySlots,
+        bool undo)
     {
         if (_operationInProgress)
             yield break;
 
         _operationInProgress = true;
         SetStatus(
-            protectHairAccessories
+            undo
                 ? L(
-                    "正在智能换装并保护现有发饰…",
-                    "現在の髪アクセを保護して着替えています…",
-                    "Applying the outfit while protecting current hair accessories…")
-                : L(
-                    "正在完整替换服装与饰品…",
-                    "衣装とアクセを完全に置き換えています…",
-                    "Replacing the full outfit and accessories…"),
+                    "正在撤销上次换装…",
+                    "直前の着替えを元に戻しています…",
+                    "Undoing the last outfit change…")
+                : mode == VRCoordinateReplaceMode.ClothesOnly
+                    ? L(
+                        "正在只替换衣服，现有饰品保持不变…",
+                        "服だけ変更し、現在のアクセを維持しています…",
+                        "Changing clothes while keeping current accessories…")
+                    : mode == VRCoordinateReplaceMode.SelectedAccessories
+                        ? L(
+                            "正在换衣服，并把所选饰品追加到空槽…",
+                            "服を変更し、選択アクセを空き枠へ追加しています…",
+                            "Changing clothes and adding selected accessories to empty slots…")
+                        : L(
+                            "正在完整替换服装与饰品…",
+                            "衣装とアクセを完全に置き換えています…",
+                            "Replacing the full outfit and accessories…"),
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
         VRCoordinateLoadSession session = null;
-        string status = "服装卡替换没有启动";
+        string status = undo ? "撤销换装没有启动" : "服装卡替换没有启动";
         bool success = false;
         try
         {
@@ -1179,18 +1389,25 @@ public sealed partial class VRWristMenuController
             bool started;
             try
             {
-                started = VRCoordinateCardService.TryBeginReplace(
-                    objectKey,
-                    expectedCharacter,
-                    path,
-                    protectHairAccessories,
-                    out session,
-                    out status);
+                started = undo
+                    ? VRCoordinateCardService.TryBeginUndoLastReplace(
+                        objectKey,
+                        expectedCharacter,
+                        out session,
+                        out status)
+                    : VRCoordinateCardService.TryBeginReplace(
+                        objectKey,
+                        expectedCharacter,
+                        path,
+                        mode,
+                        selectedAccessorySlots,
+                        out session,
+                        out status);
             }
             catch (Exception ex)
             {
                 started = false;
-                status = "服装卡替换失败：" + ex.Message;
+                status = (undo ? "撤销换装失败：" : "服装卡替换失败：") + ex.Message;
             }
 
             if (started)
@@ -1234,14 +1451,15 @@ public sealed partial class VRWristMenuController
                         else
                         {
                             status = L(
-                                "完整服装读取状态异常；载入可能仍在后台执行，完成或重载场景前不能再次换装：",
-                                "完全な衣装の読込状態を確認できません。バックグラウンドで継続中の可能性があるため、完了またはシーン再読込まで再度着替えできません：",
-                                "Could not read the full-outfit load state. It may still be running in the background; do not change outfits again until it finishes or the scene is reloaded: ")
+                                "换装操作状态异常；可能仍在后台执行，完成或重载场景前不能再次换装：",
+                                "着替え操作の状態を確認できません。バックグラウンドで継続中の可能性があるため、完了またはシーン再読込まで再度着替えできません：",
+                                "Could not read the outfit-operation state. It may still be running in the background; do not change outfits again until it finishes or the scene is reloaded: ")
                                 + ex.Message;
                             StartCoroutine(MonitorCoordinateReplacementInBackground(
                                 session,
                                 objectKey,
-                                expectedCharacter));
+                                expectedCharacter,
+                                undo));
                         }
                         success = false;
                         break;
@@ -1254,7 +1472,8 @@ public sealed partial class VRWristMenuController
                             StartCoroutine(MonitorCoordinateReplacementInBackground(
                                 session,
                                 objectKey,
-                                expectedCharacter));
+                                expectedCharacter,
+                                undo));
                         }
                         break;
                     }
@@ -1285,11 +1504,15 @@ public sealed partial class VRWristMenuController
                         if (Time.realtimeSinceStartup >= hardDeadline)
                         {
                             success = false;
-                            status = "完整服装读取时间过长，已解除界面等待；完成或重载场景前不能再次换装";
+                            status = L(
+                                "换装操作时间过长，已解除界面等待；完成或重载场景前不能再次换装",
+                                "着替え操作に時間がかかっているため、画面の待機を解除しました。完了またはシーン再読込までは再度着替えできません",
+                                "The outfit operation is taking too long, so the UI wait was released. Do not change outfits again until it finishes or the scene is reloaded");
                             StartCoroutine(MonitorCoordinateReplacementInBackground(
                                 session,
                                 objectKey,
-                                expectedCharacter));
+                                expectedCharacter,
+                                undo));
                             break;
                         }
 
@@ -1298,9 +1521,9 @@ public sealed partial class VRWristMenuController
                             nativeWaitWarningShown = true;
                             SetStatus(
                                 L(
-                                    "完整服装仍在读取，完成前不会开始下一次换装",
-                                    "完全な衣装を読込中です。完了まで次の着替えは開始しません",
-                                    "The full outfit is still loading; another outfit change will not start yet"),
+                                    "换装操作仍在执行，完成前不会开始下一次换装",
+                                    "着替え操作を実行中です。完了まで次の着替えは開始しません",
+                                    "The outfit operation is still running; another outfit change will not start yet"),
                                 new Color(1f, 0.72f, 0.25f, 1f),
                                 0f);
                         }
@@ -1325,6 +1548,16 @@ public sealed partial class VRWristMenuController
             {
                 _clothingTargetObjectKey = objectKey;
                 _clothingTargetCharacter = character;
+                if (undo)
+                {
+                    _lastCoordinateUndoObjectKey = -1;
+                    _lastCoordinateUndoCharacter = null;
+                }
+                else
+                {
+                    _lastCoordinateUndoObjectKey = objectKey;
+                    _lastCoordinateUndoCharacter = character;
+                }
                 VRCharacterClothingService.RefreshStudioCharacterPanel(character);
                 string highHeelStatus;
                 if (VRMmddService.RefreshHighHeels(objectKey, out highHeelStatus))
@@ -1352,7 +1585,8 @@ public sealed partial class VRWristMenuController
     private IEnumerator MonitorCoordinateReplacementInBackground(
         VRCoordinateLoadSession session,
         int objectKey,
-        Studio.OCIChar expectedCharacter)
+        Studio.OCIChar expectedCharacter,
+        bool undo)
     {
         if (session == null)
             yield break;
@@ -1425,6 +1659,16 @@ public sealed partial class VRWristMenuController
                 {
                     _clothingTargetObjectKey = objectKey;
                     _clothingTargetCharacter = character;
+                    if (undo)
+                    {
+                        _lastCoordinateUndoObjectKey = -1;
+                        _lastCoordinateUndoCharacter = null;
+                    }
+                    else
+                    {
+                        _lastCoordinateUndoObjectKey = objectKey;
+                        _lastCoordinateUndoCharacter = character;
+                    }
                     VRCharacterClothingService.RefreshStudioCharacterPanel(character);
                     string highHeelStatus;
                     if (VRMmddService.RefreshHighHeels(objectKey, out highHeelStatus))

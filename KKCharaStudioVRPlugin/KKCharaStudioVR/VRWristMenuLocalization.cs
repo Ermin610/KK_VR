@@ -62,6 +62,34 @@ public sealed partial class VRWristMenuController
         { "Coordinate Load Option 接口不可用", "Coordinate Load Optionのインターフェースを利用できません" },
         { "Coordinate Load Option 接口不兼容：", "Coordinate Load Optionのインターフェースに互換性がありません：" },
         { "Coordinate Load Option 启动失败，正在恢复角色状态", "Coordinate Load Optionの起動に失敗したため、キャラ状態を復元中です" },
+        { "读取服装卡饰品槽失败：", "衣装カードのアクセサリースロットを読み込めません：" },
+        { "自选饰品需要 Coordinate Load Option；未执行换装", "アクセ選択にはCoordinate Load Optionが必要です。着替えは実行していません" },
+        { "自选饰品未执行：", "アクセ選択を実行できません：" },
+        { "自选饰品未完成：目标角色没有足够的空饰品槽", "アクセ選択を完了できません：対象キャラに十分な空きスロットがありません" },
+        { "无法验证 Coordinate Load Option 的饰品绑定数据", "Coordinate Load Optionのアクセ連携データを確認できません" },
+        { "无法读取服装卡的饰品绑定数据", "衣装カードのアクセ連携データを読み込めません" },
+        { "服装卡含饰品绑定数据（", "衣装カードにアクセ連携データがあります（" },
+        { "目标角色含饰品绑定数据（", "対象キャラにアクセ連携データがあります（" },
+        { "检查饰品绑定数据失败：", "アクセ連携データの確認に失敗：" },
+        { "已只替换衣服，现有饰品保持不变：", "服だけを変更し、現在のアクセを維持：" },
+        { "已换衣服并把所选饰品追加到空槽：", "服を変更し、選択アクセを空き枠へ追加：" },
+        { "只换衣服被中止：检测到饰品数据发生变化", "アクセデータの変更を検出したため、服だけの変更を中止しました" },
+        { "已有服装卡操作正在进行，请稍后再撤销", "衣装カード操作中です。完了後に元に戻してください" },
+        { "场景角色已变化，请重新选择撤销目标", "シーンのキャラが変わりました。元に戻す対象を選び直してください" },
+        { "所选角色仍在读取，请稍后再撤销", "選択したキャラを読込中です。完了後に元に戻してください" },
+        { "当前角色没有可撤销的换装记录", "このキャラには元に戻せる着替え記録がありません" },
+        { "正在撤销到换装前状态", "着替え前の状態へ戻しています" },
+        { "已撤销到换装前状态", "着替え前の状態へ戻しました" },
+        { "撤销换装没有启动", "着替えの取り消しを開始できませんでした" },
+        { "撤销换装失败：", "着替えの取り消しに失敗：" },
+        { "无法同步目标角色的插件扩展状态：", "対象キャラのプラグイン拡張状態を同期できません：" },
+        { "；已恢复基础角色状态，但插件扩展状态恢复失败：", "。基本キャラ状態は復元しましたが、プラグイン拡張状態の復元に失敗：" },
+        { "插件扩展状态恢复失败：", "プラグイン拡張状態の復元に失敗：" },
+        { "无法备份目标角色当前服装", "対象キャラの現在の衣装をバックアップできません" },
+        { "无法读取换装前的角色服装备份", "着替え前のキャラ衣装バックアップを読み込めません" },
+        { "目标角色当前服装备份为空", "対象キャラの現在の衣装バックアップが空です" },
+        { "服装扩展数据快照接口不可用", "衣装拡張データのスナップショット機能を利用できません" },
+        { "无法锁定目标角色现有饰品", "対象キャラの現在のアクセを保持できません" },
         { "服装卡已替换，并保护现有发饰：", "現在の髪アクセを保護して衣装カードを適用：" },
         { "已用兼容模式只替换衣服，并保留全部现有饰品：", "互換モードで衣服のみを適用し、現在の全アクセを保持：" },
         { "为保护发饰，已只替换衣服并保留全部现有饰品：", "髪アクセ保護のため衣服のみを適用し、現在の全アクセを保持：" },
@@ -203,6 +231,34 @@ public sealed partial class VRWristMenuController
         { "Coordinate Load Option 接口不可用", "The Coordinate Load Option interface is unavailable" },
         { "Coordinate Load Option 接口不兼容：", "The Coordinate Load Option interface is incompatible: " },
         { "Coordinate Load Option 启动失败，正在恢复角色状态", "Coordinate Load Option failed to start; restoring the character state" },
+        { "读取服装卡饰品槽失败：", "Could not read outfit-card accessory slots: " },
+        { "自选饰品需要 Coordinate Load Option；未执行换装", "Picking accessories requires Coordinate Load Option; no outfit change was made" },
+        { "自选饰品未执行：", "Picked accessories were not applied: " },
+        { "自选饰品未完成：目标角色没有足够的空饰品槽", "Picked accessories were not applied: the target has too few empty accessory slots" },
+        { "无法验证 Coordinate Load Option 的饰品绑定数据", "Could not validate Coordinate Load Option accessory binding data" },
+        { "无法读取服装卡的饰品绑定数据", "Could not read outfit-card accessory binding data" },
+        { "服装卡含饰品绑定数据（", "The outfit card contains accessory binding data (" },
+        { "目标角色含饰品绑定数据（", "The target character contains accessory binding data (" },
+        { "检查饰品绑定数据失败：", "Could not inspect accessory binding data: " },
+        { "已只替换衣服，现有饰品保持不变：", "Changed clothing only and kept all current accessories: " },
+        { "已换衣服并把所选饰品追加到空槽：", "Changed clothing and added picked accessories to empty slots: " },
+        { "只换衣服被中止：检测到饰品数据发生变化", "Clothing-only replacement was stopped because accessory data changed" },
+        { "已有服装卡操作正在进行，请稍后再撤销", "An outfit-card operation is still running; wait before undoing" },
+        { "场景角色已变化，请重新选择撤销目标", "The scene character changed; select the undo target again" },
+        { "所选角色仍在读取，请稍后再撤销", "The selected character is still loading; wait before undoing" },
+        { "当前角色没有可撤销的换装记录", "This character has no outfit change to undo" },
+        { "正在撤销到换装前状态", "Restoring the pre-change outfit state" },
+        { "已撤销到换装前状态", "Restored the pre-change outfit state" },
+        { "撤销换装没有启动", "The outfit undo did not start" },
+        { "撤销换装失败：", "Could not undo the outfit change: " },
+        { "无法同步目标角色的插件扩展状态：", "Could not synchronize the target character's plugin extension state: " },
+        { "；已恢复基础角色状态，但插件扩展状态恢复失败：", ". Base character state was restored, but plugin extension state failed: " },
+        { "插件扩展状态恢复失败：", "Could not restore plugin extension state: " },
+        { "无法备份目标角色当前服装", "Could not back up the target character's current outfit" },
+        { "无法读取换装前的角色服装备份", "Could not read the pre-change character outfit backup" },
+        { "目标角色当前服装备份为空", "The target character's current outfit backup is empty" },
+        { "服装扩展数据快照接口不可用", "The outfit extension-data snapshot interface is unavailable" },
+        { "无法锁定目标角色现有饰品", "Could not preserve the target character's current accessories" },
         { "服装卡已替换，并保护现有发饰：", "Applied outfit card and protected current hair accessories: " },
         { "已用兼容模式只替换衣服，并保留全部现有饰品：", "Applied clothing only in compatibility mode and kept all current accessories: " },
         { "为保护发饰，已只替换衣服并保留全部现有饰品：", "Applied clothing only and kept all current accessories to protect hair: " },
@@ -495,6 +551,7 @@ public sealed partial class VRWristMenuController
         _characterLightIntensityText = null;
         _browserTitleText = null;
         _browserHeaderActionButton = null;
+        _browserGenderSwitchButton = null;
         _browserPathText = null;
         _browserScrollText = null;
         _characterPreviewImage = null;
@@ -504,6 +561,10 @@ public sealed partial class VRWristMenuController
         _characterPreviewTitleText = null;
         _characterPreviewLoadButton = null;
         _characterPreviewReplaceButton = null;
+        _coordinateClothesOnlyButton = null;
+        _coordinateCustomButton = null;
+        _coordinateFullButton = null;
+        _coordinateUndoButton = null;
         for (int i = 0; i < _clothingPartButtons.Length; i++)
             _clothingPartButtons[i] = null;
         for (int i = 0; i < _browserEntryButtons.Length; i++)
