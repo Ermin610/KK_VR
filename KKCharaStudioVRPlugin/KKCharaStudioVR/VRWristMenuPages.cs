@@ -1001,6 +1001,14 @@ public sealed partial class VRWristMenuController
         int[] actorObjectKeys)
     {
         yield return null;
+        int requestedTargetCount = actorObjectKeys != null ? actorObjectKeys.Length : 0;
+        actorObjectKeys = VRVmdTargetService.ResolveLiveObjectKeys(actorObjectKeys);
+        if (requestedTargetCount > 0 && actorObjectKeys.Length != requestedTargetCount)
+        {
+            VRLog.Warn(
+                "VMD target selection changed after character initialization; refreshed live targets before loading.");
+        }
+
         string status;
         bool success = VRMmddService.LoadVmdPackage(
             motionPath,

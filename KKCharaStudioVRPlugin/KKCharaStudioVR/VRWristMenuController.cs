@@ -821,19 +821,31 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         Vector3 origin = _laser.transform.position;
         Vector3 direction = _laser.transform.forward;
+        Ray pointerRay = new Ray(origin, direction);
         Vector3 end = origin + direction * 2f;
         VRWristMenuButtonTarget target = null;
         float nearest = float.MaxValue;
+        Vector3 menuSurfacePoint;
+        float menuSurfaceDistance;
+        bool hasMenuSurfaceHit = TryGetMenuSurfaceHit(
+            pointerRay,
+            2f,
+            out menuSurfacePoint,
+            out menuSurfaceDistance);
+        if (hasMenuSurfaceHit)
+            end = menuSurfacePoint;
 
         RaycastHit[] hits = Physics.RaycastAll(
-            new Ray(origin, direction),
+            pointerRay,
             2f,
             _pointerMask,
             QueryTriggerInteraction.Collide);
         foreach (RaycastHit hit in hits)
         {
             VRWristMenuButtonTarget candidate = hit.collider.GetComponent<VRWristMenuButtonTarget>();
-            if (candidate != null && hit.distance < nearest)
+            if (candidate != null
+                && hit.distance < nearest
+                && (!hasMenuSurfaceHit || hit.distance <= menuSurfaceDistance + 0.01f))
             {
                 nearest = hit.distance;
                 target = candidate;
@@ -847,10 +859,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         SetPointerVisible(true);
 
         _laser.SetPosition(0, origin);
-        _laser.SetPosition(1, end);
-        _cursor.SetActive(target != null);
-        if (target != null)
-            _cursor.transform.position = end;
+        Vector3 visibleEnd = hasMenuSurfaceHit || target != null
+            ? end - direction * 0.0035f
+            : end;
+        _laser.SetPosition(1, visibleEnd);
+        _cursor.SetActive(hasMenuSurfaceHit || target != null);
+        if (hasMenuSurfaceHit || target != null)
+            _cursor.transform.position = end - direction * 0.005f;
 
         Color pointerColor = target != null
             ? new Color(0.25f, 1f, 0.82f, 1f)
@@ -882,7 +897,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                 _laser = laserObject.AddComponent<LineRenderer>();
                 _laser.useWorldSpace = true;
                 _laser.SetVertexCount(2);
-                _laser.SetWidth(0.002f, 0.002f);
+                _laser.SetWidth(0.0025f, 0.0025f);
                 _laserMaterial = VRPointerVisuals.CreateMaterial(
                     "KKVR Wrist Menu Laser",
                     new Color(0.2f, 0.78f, 0.95f, 1f));
@@ -895,7 +910,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                 _cursor.SetActive(false);
                 _cursor.layer = _visibleLayer;
                 _cursor.transform.SetParent(transform, false);
-                _cursor.transform.localScale = Vector3.one * 0.008f;
+                _cursor.transform.localScale = Vector3.one * 0.012f;
                 Collider cursorCollider = _cursor.GetComponent<Collider>();
                 if (cursorCollider != null)
                     Destroy(cursorCollider);
@@ -1011,6 +1026,30 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         {
             RefreshSettingsPage();
         }
+    }
+
+    private bool TryGetMenuSurfaceHit(
+        Ray ray,
+        float maxDistance,
+        out Vector3 hitPoint,
+        out float hitDistance)
+    {
+        hitPoint = Vector3.zero;
+        hitDistance = 0f;
+        if (_menuRect == null || !_menuRect.gameObject.activeInHierarchy)
+            return false;
+
+        Plane menuPlane = new Plane(_menuRect.forward, _menuRect.position);
+        if (!menuPlane.Raycast(ray, out hitDistance)
+            || hitDistance < 0f
+            || hitDistance > maxDistance)
+        {
+            return false;
+        }
+
+        hitPoint = ray.GetPoint(hitDistance);
+        Vector3 localPoint = _menuRect.InverseTransformPoint(hitPoint);
+        return _menuRect.rect.Contains(new Vector2(localPoint.x, localPoint.y));
     }
 
     private void RefreshClothingPage()

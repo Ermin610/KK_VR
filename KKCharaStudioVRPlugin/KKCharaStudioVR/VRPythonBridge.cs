@@ -43,7 +43,9 @@ internal static class VRPythonBridge
         catch (Exception ex)
         {
             Exception root = Unwrap(ex);
-            error = root.Message;
+            error = string.IsNullOrEmpty(root.Message)
+                ? root.GetType().Name
+                : root.GetType().Name + ": " + root.Message;
             _mainEngine = null;
             _createScriptSourceMethod = null;
             VRLog.Error(operation + " failed: " + root);

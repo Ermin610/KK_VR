@@ -439,6 +439,10 @@ internal class GripMoveKKCharaStudioTool : Tool
 
 		if (!_isLeftHand && VRWristMenuController.IsOpen)
 		{
+			// Keep right-stick turning available while the wrist menu owns the
+			// trigger. Vertical locomotion stays disabled so menu scrolling cannot
+			// accidentally change the player's height.
+			HandleThumbstickLocomotion(true);
 			SetComfortMoving(false);
 			ClearProximityHighlight();
 			if (grabbingObject != null || screenGrabbed)
@@ -448,7 +452,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 			return;
 		}
 
-		HandleThumbstickLocomotion();
+		HandleThumbstickLocomotion(false);
 
 		if (VRQuickActions.ikVisible)
 		{
@@ -530,9 +534,9 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 	}
 
-	private void HandleThumbstickLocomotion()
+	private void HandleThumbstickLocomotion(bool wristMenuOpen)
 	{
-		if (gripMenuHandler != null && gripMenuHandler.LaserVisible)
+		if (!wristMenuOpen && gripMenuHandler != null && gripMenuHandler.LaserVisible)
 		{
 			SetComfortMoving(false);
 			return;
@@ -591,7 +595,7 @@ internal class GripMoveKKCharaStudioTool : Tool
 					}
 
 					// Y-axis: height (up/down) adjustment
-					if (Mathf.Abs(axis.y) > 0.1f)
+					if (!wristMenuOpen && Mathf.Abs(axis.y) > 0.1f)
 					{
 						float heightSpeed = _settings != null ? _settings.LocomotionSpeed : 2.0f;
 						origin.position += Vector3.up * axis.y * heightSpeed * Time.deltaTime;

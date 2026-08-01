@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Globalization;
 using System.Text;
+using VRGIN.Core;
 
 namespace KKCharaStudioVR;
 
@@ -254,10 +255,29 @@ internal static class VRMmddService
             cameraPath,
             audioPath,
             actorObjectKeys,
-            vmdRoot);
+            vmdRoot,
+            false);
 
         string error;
-        if (!VRPythonBridge.TryExecute(code, "MMDD wrist VMD load", out error))
+        bool loaded = VRPythonBridge.TryExecute(code, "MMDD wrist VMD load", out error);
+        if (!loaded && RequiresMmddStateRecovery(error))
+        {
+            VRLog.Warn(
+                "MMDD retained destroyed character state after a scene/card change; rebuilding its controllers and retrying once.");
+            string recoveryCode = BuildLoadPackageCode(
+                motionPath,
+                cameraPath,
+                audioPath,
+                actorObjectKeys,
+                vmdRoot,
+                true);
+            loaded = VRPythonBridge.TryExecute(
+                recoveryCode,
+                "MMDD wrist VMD recovery",
+                out error);
+        }
+
+        if (!loaded)
         {
             status = "VMD 载入失败：" + error;
             return false;
@@ -297,10 +317,12 @@ internal static class VRMmddService
         string cameraPath,
         string audioPath,
         int[] actorObjectKeys,
-        string vmdRoot)
+        string vmdRoot,
+        bool resetMmddState)
     {
         StringBuilder code = new StringBuilder();
         code.Append(BuildBootstrapCode());
+        code.Append(BuildMmddStateRecoveryCode(resetMmddState));
         code.Append("config.vmdHomeDir = ").Append(ToPythonString(vmdRoot)).Append("\n");
         code.Append("from vmdlib import VmdLib\n");
         code.Append("motion_path = ").Append(ToPythonString(motionPath)).Append("\n");
@@ -362,6 +384,58 @@ internal static class VRMmddService
         code.Append("mmdd.update(True)\n");
         code.Append("game.visible = 0\n");
         return code.ToString();
+    }
+
+    private static string BuildMmddStateRecoveryCode(bool resetMmddState)
+    {
+        if (resetMmddState)
+        {
+            return
+                "mmdd.cleanup()\n"
+                + "game.scenef_clean_actorsprops()\n";
+        }
+
+        return
+            "kkvr_live_char_ctrls = [x.objctrl for x in game.scene_get_all_females()] + [x.objctrl for x in game.scene_get_all_males()]\n"
+            + "def kkvr_motion_is_live(ctrl):\n"
+            + "    try:\n"
+            + "        if getattr(ctrl, 'boneType', None) != 'chara':\n"
+            + "            return True\n"
+            + "        objctrl = ctrl.ociChar\n"
+            + "        return objctrl in kkvr_live_char_ctrls and objctrl.charInfo != None and objctrl.charInfo.gameObject != None and ctrl.actualBoneRootGo != None\n"
+            + "    except:\n"
+            + "        return False\n"
+            + "for kkvr_aid in list(mmdd.motionControllers.keys()):\n"
+            + "    if not kkvr_motion_is_live(mmdd.motionControllers[kkvr_aid]):\n"
+            + "        try:\n"
+            + "            mmdd.deleteMotionController(kkvr_aid)\n"
+            + "        except:\n"
+            + "            if kkvr_aid in mmdd.motionControllers:\n"
+            + "                del mmdd.motionControllers[kkvr_aid]\n"
+            + "            if kkvr_aid in mmdd.motionSequence:\n"
+            + "                mmdd.motionSequence.remove(kkvr_aid)\n"
+            + "            if kkvr_aid in mmdd.morphControllers:\n"
+            + "                del mmdd.morphControllers[kkvr_aid]\n"
+            + "for kkvr_aid in list(mmdd.morphControllers.keys()):\n"
+            + "    kkvr_mp = mmdd.morphControllers[kkvr_aid]\n"
+            + "    kkvr_morph_live = kkvr_mp.motionCtrl != None and kkvr_motion_is_live(kkvr_mp.motionCtrl)\n"
+            + "    if kkvr_morph_live and kkvr_mp.blendRendererInfo:\n"
+            + "        kkvr_morph_live = all([x[0] != None for x in kkvr_mp.blendRendererInfo.values()])\n"
+            + "    if not kkvr_morph_live:\n"
+            + "        try:\n"
+            + "            mmdd.deleteMorphController(kkvr_aid)\n"
+            + "        except:\n"
+            + "            if kkvr_aid in mmdd.morphControllers:\n"
+            + "                del mmdd.morphControllers[kkvr_aid]\n"
+            + "mmdd.refreshTotalFrame()\n";
+    }
+
+    private static bool RequiresMmddStateRecovery(string error)
+    {
+        return !string.IsNullOrEmpty(error)
+            && (error.IndexOf("NullReferenceException", StringComparison.OrdinalIgnoreCase) >= 0
+                || error.IndexOf("GetComponentsInChildren", StringComparison.OrdinalIgnoreCase) >= 0
+                || error.IndexOf("destroyed", StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     private static bool ExecuteFixedFovAction(

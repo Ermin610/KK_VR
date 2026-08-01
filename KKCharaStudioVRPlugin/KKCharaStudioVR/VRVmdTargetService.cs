@@ -27,7 +27,7 @@ internal static class VRVmdTargetService
             foreach (ObjectCtrlInfo item in selected)
             {
                 OCIChar character = item as OCIChar;
-                if (character?.objectInfo != null)
+                if (IsLiveCharacter(character) && character.objectInfo != null)
                     keys.Add(character.objectInfo.dicKey);
             }
         }
@@ -36,6 +36,33 @@ internal static class VRVmdTargetService
             VRLog.Warn("Unable to inspect selected VMD targets: " + ex.Message);
         }
         return keys.ToArray();
+    }
+
+    public static int[] ResolveLiveObjectKeys(int[] requestedKeys)
+    {
+        List<int> keys = new List<int>();
+        try
+        {
+            Studio.Studio studio = Singleton<Studio.Studio>.Instance;
+            if (studio != null && studio.dicObjectCtrl != null && requestedKeys != null)
+            {
+                foreach (int objectKey in requestedKeys)
+                {
+                    ObjectCtrlInfo item;
+                    if (!studio.dicObjectCtrl.TryGetValue(objectKey, out item))
+                        continue;
+                    OCIChar character = item as OCIChar;
+                    if (IsLiveCharacter(character) && !keys.Contains(objectKey))
+                        keys.Add(objectKey);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            VRLog.Warn("Unable to refresh VMD targets: " + ex.Message);
+        }
+
+        return keys.Count > 0 ? keys.ToArray() : GetSelectedObjectKeys();
     }
 
     public static List<VRVmdActorTarget> GetAllTargets(out string status)
@@ -53,7 +80,7 @@ internal static class VRVmdTargetService
             foreach (KeyValuePair<int, ObjectCtrlInfo> pair in studio.dicObjectCtrl)
             {
                 OCIChar character = pair.Value as OCIChar;
-                if (character == null)
+                if (!IsLiveCharacter(character))
                     continue;
 
                 targets.Add(new VRVmdActorTarget
@@ -117,9 +144,9 @@ internal static class VRVmdTargetService
             }
 
             OCIChar character = item as OCIChar;
-            if (character == null)
+            if (!IsLiveCharacter(character))
             {
-                status = "所选对象不是角色";
+                status = "所选角色尚未初始化完成或已经失效";
                 return false;
             }
 
@@ -156,9 +183,9 @@ internal static class VRVmdTargetService
             }
 
             OCIChar character = item as OCIChar;
-            if (character == null || character.treeNodeObject == null)
+            if (!IsLiveCharacter(character) || character.treeNodeObject == null)
             {
-                status = "所选对象不是角色";
+                status = "所选角色尚未初始化完成或已经失效";
                 return false;
             }
 
@@ -171,6 +198,20 @@ internal static class VRVmdTargetService
         {
             status = "无法选择动作目标：" + ex.Message;
             VRLog.Error(status);
+            return false;
+        }
+    }
+
+    private static bool IsLiveCharacter(OCIChar character)
+    {
+        try
+        {
+            return character != null
+                && character.charInfo != null
+                && character.charInfo.gameObject != null;
+        }
+        catch (Exception)
+        {
             return false;
         }
     }
