@@ -73,7 +73,7 @@ public sealed partial class VRWristMenuController
         _browserTitleText = CreateText(
             "BrowserTitle",
             _browserPage.transform,
-            "文件",
+            L("文件", "ファイル", "Files"),
             92f,
             10f,
             258f,
@@ -83,7 +83,7 @@ public sealed partial class VRWristMenuController
             Color.white);
         _browserHeaderActionButton = CreateButton(
             "BrowserHeaderAction",
-            "更换目录",
+            L("更换目录", "フォルダー変更", "Change folder"),
             362f,
             10f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -163,7 +163,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "SceneSaveTitle",
             _sceneSavePage.transform,
-            "保存场景卡",
+            L("保存场景卡", "シーンカードを保存", "Save scene card"),
             92f,
             10f,
             444f,
@@ -184,7 +184,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "SceneSaveDestination",
             _sceneSavePage.transform,
-            "保存位置\nUserData\\studio\\scene",
+            L("保存位置", "保存先", "Save location") + "\nUserData\\studio\\scene",
             38f,
             78f,
             484f,
@@ -195,7 +195,7 @@ public sealed partial class VRWristMenuController
 
         CreateButton(
             "SceneSaveNow",
-            "保存新场景卡\nSAVE NEW SCENE",
+            L("保存为新场景卡", "新しいシーンカードとして保存", "Save as a new scene card"),
             24f,
             164f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -224,7 +224,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "CharacterCardsTitle",
             _characterCardsPage.transform,
-            "角色卡",
+            L("角色卡", "キャラカード", "Character cards"),
             92f,
             10f,
             444f,
@@ -236,7 +236,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "CharacterCardLibrarySection",
             _characterCardsPage.transform,
-            "角色卡分类  CHARACTER CARDS",
+            L("角色卡分类", "キャラカード分類", "Character card categories"),
             24f,
             76f,
             512f,
@@ -246,7 +246,7 @@ public sealed partial class VRWristMenuController
             new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "CharacterAddFemale",
-            "女性角色卡  >\nFEMALE CARDS",
+            L("女性角色卡  >\n浏览并预览", "女性キャラカード  >\n閲覧・プレビュー", "Female character cards  >\nBrowse and preview"),
             24f,
             116f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -258,7 +258,7 @@ public sealed partial class VRWristMenuController
             22);
         CreateButton(
             "CharacterAddMale",
-            "男性角色卡  >\nMALE CARDS",
+            L("男性角色卡  >\n浏览并预览", "男性キャラカード  >\n閲覧・プレビュー", "Male character cards  >\nBrowse and preview"),
             24f,
             232f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -273,7 +273,7 @@ public sealed partial class VRWristMenuController
     private void HandleOpenCharacterCards()
     {
         ShowPage(WristMenuPage.CharacterCards);
-        SetStatus("角色卡", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        SetStatus(L("角色卡", "キャラカード", "Character cards"), new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
     }
 
     private void OpenCharacterBrowser(VRCharacterCardMode mode)
@@ -305,7 +305,8 @@ public sealed partial class VRWristMenuController
                 || !Directory.Exists(fullDirectory)
                 || !VRWristFileCatalog.IsInsideRoot(fullRoot, fullDirectory))
             {
-                SetStatus("目录不存在：" + root, new Color(1f, 0.38f, 0.34f, 1f), 6f);
+                SetStatus(L("目录不存在：", "フォルダーがありません：", "Folder does not exist: ") + root,
+                    new Color(1f, 0.38f, 0.34f, 1f), 6f);
                 return;
             }
 
@@ -320,7 +321,8 @@ public sealed partial class VRWristMenuController
         }
         catch (Exception ex)
         {
-            SetStatus("无法打开目录：" + ex.Message, new Color(1f, 0.38f, 0.34f, 1f), 6f);
+            SetStatus(L("无法打开目录：", "フォルダーを開けません：", "Could not open folder: ") + ex.Message,
+                new Color(1f, 0.38f, 0.34f, 1f), 6f);
         }
     }
 
@@ -388,7 +390,9 @@ public sealed partial class VRWristMenuController
         if (showHeaderAction)
         {
             _browserHeaderActionButton.SetLabel(
-                _browserMode == BrowserMode.LoadVmd ? "更换目录" : "使用此目录");
+                _browserMode == BrowserMode.LoadVmd
+                    ? L("更换目录", "フォルダー変更", "Change folder")
+                    : L("使用此目录", "このフォルダーを使用", "Use this folder"));
         }
         int firstVisible = _browserEntries.Count == 0 ? 0 : _browserOffset + 1;
         int lastVisible = Math.Min(_browserEntries.Count, _browserOffset + BrowserVisibleRows);
@@ -413,7 +417,9 @@ public sealed partial class VRWristMenuController
         bool canScroll = _browserEntries.Count > BrowserVisibleRows;
         _browserScrollText.text = canScroll
             ? "↑                           ↓"
-            : (_browserEntries.Count == 0 ? "此目录没有可用文件" : string.Empty);
+            : (_browserEntries.Count == 0
+                ? L("此目录没有可用文件", "利用できるファイルがありません", "No usable files in this folder")
+                : string.Empty);
     }
 
     private string GetBrowserTitle()
@@ -421,25 +427,25 @@ public sealed partial class VRWristMenuController
         switch (_browserMode)
         {
             case BrowserMode.LoadVmd:
-                return "读取 VMD";
+                return L("读取 VMD", "VMDを読込", "Load VMD");
             case BrowserMode.SelectVmdRoot:
-                return "动作数据目录";
+                return L("动作数据目录", "モーションデータフォルダー", "Motion data folder");
             case BrowserMode.SelectVmdActor:
-                return "选择动作目标";
+                return L("选择动作目标", "モーション対象を選択", "Select motion targets");
             case BrowserMode.SelectVmdCamera:
-                return "选择镜头 VMD";
+                return L("选择镜头 VMD", "カメラVMDを選択", "Select camera VMD");
             case BrowserMode.SelectHighHeelsActor:
-                return "高跟鞋：选择角色";
+                return L("高跟鞋：选择角色", "ハイヒール：キャラ選択", "High heels: Select character");
             case BrowserMode.SelectClothingActor:
-                return "换装：选择角色";
+                return L("服装：选择角色", "服装：キャラ選択", "Clothing: Select character");
             case BrowserMode.SelectCharacterReplaceActor:
-                return "替换：选择场景角色";
+                return L("替换：选择场景角色", "置換：シーンのキャラを選択", "Replace: Select scene character");
             case BrowserMode.AddFemale:
-                return "女性角色卡";
+                return L("女性角色卡", "女性キャラカード", "Female character cards");
             case BrowserMode.AddMale:
-                return "男性角色卡";
+                return L("男性角色卡", "男性キャラカード", "Male character cards");
             default:
-                return "文件";
+                return L("文件", "ファイル", "Files");
         }
     }
 
@@ -449,12 +455,12 @@ public sealed partial class VRWristMenuController
             || _browserMode == BrowserMode.SelectClothingActor
             || _browserMode == BrowserMode.SelectHighHeelsActor
             || _browserMode == BrowserMode.SelectCharacterReplaceActor)
-            return "当前场景角色";
+            return L("当前场景角色", "現在のシーンキャラ", "Current scene characters");
         if (_browserMode == BrowserMode.SelectVmdCamera)
-            return "同目录镜头";
+            return L("同目录镜头", "同じフォルダーのカメラ", "Cameras in this folder");
         if (_browserMode == BrowserMode.SelectVmdRoot)
             return string.IsNullOrEmpty(_browserDirectory)
-                ? "选择磁盘"
+                ? L("选择磁盘", "ドライブを選択", "Select a drive")
                 : _browserDirectory;
 
         string relative = _browserDirectory.Substring(_browserRoot.Length)
@@ -469,26 +475,26 @@ public sealed partial class VRWristMenuController
     private string BuildEntryLabel(VRWristFileEntry entry)
     {
         if (entry.IsSkipAction)
-            return "不载入镜头\nMOTION ONLY";
+            return L("不载入镜头\n仅使用角色动作", "カメラを読込まない\nモーションのみ", "Do not load camera\nMotion only");
         if (entry.IsActorTarget)
-            return "[角色]  " + entry.DisplayName;
+            return L("[角色]  ", "[キャラ]  ", "[Character]  ") + entry.DisplayName;
         if (entry.IsDirectory)
-            return "[目录]  " + entry.DisplayName + "  >";
+            return L("[目录]  ", "[フォルダー]  ", "[Folder]  ") + entry.DisplayName + "  >";
         if (entry.HasVmdMetadata)
         {
             bool actor = entry.VmdMetadata.HasActorData;
             bool camera = entry.VmdMetadata.HasCameraData;
             string kind = actor && camera
-                ? "混合"
+                ? L("混合", "複合", "Mixed")
                 : camera
-                    ? "镜头"
+                    ? L("镜头", "カメラ", "Camera")
                     : (entry.VmdMetadata.Content & VRVmdContent.Motion) != 0
-                        ? "动作"
-                        : "表情";
+                        ? L("动作", "モーション", "Motion")
+                        : L("表情", "表情", "Face");
             return "[" + kind + "]  " + entry.DisplayName;
         }
 
-        return "[角色卡]  " + entry.DisplayName;
+        return L("[角色卡]  ", "[キャラカード]  ", "[Character card]  ") + entry.DisplayName;
     }
 
     private void HandleBrowserBack()
@@ -524,7 +530,8 @@ public sealed partial class VRWristMenuController
         if (_browserMode == BrowserMode.SelectCharacterReplaceActor)
         {
             ShowPage(WristMenuPage.CharacterPreview);
-            SetStatus("角色卡预览", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            SetStatus(L("角色卡预览", "キャラカードのプレビュー", "Character card preview"),
+                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
             return;
         }
 
@@ -562,7 +569,8 @@ public sealed partial class VRWristMenuController
             || _browserMode == BrowserMode.AddMale)
         {
             ShowPage(WristMenuPage.CharacterCards);
-            SetStatus("角色卡", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            SetStatus(L("角色卡", "キャラカード", "Character cards"),
+                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         }
         else
         {
@@ -704,14 +712,16 @@ public sealed partial class VRWristMenuController
     {
         if (string.IsNullOrEmpty(_browserDirectory) || !Directory.Exists(_browserDirectory))
         {
-            SetStatus("请先进入一个可用目录", new Color(1f, 0.38f, 0.34f, 1f), 5f);
+            SetStatus(L("请先进入一个可用目录", "利用可能なフォルダーを開いてください", "Open a usable folder first"),
+                new Color(1f, 0.38f, 0.34f, 1f), 5f);
             return;
         }
 
         ResolveSettings();
         if (_settings == null)
         {
-            SetStatus("VR 设置尚未初始化", new Color(1f, 0.38f, 0.34f, 1f), 6f);
+            SetStatus(L("VR 设置尚未初始化", "VR設定が初期化されていません", "VR settings are not initialized"),
+                new Color(1f, 0.38f, 0.34f, 1f), 6f);
             return;
         }
 
@@ -730,11 +740,13 @@ public sealed partial class VRWristMenuController
                 ShowPage(WristMenuPage.MmdSettings);
             else
                 OpenFileBrowser(BrowserMode.LoadVmd, root, root);
-            SetStatus("动作目录已保存：" + root, new Color(0.35f, 1f, 0.62f, 1f), 5f);
+            SetStatus(L("动作目录已保存：", "モーションフォルダーを保存：", "Motion folder saved: ") + root,
+                new Color(0.35f, 1f, 0.62f, 1f), 5f);
         }
         catch (Exception ex)
         {
-            SetStatus("动作目录保存失败：" + ex.Message, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+            SetStatus(L("动作目录保存失败：", "モーションフォルダーの保存に失敗：", "Could not save motion folder: ") + ex.Message,
+                new Color(1f, 0.38f, 0.34f, 1f), 7f);
         }
     }
 
@@ -775,7 +787,7 @@ public sealed partial class VRWristMenuController
         {
             _returnToMmdSettingsAfterRootPicker = false;
             ShowPage(WristMenuPage.MmdSettings);
-            SetStatus("MMDD 设置", new Color(1f, 0.72f, 0.25f, 1f), 0f);
+            SetStatus(L("MMD 工具", "MMD ツール", "MMD tools"), new Color(1f, 0.72f, 0.25f, 1f), 0f);
             return;
         }
 
@@ -986,7 +998,8 @@ public sealed partial class VRWristMenuController
         if (_operationInProgress)
             return;
         _operationInProgress = true;
-        SetStatus("正在载入 VMD…", new Color(1f, 0.72f, 0.25f, 1f), 0f);
+        SetStatus(L("正在载入 VMD…", "VMDを読込中…", "Loading VMD…"),
+            new Color(1f, 0.72f, 0.25f, 1f), 0f);
         StartCoroutine(LoadVmdAfterFrame(
             motionPath,
             cameraPath,
@@ -1036,7 +1049,8 @@ public sealed partial class VRWristMenuController
             yield break;
 
         _operationInProgress = true;
-        SetStatus("正在读取角色卡…", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        SetStatus(L("正在读取角色卡…", "キャラカードを読込中…", "Loading character card…"),
+            new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         yield return null;
 
         string status;
@@ -1057,7 +1071,8 @@ public sealed partial class VRWristMenuController
             yield break;
 
         _operationInProgress = true;
-        SetStatus("正在替换场景角色…", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        SetStatus(L("正在替换场景角色…", "シーンのキャラを置換中…", "Replacing scene character…"),
+            new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         yield return null;
 
         string status;

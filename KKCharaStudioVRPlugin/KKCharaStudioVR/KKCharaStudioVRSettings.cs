@@ -159,6 +159,7 @@ public class KKCharaStudioVRSettings : VRSettings
 	private bool _TwoHandScaleEnabled = true;
 	private bool _WristMenuEnabled = true;
 	private float _WristMenuScale = 1.0f;
+	private string _WristMenuLanguage = "zh-CN";
 	private string _VmdRootPath = string.Empty;
 
 	[XmlComment("Enable comfort vignette during movement")]
@@ -194,6 +195,17 @@ public class KKCharaStudioVRSettings : VRSettings
 	{
 		get { return _WristMenuScale; }
 		set { _WristMenuScale = value; TriggerPropertyChanged("WristMenuScale"); }
+	}
+
+	[XmlComment("Wrist menu language: zh-CN, ja-JP, or en-US")]
+	public string WristMenuLanguage
+	{
+		get { return _WristMenuLanguage; }
+		set
+		{
+			_WristMenuLanguage = NormalizeWristMenuLanguage(value);
+			TriggerPropertyChanged("WristMenuLanguage");
+		}
 	}
 
 	[XmlComment("Root folder containing VMD motion, camera, and audio files")]
@@ -260,5 +272,14 @@ public class KKCharaStudioVRSettings : VRSettings
 	public static KKCharaStudioVRSettings Load(string path)
 	{
 		return VRSettings.Load<KKCharaStudioVRSettings>(path);
+	}
+
+	private static string NormalizeWristMenuLanguage(string value)
+	{
+		if (string.Equals(value, "ja-JP", System.StringComparison.OrdinalIgnoreCase))
+			return "ja-JP";
+		if (string.Equals(value, "en-US", System.StringComparison.OrdinalIgnoreCase))
+			return "en-US";
+		return "zh-CN";
 	}
 }

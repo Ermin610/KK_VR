@@ -47,7 +47,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "CharacterPreviewTitle",
             _characterPreviewPage.transform,
-            "角色卡预览",
+            L("角色卡预览", "キャラカードのプレビュー", "Character card preview"),
             92f,
             10f,
             444f,
@@ -87,7 +87,7 @@ public sealed partial class VRWristMenuController
         _characterPreviewMessageText = CreateText(
             "CharacterPreviewMessage",
             _characterPreviewPage.transform,
-            "请选择角色卡",
+            L("请选择角色卡", "キャラカードを選択", "Select a character card"),
             CharacterPreviewAreaX + 12f,
             CharacterPreviewAreaY + 12f,
             CharacterPreviewAreaWidth - 24f,
@@ -99,7 +99,7 @@ public sealed partial class VRWristMenuController
         _characterPreviewNameText = CreateText(
             "CharacterPreviewName",
             _characterPreviewPage.transform,
-            "尚未选择角色卡",
+            L("尚未选择角色卡", "キャラカード未選択", "No character card selected"),
             24f,
             322f,
             512f,
@@ -110,7 +110,7 @@ public sealed partial class VRWristMenuController
 
         _characterPreviewLoadButton = CreateButton(
             "CharacterPreviewLoad",
-            "读取新角色\nLOAD",
+            L("添加为新角色", "新しいキャラとして追加", "Add as a new character"),
             24f,
             356f,
             new Color(0.075f, 0.24f, 0.14f, 0.5f),
@@ -122,7 +122,7 @@ public sealed partial class VRWristMenuController
             17);
         _characterPreviewReplaceButton = CreateButton(
             "CharacterPreviewReplace",
-            "替换场景角色\nREPLACE",
+            L("替换场景角色", "シーンのキャラを置換", "Replace a scene character"),
             288f,
             356f,
             new Color(0.08f, 0.15f, 0.18f, 0.5f),
@@ -155,14 +155,14 @@ public sealed partial class VRWristMenuController
         ReleaseCharacterPreviewTexture();
         ResetCharacterPreviewRect();
         _characterPreviewNameText.text = string.IsNullOrEmpty(path)
-            ? "无效角色卡"
+            ? L("无效角色卡", "無効なキャラカード", "Invalid character card")
             : Path.GetFileNameWithoutExtension(path);
-        _characterPreviewMessageText.text = "正在读取卡面预览…";
+        _characterPreviewMessageText.text = L("正在读取卡面预览…", "カード画像を読込中…", "Loading card preview…");
         _characterPreviewMessageText.gameObject.SetActive(true);
         SetCharacterPreviewActionsVisible(false);
         ShowPage(WristMenuPage.CharacterPreview);
         SetStatus(
-            "正在读取卡面预览…",
+            L("正在读取卡面预览…", "カード画像を読込中…", "Loading card preview…"),
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
         StartCoroutine(LoadCharacterCardPreviewAfterFrame(path, requestId));
@@ -211,10 +211,11 @@ public sealed partial class VRWristMenuController
             _characterPreviewNameText.text = characterName;
             _characterPreviewMessageText.gameObject.SetActive(false);
             _characterPreviewLoadButton.SetLabel(GetCharacterPreviewLoadLabel());
-            _characterPreviewReplaceButton.SetLabel("替换场景角色\nREPLACE");
+            _characterPreviewReplaceButton.SetLabel(
+                L("替换场景角色", "シーンのキャラを置換", "Replace a scene character"));
             SetCharacterPreviewActionsVisible(true);
             SetStatus(
-                "角色卡预览已就绪",
+                L("角色卡预览已就绪", "プレビューの準備完了", "Character preview is ready"),
                 new Color(0.35f, 1f, 0.62f, 1f),
                 0f);
         }
@@ -225,7 +226,10 @@ public sealed partial class VRWristMenuController
             if (requestId != _characterPreviewRequestId)
                 yield break;
 
-            _characterPreviewMessageText.text = "卡面读取失败\n请返回并选择其他卡片";
+            _characterPreviewMessageText.text = L(
+                "卡面读取失败\n请返回并选择其他卡片",
+                "カード画像の読込に失敗\n戻って別のカードを選択してください",
+                "Could not load the card preview\nGo back and choose another card");
             _characterPreviewMessageText.gameObject.SetActive(true);
             VRLog.Warn("Character card preview failed for " + path + ": " + ex.Message);
             SetStatus(
@@ -278,8 +282,8 @@ public sealed partial class VRWristMenuController
     private string GetCharacterPreviewLoadLabel()
     {
         return _characterCardMode == VRCharacterCardMode.AddMale
-            ? "读取为新男角色\nLOAD MALE"
-            : "读取为新女角色\nLOAD FEMALE";
+            ? L("添加为新男角色", "新しい男性キャラとして追加", "Add as a new male character")
+            : L("添加为新女角色", "新しい女性キャラとして追加", "Add as a new female character");
     }
 
     private void HandleCharacterPreviewLoad()

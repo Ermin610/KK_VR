@@ -50,6 +50,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Native Popup Compatibility**: Studio option, graphics, confirmation, and other initially hidden panels are captured when they open, with visual sorting order preserved for reliable laser clicks.
 
 ### 7. Compact Wrist Quick Menu
+- **Three-language interface**: Simplified Chinese is the default, with Japanese and English available under Settings > General. The selected language applies immediately and persists across launches.
 - **Focused submenus**: Scene commands, character cards, clothing presets, and MMD controls stay organized in the compact wrist interface.
 - **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
 - **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and starts at `E:\action`.

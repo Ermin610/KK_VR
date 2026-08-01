@@ -7,6 +7,7 @@ public sealed partial class VRWristMenuController
 {
     private enum WristSettingsSection
     {
+        General,
         Visual,
         CharacterLight,
         Audio
@@ -22,13 +23,18 @@ public sealed partial class VRWristMenuController
     };
 
     private GameObject _settingsPage;
+    private GameObject _settingsGeneralPanel;
     private GameObject _settingsVisualPanel;
     private GameObject _settingsCharacterLightPanel;
     private GameObject _settingsAudioPanel;
     private VRWristMenuButtonTarget _timelineButton;
+    private VRWristMenuButtonTarget _settingsGeneralTab;
     private VRWristMenuButtonTarget _settingsVisualTab;
     private VRWristMenuButtonTarget _settingsCharacterLightTab;
     private VRWristMenuButtonTarget _settingsAudioTab;
+    private VRWristMenuButtonTarget _languageChineseButton;
+    private VRWristMenuButtonTarget _languageJapaneseButton;
+    private VRWristMenuButtonTarget _languageEnglishButton;
     private VRWristMenuButtonTarget _characterLightToggle;
     private VRWristMenuButtonTarget _characterLightShadowToggle;
     private Text _backgroundValueText;
@@ -56,7 +62,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "SettingsTitle",
             _settingsPage.transform,
-            "工作室设置",
+            L("设置", "設定", "Settings"),
             92f,
             10f,
             444f,
@@ -65,43 +71,57 @@ public sealed partial class VRWristMenuController
             TextAnchor.MiddleLeft,
             Color.white);
 
+        _settingsGeneralTab = CreateButton(
+            "SettingsGeneralTab",
+            L("通用", "一般", "General"),
+            24f,
+            62f,
+            new Color(0.12f, 0.16f, 0.2f, 0.56f),
+            new Color(0.22f, 0.34f, 0.42f, 0.8f),
+            () => ShowSettingsSection(WristSettingsSection.General),
+            _settingsPage.transform,
+            116f,
+            42f,
+            17);
         _settingsVisualTab = CreateButton(
             "SettingsVisualTab",
-            "画面",
-            24f,
+            L("画面", "画面", "Visual"),
+            156f,
             62f,
             new Color(0.07f, 0.21f, 0.25f, 0.52f),
             new Color(0.09f, 0.42f, 0.49f, 0.78f),
             () => ShowSettingsSection(WristSettingsSection.Visual),
             _settingsPage.transform,
-            160f,
+            116f,
             42f,
-            18);
+            17);
         _settingsCharacterLightTab = CreateButton(
             "SettingsCharacterLightTab",
-            "角色光",
-            200f,
+            L("角色光", "キャラ光", "Lighting"),
+            288f,
             62f,
             new Color(0.28f, 0.2f, 0.07f, 0.48f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             () => ShowSettingsSection(WristSettingsSection.CharacterLight),
             _settingsPage.transform,
-            160f,
+            116f,
             42f,
-            18);
+            17);
         _settingsAudioTab = CreateButton(
             "SettingsAudioTab",
-            "声音",
-            376f,
+            L("声音", "サウンド", "Audio"),
+            420f,
             62f,
             new Color(0.075f, 0.24f, 0.14f, 0.5f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             () => ShowSettingsSection(WristSettingsSection.Audio),
             _settingsPage.transform,
-            160f,
+            116f,
             42f,
-            18);
+            17);
 
+        _settingsGeneralPanel = CreateRectObject(
+            "SettingsGeneralPanel", _settingsPage.transform, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _settingsVisualPanel = CreateRectObject(
             "SettingsVisualPanel", _settingsPage.transform, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _settingsCharacterLightPanel = CreateRectObject(
@@ -109,10 +129,101 @@ public sealed partial class VRWristMenuController
         _settingsAudioPanel = CreateRectObject(
             "SettingsAudioPanel", _settingsPage.transform, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
+        BuildGeneralSettings();
         BuildVisualSettings();
         BuildCharacterLightSettings();
         BuildAudioSettings();
-        ShowSettingsSection(WristSettingsSection.Visual);
+        ShowSettingsSection(WristSettingsSection.General);
+    }
+
+    private void BuildGeneralSettings()
+    {
+        CreateText(
+            "LanguageHeading",
+            _settingsGeneralPanel.transform,
+            L("界面语言", "表示言語", "Interface language"),
+            24f,
+            122f,
+            512f,
+            28f,
+            20,
+            TextAnchor.MiddleLeft,
+            new Color(0.25f, 0.86f, 0.94f, 1f));
+        CreateText(
+            "LanguageDescription",
+            _settingsGeneralPanel.transform,
+            L(
+                "选择后立即应用，并在下次启动时保持",
+                "選択後すぐに反映され、次回起動時も保持されます",
+                "Applies immediately and is remembered for the next launch"),
+            24f,
+            154f,
+            512f,
+            34f,
+            16,
+            TextAnchor.MiddleLeft,
+            new Color(0.72f, 0.82f, 0.88f, 1f));
+
+        _languageChineseButton = CreateButton(
+            "LanguageChinese",
+            "简体中文",
+            24f,
+            202f,
+            new Color(0.07f, 0.21f, 0.25f, 0.52f),
+            new Color(0.09f, 0.42f, 0.49f, 0.78f),
+            () => HandleSetLanguage(ChineseLanguage),
+            _settingsGeneralPanel.transform,
+            160f,
+            60f,
+            18);
+        _languageJapaneseButton = CreateButton(
+            "LanguageJapanese",
+            "日本語",
+            200f,
+            202f,
+            new Color(0.28f, 0.2f, 0.07f, 0.48f),
+            new Color(0.55f, 0.36f, 0.1f, 0.74f),
+            () => HandleSetLanguage(JapaneseLanguage),
+            _settingsGeneralPanel.transform,
+            160f,
+            60f,
+            18);
+        _languageEnglishButton = CreateButton(
+            "LanguageEnglish",
+            "English",
+            376f,
+            202f,
+            new Color(0.075f, 0.24f, 0.14f, 0.5f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            () => HandleSetLanguage(EnglishLanguage),
+            _settingsGeneralPanel.transform,
+            160f,
+            60f,
+            18);
+
+        Image noteBackground = CreateImage(
+            "LanguageNoteBackground",
+            _settingsGeneralPanel.transform,
+            24f,
+            286f,
+            512f,
+            72f,
+            new Color(0.7f, 0.84f, 0.94f, 0.065f));
+        ApplyGlassEffects(noteBackground, new Color(0.86f, 0.96f, 1f, 0.12f), false, 0f);
+        CreateText(
+            "LanguageNote",
+            _settingsGeneralPanel.transform,
+            L(
+                "腕表中的标题、按钮和功能说明将统一使用所选语言。",
+                "リストメニューの見出し、ボタン、機能説明を選択した言語に統一します。",
+                "Titles, buttons, and descriptions use the selected language throughout the wrist menu."),
+            40f,
+            294f,
+            480f,
+            56f,
+            17,
+            TextAnchor.MiddleLeft,
+            new Color(0.76f, 0.88f, 0.94f, 1f));
     }
 
     private void BuildVisualSettings()
@@ -120,7 +231,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "BackgroundHeading",
             _settingsVisualPanel.transform,
-            "背景颜色  BACKGROUND",
+            L("背景颜色", "背景色", "Background color"),
             24f,
             122f,
             512f,
@@ -137,7 +248,7 @@ public sealed partial class VRWristMenuController
             Color color = VRStudioSettingsService.GetBackgroundPresetColor(i);
             CreateButton(
                 "BackgroundPreset" + i,
-                VRStudioSettingsService.GetBackgroundPresetName(i),
+                GetBackgroundPresetLabel(i),
                 24f + i * swatchSpacing,
                 160f,
                 Darken(color, 0.78f),
@@ -161,7 +272,7 @@ public sealed partial class VRWristMenuController
         _backgroundValueText = CreateText(
             "BackgroundValue",
             _settingsVisualPanel.transform,
-            "当前背景色",
+            L("当前背景色", "現在の背景色", "Current background"),
             38f,
             258f,
             484f,
@@ -176,7 +287,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "CharacterLightHeading",
             _settingsCharacterLightPanel.transform,
-            "角色光  CHARACTER LIGHT",
+            L("角色光", "キャラクターライト", "Character light"),
             24f,
             118f,
             512f,
@@ -187,7 +298,7 @@ public sealed partial class VRWristMenuController
 
         _characterLightToggle = CreateButton(
             "CharacterLightToggle",
-            "角色光",
+            L("角色光", "キャラ光", "Character light"),
             24f,
             154f,
             new Color(0.28f, 0.2f, 0.07f, 0.48f),
@@ -234,7 +345,7 @@ public sealed partial class VRWristMenuController
             26);
         _characterLightShadowToggle = CreateButton(
             "CharacterLightShadow",
-            "阴影",
+            L("阴影", "影", "Shadows"),
             404f,
             154f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -248,7 +359,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "CharacterLightColorHeading",
             _settingsCharacterLightPanel.transform,
-            "灯光颜色  COLOR",
+            L("灯光颜色", "ライト色", "Light color"),
             24f,
             226f,
             512f,
@@ -264,7 +375,7 @@ public sealed partial class VRWristMenuController
             Color color = VRStudioSettingsService.GetCharacterLightPresetColor(i);
             CreateButton(
                 "CharacterLightPreset" + i,
-                VRStudioSettingsService.GetCharacterLightPresetName(i),
+                GetCharacterLightPresetLabel(i),
                 24f + i * 104.5f,
                 260f,
                 Darken(color, 0.58f),
@@ -282,7 +393,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "AudioHeading",
             _settingsAudioPanel.transform,
-            "声音配置  AUDIO",
+            L("声音配置", "サウンド設定", "Audio settings"),
             24f,
             112f,
             512f,
@@ -298,7 +409,7 @@ public sealed partial class VRWristMenuController
             CreateText(
                 "AudioName" + i,
                 _settingsAudioPanel.transform,
-                VRStudioSettingsService.GetAudioName(channel),
+                GetAudioLabel(channel),
                 24f,
                 y,
                 118f,
@@ -343,7 +454,7 @@ public sealed partial class VRWristMenuController
                 23);
             _audioToggleButtons[i] = CreateButton(
                 "AudioToggle" + i,
-                "开启",
+                L("开启", "オン", "On"),
                 344f,
                 y,
                 new Color(0.075f, 0.24f, 0.14f, 0.5f),
@@ -360,12 +471,14 @@ public sealed partial class VRWristMenuController
     {
         ShowPage(WristMenuPage.Settings);
         ShowSettingsSection(_settingsSection);
-        SetStatus("工作室设置", new Color(0.25f, 0.86f, 0.94f, 1f), 0f);
+        SetStatus(L("设置", "設定", "Settings"), new Color(0.25f, 0.86f, 0.94f, 1f), 0f);
     }
 
     private void ShowSettingsSection(WristSettingsSection section)
     {
         _settingsSection = section;
+        if (_settingsGeneralPanel != null)
+            _settingsGeneralPanel.SetActive(section == WristSettingsSection.General);
         if (_settingsVisualPanel != null)
             _settingsVisualPanel.SetActive(section == WristSettingsSection.Visual);
         if (_settingsCharacterLightPanel != null)
@@ -373,12 +486,26 @@ public sealed partial class VRWristMenuController
         if (_settingsAudioPanel != null)
             _settingsAudioPanel.SetActive(section == WristSettingsSection.Audio);
 
+        if (_settingsGeneralTab != null)
+            _settingsGeneralTab.SetLabel(
+                section == WristSettingsSection.General
+                    ? L("通用  ●", "一般  ●", "General  ●")
+                    : L("通用", "一般", "General"));
         if (_settingsVisualTab != null)
-            _settingsVisualTab.SetLabel(section == WristSettingsSection.Visual ? "画面  ●" : "画面");
+            _settingsVisualTab.SetLabel(
+                section == WristSettingsSection.Visual
+                    ? L("画面  ●", "画面  ●", "Visual  ●")
+                    : L("画面", "画面", "Visual"));
         if (_settingsCharacterLightTab != null)
-            _settingsCharacterLightTab.SetLabel(section == WristSettingsSection.CharacterLight ? "角色光  ●" : "角色光");
+            _settingsCharacterLightTab.SetLabel(
+                section == WristSettingsSection.CharacterLight
+                    ? L("角色光  ●", "キャラ光  ●", "Lighting  ●")
+                    : L("角色光", "キャラ光", "Lighting"));
         if (_settingsAudioTab != null)
-            _settingsAudioTab.SetLabel(section == WristSettingsSection.Audio ? "声音  ●" : "声音");
+            _settingsAudioTab.SetLabel(
+                section == WristSettingsSection.Audio
+                    ? L("声音  ●", "サウンド  ●", "Audio  ●")
+                    : L("声音", "サウンド", "Audio"));
         RefreshSettingsPage();
     }
 
@@ -386,10 +513,14 @@ public sealed partial class VRWristMenuController
     {
         switch (_settingsSection)
         {
+            case WristSettingsSection.General:
+                RefreshLanguageSettings();
+                break;
             case WristSettingsSection.Visual:
                 int preset = VRStudioSettingsService.FindClosestBackgroundPreset();
                 if (_backgroundValueText != null)
-                    _backgroundValueText.text = "当前背景色  " + VRStudioSettingsService.GetBackgroundPresetName(preset);
+                    _backgroundValueText.text = L("当前背景色  ", "現在の背景色  ", "Current background  ")
+                        + GetBackgroundPresetLabel(preset);
                 break;
             case WristSettingsSection.CharacterLight:
                 RefreshCharacterLightSettings();
@@ -407,10 +538,13 @@ public sealed partial class VRWristMenuController
         bool isPlaying;
         if (!VRTimelineService.TryGetIsPlaying(out isPlaying))
         {
-            _timelineButton.SetLabel("TIMELINE\n不可用");
+            _timelineButton.SetLabel(L("时间轴\n不可用", "タイムライン\n利用不可", "Timeline\nUnavailable"));
             return;
         }
-        _timelineButton.SetLabel(isPlaying ? "TIMELINE\n暂停" : "TIMELINE\n播放");
+        _timelineButton.SetLabel(
+            isPlaying
+                ? L("时间轴\n暂停", "タイムライン\n一時停止", "Timeline\nPause")
+                : L("时间轴\n播放", "タイムライン\n再生", "Timeline\nPlay"));
     }
 
     private void RefreshCharacterLightSettings()
@@ -420,11 +554,17 @@ public sealed partial class VRWristMenuController
         Color color;
         bool available = VRStudioSettingsService.TryGetCharacterLight(out intensity, out shadow, out color);
         if (_characterLightToggle != null)
-            _characterLightToggle.SetLabel(available && intensity > 0.01f ? "角色光  开" : "角色光  关");
+            _characterLightToggle.SetLabel(
+                available && intensity > 0.01f
+                    ? L("角色光  开", "キャラ光  オン", "Character light  On")
+                    : L("角色光  关", "キャラ光  オフ", "Character light  Off"));
         if (_characterLightIntensityText != null)
             _characterLightIntensityText.text = available ? intensity.ToString("F1") : "--";
         if (_characterLightShadowToggle != null)
-            _characterLightShadowToggle.SetLabel(available && shadow ? "阴影  开" : "阴影  关");
+            _characterLightShadowToggle.SetLabel(
+                available && shadow
+                    ? L("阴影  开", "影  オン", "Shadows  On")
+                    : L("阴影  关", "影  オフ", "Shadows  Off"));
     }
 
     private void RefreshAudioSettings()
@@ -437,7 +577,56 @@ public sealed partial class VRWristMenuController
             if (_audioVolumeTexts[i] != null)
                 _audioVolumeTexts[i].text = available ? volume + "%" : "--";
             if (_audioToggleButtons[i] != null)
-                _audioToggleButtons[i].SetLabel(available && enabled ? "开启" : "静音");
+                _audioToggleButtons[i].SetLabel(
+                    available && enabled
+                        ? L("开启", "オン", "On")
+                        : L("静音", "ミュート", "Mute"));
+        }
+    }
+
+    private void RefreshLanguageSettings()
+    {
+        string language = CurrentLanguage;
+        if (_languageChineseButton != null)
+            _languageChineseButton.SetLabel(language == ChineseLanguage ? "简体中文  ●" : "简体中文");
+        if (_languageJapaneseButton != null)
+            _languageJapaneseButton.SetLabel(language == JapaneseLanguage ? "日本語  ●" : "日本語");
+        if (_languageEnglishButton != null)
+            _languageEnglishButton.SetLabel(language == EnglishLanguage ? "English  ●" : "English");
+    }
+
+    private string GetBackgroundPresetLabel(int index)
+    {
+        string[] chinese = { "墨黑", "深灰", "中灰", "深蓝", "浅灰", "绿幕" };
+        string[] japanese = { "黒", "濃い灰", "灰", "濃い青", "薄い灰", "グリーンバック" };
+        string[] english = { "Black", "Dark gray", "Gray", "Dark blue", "Light gray", "Green screen" };
+        index = Mathf.Clamp(index, 0, chinese.Length - 1);
+        return L(chinese[index], japanese[index], english[index]);
+    }
+
+    private string GetCharacterLightPresetLabel(int index)
+    {
+        string[] chinese = { "暖", "白", "冷", "红", "绿" };
+        string[] japanese = { "暖色", "白", "寒色", "赤", "緑" };
+        string[] english = { "Warm", "White", "Cool", "Red", "Green" };
+        index = Mathf.Clamp(index, 0, chinese.Length - 1);
+        return L(chinese[index], japanese[index], english[index]);
+    }
+
+    private string GetAudioLabel(VRAudioChannel channel)
+    {
+        switch (channel)
+        {
+            case VRAudioChannel.Master:
+                return L("主音量", "マスター", "Master");
+            case VRAudioChannel.Bgm:
+                return L("背景音乐", "BGM", "Music");
+            case VRAudioChannel.Environment:
+                return L("环境声音", "環境音", "Environment");
+            case VRAudioChannel.SystemEffects:
+                return L("系统音效", "システム音", "System effects");
+            default:
+                return L("游戏音效", "ゲーム音", "Game effects");
         }
     }
 

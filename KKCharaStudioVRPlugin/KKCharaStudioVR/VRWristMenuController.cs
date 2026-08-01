@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Valve.VR;
@@ -64,6 +65,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private VRWristMenuButtonTarget _hoveredButton;
     private Font _font;
     private Font _emphasizedFont;
+    private bool _ownsFont;
+    private bool _ownsEmphasizedFont;
     private LineRenderer _laser;
     private Image _surfaceCursor;
     private Image _surfaceCursorInner;
@@ -149,6 +152,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             Destroy(_cursorSprite);
         if (_cursorTexture != null)
             Destroy(_cursorTexture);
+        if (_ownsFont && _font != null)
+            Destroy(_font);
+        if (_ownsEmphasizedFont && _emphasizedFont != null && _emphasizedFont != _font)
+            Destroy(_emphasizedFont);
         ReleaseCharacterPreviewTexture();
         if (Instance == this)
             Instance = null;
@@ -225,7 +232,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (open)
         {
             ShowPage(WristMenuPage.Root);
-            SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+            SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
         }
 
         VRLog.Info("Wrist menu " + (open ? "opened." : "closed."));
@@ -245,8 +252,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (_colliderLayer < 0)
             _colliderLayer = 2;
         _pointerMask = 1 << _colliderLayer;
-        _font = ResolveFont(false);
-        _emphasizedFont = ResolveFont(true);
+        if (_font == null)
+            _font = ResolveFont(false, out _ownsFont);
+        if (_emphasizedFont == null)
+            _emphasizedFont = ResolveFont(true, out _ownsEmphasizedFont);
         EnsureGlassAssets();
 
         _menuRoot = new GameObject("KKVR_WristMenu", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
@@ -301,11 +310,12 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         CreateText("Title", _rootPage.transform, "KK VR", 24f, 7f, 220f, 31f, 28,
             TextAnchor.MiddleLeft, PrimaryTextColor);
-        CreateText("TitleCaption", _rootPage.transform, "STUDIO CONTROL", 25f, 35f, 220f, 15f, 11,
+        CreateText("TitleCaption", _rootPage.transform,
+            L("工作室快捷控制", "スタジオクイック操作", "Studio quick controls"), 25f, 35f, 260f, 15f, 11,
             TextAnchor.MiddleLeft, TertiaryTextColor);
         CreateButton(
             "OpenSettings",
-            "设置  ›",
+            L("设置  ›", "設定  ›", "Settings  ›"),
             418f,
             12f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -316,11 +326,11 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             34f,
             17);
 
-        CreateText("SceneSection", _rootPage.transform, "场景  SCENE", 24f, 68f, 512f, 24f, 20,
+        CreateText("SceneSection", _rootPage.transform, L("场景", "シーン", "Scene"), 24f, 68f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
         CreateButton(
             "LoadScene",
-            "读取场景  ›\n预览并载入",
+            L("载入场景  ›\n浏览并打开场景卡", "シーンを読込  ›\nシーンカードを選択", "Load scene  ›\nBrowse and open a scene card"),
             24f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -332,7 +342,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             20);
         CreateButton(
             "SaveScene",
-            "保存场景  ›\n保存到新卡",
+            L("保存场景  ›\n新建场景卡", "シーンを保存  ›\n新しいカードを作成", "Save scene  ›\nCreate a new scene card"),
             288f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -347,7 +357,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
         CreateButton(
             "OpenMmdSettings",
-            "打开 MMD 控制台  ›\n播放、VMD、镜头与高跟鞋",
+            L("MMD 工具  ›\n动作、镜头和高跟鞋", "MMD ツール  ›\nモーション・カメラ・ハイヒール", "MMD tools  ›\nMotion, camera, and high heels"),
             24f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
@@ -358,11 +368,11 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             68f,
             18);
 
-        CreateText("CharacterSection", _rootPage.transform, "角色  CHARACTER", 24f, 290f, 512f, 24f, 20,
+        CreateText("CharacterSection", _rootPage.transform, L("角色", "キャラクター", "Character"), 24f, 290f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "OpenCharacterCards",
-            "角色卡  ›\n载入或替换",
+            L("角色卡  ›\n添加或替换角色", "キャラカード  ›\n追加・置き換え", "Character cards  ›\nAdd or replace a character"),
             24f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -374,7 +384,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
         CreateButton(
             "OpenClothing",
-            "角色换装  ›\n服装状态",
+            L("服装状态  ›\n快速切换穿脱", "服装状態  ›\n着脱をすばやく変更", "Clothing states  ›\nQuickly change dress state"),
             200f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -386,7 +396,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
         CreateButton(
             "ToggleIkVisibility",
-            "IK 控制器\n显示 / 隐藏",
+            L("IK 控制器\n显示或隐藏辅助点", "IK コントローラー\n補助点を表示・非表示", "IK controllers\nShow or hide helper points"),
             376f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -416,10 +426,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             8f,
             8f,
             new Color(0.42f, 0.82f, 1f, 1f));
-        _statusText = CreateText("Status", statusBackground.transform, "就绪", 36f, 5f, 462f, 48f, 17,
+        _statusText = CreateText("Status", statusBackground.transform, L("就绪", "準備完了", "Ready"), 36f, 5f, 462f, 48f, 17,
             TextAnchor.MiddleLeft, SecondaryTextColor);
         CreateImage("FooterDivider", _menuRect, 338f, 484f, 54f, 1f, new Color(0.72f, 0.84f, 1f, 0.1f), false);
-        CreateText("AuthorCaption", _menuRect, "DESIGNED BY", 400f, 477f, 72f, 17f, 9,
+        CreateText("AuthorCaption", _menuRect, L("作者", "制作", "Designed by"), 400f, 477f, 72f, 17f, 9,
             TextAnchor.MiddleRight, TertiaryTextColor);
         CreateText("AuthorMark", _menuRect, "ERMIN", 478f, 477f, 58f, 17f, 12,
             TextAnchor.MiddleRight, SecondaryTextColor);
@@ -451,12 +461,12 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             58f,
             38f,
             28);
-        CreateText("ClothingTitle", _clothingPage.transform, "角色换装", 92f, 10f, 444f, 40f, 28,
+        CreateText("ClothingTitle", _clothingPage.transform, L("服装状态", "服装状態", "Clothing states"), 92f, 10f, 444f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
 
         _clothingTargetButton = CreateButton(
             "ClothingTarget",
-            "选择场景角色  >",
+            L("选择场景角色  >", "シーンのキャラを選択  >", "Select a scene character  >"),
             24f,
             66f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -467,11 +477,11 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             38f,
             17);
 
-        CreateText("ClothingPresetSection", _clothingPage.transform, "整套预设  PRESET", 24f, 112f, 512f, 24f, 18,
+        CreateText("ClothingPresetSection", _clothingPage.transform, L("整套预设", "一括プリセット", "Full presets"), 24f, 112f, 512f, 24f, 18,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "ClothingDressed",
-            "穿好\nDRESSED",
+            L("全部穿好", "すべて着る", "Fully dressed"),
             24f,
             140f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -483,7 +493,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
         CreateButton(
             "ClothingHalf",
-            "半脱\nHALF",
+            L("半脱状态", "半脱ぎ", "Half dressed"),
             198f,
             140f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
@@ -495,7 +505,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
         CreateButton(
             "ClothingUndressed",
-            "脱下\nUNDRESS",
+            L("全部脱下", "すべて脱ぐ", "Undressed"),
             371f,
             140f,
             new Color(0.3f, 0.09f, 0.12f, 0.46f),
@@ -506,7 +516,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             48f,
             17);
 
-        CreateText("ClothingPartsSection", _clothingPage.transform, "单独部位  PARTS", 24f, 198f, 512f, 24f, 18,
+        CreateText("ClothingPartsSection", _clothingPage.transform, L("单独部位", "部位ごと", "Individual parts"), 24f, 198f, 512f, 24f, 18,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
         for (int i = 0; i < _clothingPartButtons.Length; i++)
         {
@@ -515,7 +525,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             float y = 226f + i / 2 * 45f;
             _clothingPartButtons[i] = CreateButton(
                 "ClothingPart" + i,
-                VRCharacterClothingService.GetPartName(i) + "  -",
+                GetClothingPartLabel(i) + "  -",
                 x,
                 y,
                 new Color(0.08f, 0.15f, 0.18f, 0.5f),
@@ -1106,18 +1116,18 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         bool hasCharacter = TryGetClothingTarget(out character, out selectionStatus);
         _clothingTargetButton.SetLabel(
             hasCharacter
-                ? "当前角色  " + selectionStatus + "  >"
-                : "选择场景角色  >");
+                ? L("当前角色  ", "現在のキャラ  ", "Current character  ") + selectionStatus + "  >"
+                : L("选择场景角色  >", "シーンのキャラを選択  >", "Select a scene character  >"));
 
         for (int i = 0; i < _clothingPartButtons.Length; i++)
         {
             if (_clothingPartButtons[i] == null)
                 continue;
             string state = hasCharacter
-                ? VRCharacterClothingService.GetPartStateLabel(character, i)
+                ? LocalizeClothingStateLabel(VRCharacterClothingService.GetPartStateLabel(character, i))
                 : "-";
             _clothingPartButtons[i].SetLabel(
-                VRCharacterClothingService.GetPartName(i) + "  " + state);
+                GetClothingPartLabel(i) + "  " + state);
         }
     }
 
@@ -1142,7 +1152,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         OpenActorTargetBrowser(
             BrowserMode.SelectClothingActor,
             targets,
-            "请选择要换装的场景角色",
+            L("请选择要换装的场景角色", "服装を変更するキャラを選択", "Select the character whose clothing you want to change"),
             out status);
     }
 
@@ -1161,7 +1171,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         _clothingTargetObjectKey = entry.ObjectKey;
         _clothingTargetCharacter = target.Character;
-        SetStatus("换装目标：" + target.DisplayName, new Color(0.35f, 1f, 0.62f, 1f), 0f);
+        SetStatus(L("服装目标：", "服装対象：", "Clothing target: ") + target.DisplayName,
+            new Color(0.35f, 1f, 0.62f, 1f), 0f);
         ShowPage(WristMenuPage.Clothing);
     }
 
@@ -1214,7 +1225,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void HandleBackToRoot()
     {
         ShowPage(WristMenuPage.Root);
-        SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+        SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
     }
 
     private void HandleClothingPreset(byte state)
@@ -1266,7 +1277,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void HandleSaveScene()
     {
         ShowPage(WristMenuPage.SceneSave);
-        SetStatus("保存到场景根目录", new Color(0.25f, 0.86f, 0.94f, 1f), 0f);
+        SetStatus(L("保存到场景根目录", "シーンのルートフォルダーに保存", "Save to the scene root folder"),
+            new Color(0.25f, 0.86f, 0.94f, 1f), 0f);
     }
 
     private void HandleToggleMmd()
@@ -1314,7 +1326,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void UpdateTransientState()
     {
         if (_statusUntil > 0f && Time.unscaledTime > _statusUntil)
-            SetStatus("就绪", new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+            SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
         if (_page == WristMenuPage.Clothing && Time.unscaledTime >= _nextClothingRefresh)
         {
             RefreshClothingPage();
@@ -1331,7 +1343,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         if (_statusText == null)
             return;
-        _statusText.text = message;
+        _statusText.text = LocalizeStatus(message);
         _statusText.color = color;
         if (_statusIndicator != null)
             _statusIndicator.color = new Color(color.r, color.g, color.b, 1f);
@@ -1379,35 +1391,63 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         }
     }
 
-    private static Font ResolveFont(bool emphasized)
+    private Font ResolveFont(bool emphasized, out bool ownsFont)
     {
+        ownsFont = false;
         string[] installed = Font.GetOSInstalledFontNames();
         string latin = FindInstalledFont(
             installed,
             emphasized
                 ? new[] { "Segoe UI Semibold", "Segoe UI", "Arial" }
                 : new[] { "Segoe UI", "Segoe UI Semilight", "Arial" });
-        string cjk = FindInstalledFont(
+        string chinese = FindInstalledFont(
             installed,
             emphasized
                 ? new[] { "Microsoft YaHei UI Bold", "Microsoft YaHei Bold", "Microsoft YaHei UI", "Microsoft YaHei" }
                 : new[] { "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Arial Unicode MS" });
+        string japanese = FindInstalledFont(
+            installed,
+            emphasized
+                ? new[] { "Yu Gothic UI Semibold", "Yu Gothic Bold", "Meiryo UI", "Meiryo", "Noto Sans CJK JP" }
+                : new[] { "Yu Gothic UI", "Yu Gothic", "Meiryo UI", "Meiryo", "Noto Sans CJK JP" });
 
-        if (!string.IsNullOrEmpty(latin) && !string.IsNullOrEmpty(cjk)
-            && !string.Equals(latin, cjk, StringComparison.OrdinalIgnoreCase))
-            return Font.CreateDynamicFontFromOSFont(new[] { latin, cjk }, 32);
-        if (!string.IsNullOrEmpty(cjk))
-            return Font.CreateDynamicFontFromOSFont(cjk, 32);
-        if (!string.IsNullOrEmpty(latin))
-            return Font.CreateDynamicFontFromOSFont(latin, 32);
+        List<string> fallbacks = new List<string>();
+        AddFontFallback(fallbacks, latin);
+        if (IsJapanese)
+        {
+            AddFontFallback(fallbacks, japanese);
+            AddFontFallback(fallbacks, chinese);
+        }
+        else
+        {
+            AddFontFallback(fallbacks, chinese);
+            AddFontFallback(fallbacks, japanese);
+        }
+        if (fallbacks.Count > 0)
+        {
+            ownsFont = true;
+            return Font.CreateDynamicFontFromOSFont(fallbacks.ToArray(), 32);
+        }
 
         foreach (Font font in Resources.FindObjectsOfTypeAll<Font>())
         {
-            if (font != null && font.HasCharacter('场'))
+            if (font != null && font.HasCharacter('场') && font.HasCharacter('あ'))
                 return font;
         }
 
         return Resources.GetBuiltinResource<Font>("Arial.ttf");
+    }
+
+    private static void AddFontFallback(List<string> fallbacks, string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return;
+        foreach (string existing in fallbacks)
+        {
+            if (string.Equals(existing, name, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+        fallbacks.Add(name);
     }
 
     private static string FindInstalledFont(string[] installed, string[] candidates)

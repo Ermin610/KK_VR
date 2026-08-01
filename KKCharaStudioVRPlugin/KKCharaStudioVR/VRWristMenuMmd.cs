@@ -44,7 +44,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "MmdTitle",
             _mmdPage.transform,
-            "MMD 控制台",
+            L("MMD 工具", "MMD ツール", "MMD tools"),
             92f,
             10f,
             444f,
@@ -56,7 +56,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "MmdPlaybackHeading",
             _mmdPage.transform,
-            "播放与动作",
+            L("播放与动作", "再生とモーション", "Playback and motion"),
             24f,
             60f,
             512f,
@@ -67,7 +67,7 @@ public sealed partial class VRWristMenuController
 
         CreateButton(
             "ToggleMmd",
-            "MMDD\n播放 / 暂停",
+            L("MMDD\n播放或暂停", "MMDD\n再生・一時停止", "MMDD\nPlay or pause"),
             24f,
             86f,
             new Color(0.28f, 0.2f, 0.07f, 0.48f),
@@ -79,7 +79,7 @@ public sealed partial class VRWristMenuController
             15);
         _timelineButton = CreateButton(
             "ToggleTimeline",
-            "TIMELINE\n播放 / 暂停",
+            L("时间轴\n播放或暂停", "タイムライン\n再生・一時停止", "Timeline\nPlay or pause"),
             156f,
             86f,
             new Color(0.12f, 0.17f, 0.3f, 0.5f),
@@ -91,7 +91,7 @@ public sealed partial class VRWristMenuController
             15);
         _loadVmdButton = CreateButton(
             "LoadVmd",
-            "VMD\n读取文件",
+            L("VMD\n读取动作", "VMD\nモーション読込", "VMD\nLoad motion"),
             288f,
             86f,
             VmdRootMissingColor,
@@ -103,7 +103,7 @@ public sealed partial class VRWristMenuController
             15);
         CreateButton(
             "OpenHighHeels",
-            "高跟鞋\n参数  ›",
+            L("高跟鞋\n参数  ›", "ハイヒール\n設定  ›", "High heels\nSettings  ›"),
             420f,
             86f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -116,7 +116,7 @@ public sealed partial class VRWristMenuController
 
         _vmdRootButton = CreateButton(
             "VmdRoot",
-            "动作目录\n未设置 · 点击选择",
+            L("动作目录\n未设置 · 点击选择", "モーションフォルダー\n未設定・選択", "Motion folder\nNot set · Select"),
             24f,
             154f,
             VmdRootMissingColor,
@@ -130,7 +130,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "FixedFovHeading",
             _mmdPage.transform,
-            "VR 镜头  FIXED FOV",
+            L("VR 镜头视野", "VRカメラ視野", "VR camera field of view"),
             24f,
             210f,
             512f,
@@ -141,7 +141,7 @@ public sealed partial class VRWristMenuController
 
         _fixedFovToggleButton = CreateButton(
             "FixedFovToggle",
-            "Fixed FOV",
+            L("固定视野", "固定視野", "Fixed FOV"),
             24f,
             242f,
             new Color(0.28f, 0.2f, 0.07f, 0.48f),
@@ -188,7 +188,7 @@ public sealed partial class VRWristMenuController
             26);
         CreateButton(
             "FixedFovReset",
-            "重置\n53.13",
+            L("恢复默认\n53.13", "既定値\n53.13", "Default\n53.13"),
             426f,
             242f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -211,7 +211,7 @@ public sealed partial class VRWristMenuController
         _fixedFovCameraCountText = CreateText(
             "FixedFovState",
             _mmdPage.transform,
-            "MMDD 镜头控制器  --",
+            L("MMDD 镜头控制器  --", "MMDD カメラ制御  --", "MMDD camera controllers  --"),
             38f,
             310f,
             484f,
@@ -238,7 +238,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "HighHeelsTitle",
             _highHeelsPage.transform,
-            "MMDD 高跟鞋",
+            L("MMDD 高跟鞋", "MMDD ハイヒール", "MMDD high heels"),
             92f,
             10f,
             444f,
@@ -249,7 +249,7 @@ public sealed partial class VRWristMenuController
 
         _highHeelsTargetButton = CreateButton(
             "HighHeelsTarget",
-            "选择场景角色  >",
+            L("选择场景角色  >", "シーンのキャラを選択  >", "Select a scene character  >"),
             24f,
             60f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -262,7 +262,7 @@ public sealed partial class VRWristMenuController
 
         _highHeelsModeButton = CreateButton(
             "HighHeelsMode",
-            "模式  --",
+            L("模式  --", "モード  --", "Mode  --"),
             24f,
             112f,
             new Color(0.28f, 0.2f, 0.07f, 0.48f),
@@ -274,7 +274,7 @@ public sealed partial class VRWristMenuController
             17);
         CreateButton(
             "HighHeelsReset",
-            "恢复鞋子默认角度",
+            L("恢复鞋子默认角度", "靴の角度を初期値に戻す", "Restore default shoe angles"),
             288f,
             112f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -287,7 +287,7 @@ public sealed partial class VRWristMenuController
 
         _shoesOffsetToggleButton = CreateButton(
             "ShoesOffsetToggle",
-            "鞋高偏移  --",
+            L("鞋高偏移  --", "靴の高さ補正  --", "Shoe height offset  --"),
             24f,
             168f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -299,7 +299,7 @@ public sealed partial class VRWristMenuController
             16);
         _highHeelsShoesDetectButton = CreateButton(
             "HighHeelsShoesDetect",
-            "鞋子检测  --",
+            L("鞋子检测  --", "靴の検出  --", "Shoe detection  --"),
             288f,
             168f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -310,7 +310,12 @@ public sealed partial class VRWristMenuController
             42f,
             16);
 
-        string[] angleNames = { "脚踝", "鞋跟", "脚趾" };
+        string[] angleNames =
+        {
+            L("脚踝", "足首", "Ankle"),
+            L("鞋跟", "かかと", "Heel"),
+            L("脚趾", "つま先", "Toes")
+        };
         for (int i = 0; i < angleNames.Length; i++)
         {
             int component = i;
@@ -363,12 +368,12 @@ public sealed partial class VRWristMenuController
                 22);
         }
 
-        BuildShoesOffsetRow("ShoesOnOffset", "穿鞋高度", true, 344f, 0);
-        BuildShoesOffsetRow("ShoesOffOffset", "脱鞋高度", false, 378f, 1);
+        BuildShoesOffsetRow("ShoesOnOffset", L("穿鞋高度", "着靴時の高さ", "Shoes-on height"), true, 344f, 0);
+        BuildShoesOffsetRow("ShoesOffOffset", L("脱鞋高度", "脱靴時の高さ", "Shoes-off height"), false, 378f, 1);
 
         CreateButton(
             "HighHeelsSavePreset",
-            "保存参数\nSAVE",
+            L("保存参数", "設定を保存", "Save preset"),
             368f,
             344f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -380,7 +385,7 @@ public sealed partial class VRWristMenuController
             15);
         _highHeelsLoadPresetButton = CreateButton(
             "HighHeelsLoadPreset",
-            "读取参数\nLOAD",
+            L("读取参数", "設定を読込", "Load preset"),
             368f,
             378f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -449,7 +454,7 @@ public sealed partial class VRWristMenuController
 
     private void HandleOpenMmdSettings()
     {
-        SetStatus("MMDD 设置", new Color(1f, 0.72f, 0.25f, 1f), 0f);
+        SetStatus(L("MMD 工具", "MMD ツール", "MMD tools"), new Color(1f, 0.72f, 0.25f, 1f), 0f);
         ShowPage(WristMenuPage.MmdSettings);
     }
 
@@ -460,7 +465,7 @@ public sealed partial class VRWristMenuController
 
     private void HandleBackToMmdSettings()
     {
-        SetStatus("MMDD 设置", new Color(1f, 0.72f, 0.25f, 1f), 0f);
+        SetStatus(L("MMD 工具", "MMD ツール", "MMD tools"), new Color(1f, 0.72f, 0.25f, 1f), 0f);
         ShowPage(WristMenuPage.MmdSettings);
     }
 
@@ -475,7 +480,12 @@ public sealed partial class VRWristMenuController
                 out status)
             && object.ReferenceEquals(_highHeelsTargetCharacter, target.Character))
         {
-            SetStatus("正在读取 " + target.DisplayName + " 的高跟鞋状态", new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            SetStatus(
+                L("正在读取 ", "読込中：", "Reading high-heel state: ")
+                    + target.DisplayName
+                    + L(" 的高跟鞋状态", "", ""),
+                new Color(0.47f, 0.9f, 0.55f, 1f),
+                0f);
             ShowPage(WristMenuPage.HighHeels);
             return;
         }
@@ -518,7 +528,8 @@ public sealed partial class VRWristMenuController
         _highHeelsTargetObjectKey = entry.ObjectKey;
         _highHeelsTargetCharacter = target.Character;
         VRMmddStateBridge.ResetHighHeels();
-        SetStatus("高跟鞋目标：" + target.DisplayName, new Color(0.35f, 1f, 0.62f, 1f), 0f);
+        SetStatus(L("高跟鞋目标：", "ハイヒール対象：", "High-heel target: ") + target.DisplayName,
+            new Color(0.35f, 1f, 0.62f, 1f), 0f);
         ShowPage(WristMenuPage.HighHeels);
     }
 
@@ -539,7 +550,10 @@ public sealed partial class VRWristMenuController
 
         if (_loadVmdButton != null)
         {
-            _loadVmdButton.SetLabel(configured ? "VMD\n读取文件" : "VMD\n未设置目录");
+            _loadVmdButton.SetLabel(
+                configured
+                    ? L("VMD\n读取动作", "VMD\nモーション読込", "VMD\nLoad motion")
+                    : L("VMD\n未设置目录", "VMD\nフォルダー未設定", "VMD\nFolder not set"));
             _loadVmdButton.SetColors(
                 configured ? VmdRootReadyColor : VmdRootMissingColor,
                 configured ? VmdRootReadyHoverColor : VmdRootMissingHoverColor);
@@ -549,8 +563,8 @@ public sealed partial class VRWristMenuController
         {
             _vmdRootButton.SetLabel(
                 configured
-                    ? "动作目录\n已保存 · 点击更换"
-                    : "动作目录\n未设置 · 点击选择");
+                    ? L("动作目录\n已保存 · 点击更换", "モーションフォルダー\n設定済み・変更", "Motion folder\nSaved · Change")
+                    : L("动作目录\n未设置 · 点击选择", "モーションフォルダー\n未設定・選択", "Motion folder\nNot set · Select"));
             _vmdRootButton.SetColors(
                 configured ? VmdRootReadyColor : VmdRootMissingColor,
                 configured ? VmdRootReadyHoverColor : VmdRootMissingHoverColor);
@@ -564,8 +578,10 @@ public sealed partial class VRWristMenuController
         {
             _fixedFovToggleButton.SetLabel(
                 available
-                    ? (VRMmddStateBridge.FixedFovEnabled ? "Fixed FOV  开" : "Fixed FOV  关")
-                    : "Fixed FOV  --");
+                    ? (VRMmddStateBridge.FixedFovEnabled
+                        ? L("固定视野  开", "固定視野  オン", "Fixed FOV  On")
+                        : L("固定视野  关", "固定視野  オフ", "Fixed FOV  Off"))
+                    : L("固定视野  --", "固定視野  --", "Fixed FOV  --"));
         }
         if (_fixedFovValueText != null)
         {
@@ -576,8 +592,9 @@ public sealed partial class VRWristMenuController
         if (_fixedFovCameraCountText != null)
         {
             _fixedFovCameraCountText.text = available
-                ? "MMDD 镜头控制器  " + VRMmddStateBridge.CameraControllerCount
-                : "MMDD 镜头控制器  --";
+                ? L("MMDD 镜头控制器  ", "MMDD カメラ制御  ", "MMDD camera controllers  ")
+                    + VRMmddStateBridge.CameraControllerCount
+                : L("MMDD 镜头控制器  --", "MMDD カメラ制御  --", "MMDD camera controllers  --");
         }
     }
 
@@ -630,7 +647,7 @@ public sealed partial class VRWristMenuController
         bool available = VRMmddStateBridge.HighHeelsReported;
         if (_highHeelsTargetButton != null)
         {
-            string targetLabel = "选择场景角色  >";
+            string targetLabel = L("选择场景角色  >", "シーンのキャラを選択  >", "Select a scene character  >");
             if (available)
             {
                 targetLabel = VRMmddStateBridge.HighHeelsTargetName
@@ -656,22 +673,28 @@ public sealed partial class VRWristMenuController
         {
             _highHeelsModeButton.SetLabel(
                 available
-                    ? (VRMmddStateBridge.HighHeelsAutoMode ? "模式  自动  AUTO" : "模式  手动  MANUAL")
-                    : "模式  --");
+                    ? (VRMmddStateBridge.HighHeelsAutoMode
+                        ? L("模式  自动", "モード  自動", "Mode  Automatic")
+                        : L("模式  手动", "モード  手動", "Mode  Manual"))
+                    : L("模式  --", "モード  --", "Mode  --"));
         }
         if (_highHeelsShoesDetectButton != null)
         {
             _highHeelsShoesDetectButton.SetLabel(
                 available
-                    ? (VRMmddStateBridge.HighHeelsShoesDetect ? "鞋子检测  开" : "鞋子检测  关")
-                    : "鞋子检测  --");
+                    ? (VRMmddStateBridge.HighHeelsShoesDetect
+                        ? L("鞋子检测  开", "靴の検出  オン", "Shoe detection  On")
+                        : L("鞋子检测  关", "靴の検出  オフ", "Shoe detection  Off"))
+                    : L("鞋子检测  --", "靴の検出  --", "Shoe detection  --"));
         }
         if (_shoesOffsetToggleButton != null)
         {
             _shoesOffsetToggleButton.SetLabel(
                 available
-                    ? (VRMmddStateBridge.ShoesOffsetEnabled ? "鞋高偏移  开" : "鞋高偏移  关")
-                    : "鞋高偏移  --");
+                    ? (VRMmddStateBridge.ShoesOffsetEnabled
+                        ? L("鞋高偏移  开", "靴の高さ補正  オン", "Shoe height offset  On")
+                        : L("鞋高偏移  关", "靴の高さ補正  オフ", "Shoe height offset  Off"))
+                    : L("鞋高偏移  --", "靴の高さ補正  --", "Shoe height offset  --"));
         }
 
         float[] angles =
@@ -705,7 +728,9 @@ public sealed partial class VRWristMenuController
                 hasPreset = VRHighHeelsPresetStore.HasPreset(target.Character);
             }
             _highHeelsLoadPresetButton.SetLabel(
-                hasPreset ? "读取参数\n已保存" : "读取参数\n无记录");
+                hasPreset
+                    ? L("读取参数\n已有记录", "設定を読込\n保存あり", "Load preset\nSaved")
+                    : L("读取参数\n无记录", "設定を読込\n保存なし", "Load preset\nNone saved"));
         }
     }
 
