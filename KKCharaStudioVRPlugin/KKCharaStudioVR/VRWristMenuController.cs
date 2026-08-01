@@ -15,11 +15,14 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private const float MenuWidth = 560f;
     private const float MenuHeight = 500f;
 
-    private static readonly Color GlassPanelColor = new Color(0.035f, 0.045f, 0.055f, 0.82f);
-    private static readonly Color GlassHeaderColor = new Color(0.88f, 0.94f, 1f, 0.075f);
-    private static readonly Color GlassSurfaceColor = new Color(0.78f, 0.86f, 0.92f, 0.075f);
-    private static readonly Color GlassOutlineColor = new Color(0.92f, 0.97f, 1f, 0.2f);
-    private static readonly Color GlassShadowColor = new Color(0f, 0f, 0f, 0.48f);
+    private static readonly Color GlassPanelColor = new Color(0.022f, 0.03f, 0.044f, 0.91f);
+    private static readonly Color GlassHeaderColor = new Color(0.68f, 0.78f, 0.92f, 0.065f);
+    private static readonly Color GlassSurfaceColor = new Color(0.34f, 0.42f, 0.54f, 0.16f);
+    private static readonly Color GlassOutlineColor = new Color(0.78f, 0.88f, 1f, 0.2f);
+    private static readonly Color GlassShadowColor = new Color(0f, 0f, 0f, 0.56f);
+    private static readonly Color PrimaryTextColor = new Color(0.965f, 0.975f, 1f, 1f);
+    private static readonly Color SecondaryTextColor = new Color(0.67f, 0.72f, 0.8f, 1f);
+    private static readonly Color TertiaryTextColor = new Color(0.48f, 0.54f, 0.63f, 1f);
 
     private enum WristMenuPage
     {
@@ -47,6 +50,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private GameObject _characterPreviewPage;
     private RectTransform _menuRect;
     private Text _statusText;
+    private Image _statusIndicator;
     private VRWristMenuButtonTarget _clothingTargetButton;
     private VRWristMenuButtonTarget _loadVmdButton;
     private Texture2D _roundedTexture;
@@ -57,6 +61,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private Studio.OCIChar _clothingTargetCharacter;
     private VRWristMenuButtonTarget _hoveredButton;
     private Font _font;
+    private Font _emphasizedFont;
     private LineRenderer _laser;
     private GameObject _cursor;
     private Renderer _cursorRenderer;
@@ -234,7 +239,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (_colliderLayer < 0)
             _colliderLayer = 2;
         _pointerMask = 1 << _colliderLayer;
-        _font = ResolveFont();
+        _font = ResolveFont(false);
+        _emphasizedFont = ResolveFont(true);
         EnsureGlassAssets();
 
         _menuRoot = new GameObject("KKVR_WristMenu", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
@@ -254,12 +260,28 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         CanvasScaler scaler = _menuRoot.GetComponent<CanvasScaler>();
         scaler.dynamicPixelsPerUnit = 10f;
 
+        CreateImage(
+            "PanelShadowFar",
+            _menuRect,
+            6f,
+            9f,
+            MenuWidth,
+            MenuHeight,
+            new Color(0f, 0f, 0f, 0.2f));
+        CreateImage(
+            "PanelShadowNear",
+            _menuRect,
+            3f,
+            5f,
+            MenuWidth,
+            MenuHeight,
+            new Color(0f, 0f, 0f, 0.28f));
         Image glassPanel = CreateImage("Background", _menuRect, 0f, 0f, MenuWidth, MenuHeight, GlassPanelColor);
         ApplyGlassEffects(glassPanel, GlassOutlineColor, true, 6f);
         Image glassHeader = CreateImage("Header", _menuRect, 0f, 0f, MenuWidth, 58f, GlassHeaderColor);
-        ApplyGlassEffects(glassHeader, new Color(1f, 1f, 1f, 0.1f), false, 0f);
-        CreateImage("TopGlint", _menuRect, 18f, 7f, 524f, 2f, new Color(1f, 1f, 1f, 0.28f), false);
-        CreateImage("HeaderDivider", _menuRect, 24f, 57f, 512f, 1f, new Color(0.72f, 0.9f, 1f, 0.16f), false);
+        ApplyGlassEffects(glassHeader, new Color(1f, 1f, 1f, 0.07f), false, 0f);
+        CreateImage("TopGlint", _menuRect, 22f, 7f, 516f, 1f, new Color(1f, 1f, 1f, 0.2f), false);
+        CreateImage("HeaderDivider", _menuRect, 24f, 57f, 512f, 1f, new Color(0.72f, 0.84f, 1f, 0.12f), false);
 
         _rootPage = CreateRectObject("RootPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _clothingPage = CreateRectObject("ClothingPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
@@ -271,11 +293,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         _highHeelsPage = CreateRectObject("HighHeelsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _settingsPage = CreateRectObject("SettingsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
-        CreateText("Title", _rootPage.transform, "KK VR 快捷菜单", 22f, 10f, 382f, 40f, 28,
-            TextAnchor.MiddleLeft, Color.white);
+        CreateText("Title", _rootPage.transform, "KK VR", 24f, 7f, 220f, 31f, 28,
+            TextAnchor.MiddleLeft, PrimaryTextColor);
+        CreateText("TitleCaption", _rootPage.transform, "STUDIO CONTROL", 25f, 35f, 220f, 15f, 11,
+            TextAnchor.MiddleLeft, TertiaryTextColor);
         CreateButton(
             "OpenSettings",
-            "设置  >",
+            "设置  ›",
             418f,
             12f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
@@ -290,7 +314,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
         CreateButton(
             "LoadScene",
-            "大屏幕读取  >\nSCENE PREVIEW",
+            "读取场景  ›\n预览并载入",
             24f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -302,7 +326,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             20);
         CreateButton(
             "SaveScene",
-            "保存场景  >\nSAVE SCENE",
+            "保存场景  ›\n保存到新卡",
             288f,
             98f,
             new Color(0.07f, 0.21f, 0.25f, 0.5f),
@@ -353,7 +377,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             16);
         CreateButton(
             "OpenMmdSettings",
-            "MMD 设置  >\n镜头 / 高跟鞋",
+            "MMD 设置  ›\n镜头与高跟鞋",
             420f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
@@ -368,7 +392,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "OpenCharacterCards",
-            "角色卡  >\nLOAD / REPLACE",
+            "角色卡  ›\n载入或替换",
             24f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -380,7 +404,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
         CreateButton(
             "OpenClothing",
-            "角色换装  >\nCLOTHING",
+            "角色换装  ›\n服装状态",
             200f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -412,10 +436,23 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         BuildHighHeelsPage();
         BuildSettingsPage();
 
-        Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 414f, 512f, 62f, GlassSurfaceColor);
-        ApplyGlassEffects(statusBackground, new Color(0.9f, 0.97f, 1f, 0.12f), true, 2f);
-        _statusText = CreateText("Status", _menuRect, "就绪", 38f, 420f, 484f, 50f, 18,
-            TextAnchor.MiddleLeft, new Color(0.78f, 0.86f, 0.9f, 1f));
+        Image statusBackground = CreateImage("StatusBackground", _menuRect, 24f, 416f, 512f, 58f, GlassSurfaceColor);
+        ApplyGlassEffects(statusBackground, new Color(0.82f, 0.9f, 1f, 0.1f), true, 2f);
+        _statusIndicator = CreateImage(
+            "StatusIndicator",
+            statusBackground.transform,
+            16f,
+            24f,
+            8f,
+            8f,
+            new Color(0.42f, 0.82f, 1f, 1f));
+        _statusText = CreateText("Status", statusBackground.transform, "就绪", 36f, 5f, 462f, 48f, 17,
+            TextAnchor.MiddleLeft, SecondaryTextColor);
+        CreateImage("FooterDivider", _menuRect, 338f, 484f, 54f, 1f, new Color(0.72f, 0.84f, 1f, 0.1f), false);
+        CreateText("AuthorCaption", _menuRect, "DESIGNED BY", 400f, 477f, 72f, 17f, 9,
+            TextAnchor.MiddleRight, TertiaryTextColor);
+        CreateText("AuthorMark", _menuRect, "ERMIN", 478f, 477f, 58f, 17f, 12,
+            TextAnchor.MiddleRight, SecondaryTextColor);
 
         _clothingPage.SetActive(false);
         _browserPage.SetActive(false);
@@ -616,6 +653,22 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         outline.useGraphicAlpha = true;
     }
 
+    private static void ApplyControlEffects(Image image)
+    {
+        if (image == null)
+            return;
+
+        Shadow shadow = image.gameObject.AddComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.2f);
+        shadow.effectDistance = new Vector2(0f, -1.5f);
+        shadow.useGraphicAlpha = true;
+
+        Outline outline = image.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0.82f, 0.9f, 1f, 0.1f);
+        outline.effectDistance = new Vector2(1f, -1f);
+        outline.useGraphicAlpha = true;
+    }
+
     private Text CreateText(
         string name,
         Transform parent,
@@ -630,22 +683,28 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         GameObject go = CreateRectObject(name, parent, x, y, width, height, _visibleLayer);
         Text text = go.AddComponent<Text>();
-        text.font = _font;
+        bool emphasized = name.IndexOf("Title", StringComparison.OrdinalIgnoreCase) >= 0
+            || name.IndexOf("Section", StringComparison.OrdinalIgnoreCase) >= 0
+            || name.IndexOf("Heading", StringComparison.OrdinalIgnoreCase) >= 0
+            || name.IndexOf("AuthorMark", StringComparison.OrdinalIgnoreCase) >= 0
+            || fontSize >= 24;
+        text.font = emphasized && _emphasizedFont != null ? _emphasizedFont : _font;
         text.text = value;
         text.fontSize = fontSize;
         text.color = color;
         text.alignment = alignment;
+        text.lineSpacing = 0.95f;
         text.supportRichText = false;
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
         text.verticalOverflow = VerticalWrapMode.Truncate;
         text.resizeTextForBestFit = true;
-        text.resizeTextMinSize = 12;
+        text.resizeTextMinSize = Math.Min(12, fontSize);
         text.resizeTextMaxSize = fontSize;
         text.raycastTarget = false;
 
         Shadow shadow = go.AddComponent<Shadow>();
-        shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
-        shadow.effectDistance = new Vector2(0f, -1f);
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.22f);
+        shadow.effectDistance = new Vector2(0f, -0.75f);
         shadow.useGraphicAlpha = true;
         return text;
     }
@@ -664,8 +723,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         int fontSize = 21)
     {
         Transform buttonParent = parent ?? _menuRect;
+        if (label == "<")
+            label = "‹";
+        else
+            label = label.Replace(">", "›");
+
         Image background = CreateImage(name, buttonParent, x, y, width, height, normalColor);
-        ApplyGlassEffects(background, new Color(0.94f, 0.98f, 1f, 0.14f), true, 2f);
+        ApplyControlEffects(background);
         CreateImage(
             name + "Glint",
             background.transform,
@@ -673,7 +737,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             5f,
             width - 20f,
             1f,
-            new Color(1f, 1f, 1f, 0.16f),
+            new Color(1f, 1f, 1f, 0.08f),
             false);
         Text buttonText = CreateText(name + "Label", background.transform, label, 10f, 5f, width - 20f, height - 10f, fontSize,
             TextAnchor.MiddleCenter, Color.white);
@@ -1186,6 +1250,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             return;
         _statusText.text = message;
         _statusText.color = color;
+        if (_statusIndicator != null)
+            _statusIndicator.color = new Color(color.r, color.g, color.b, 1f);
         _statusUntil = duration > 0f ? Time.unscaledTime + duration : 0f;
     }
 
@@ -1230,18 +1296,27 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         }
     }
 
-    private static Font ResolveFont()
+    private static Font ResolveFont(bool emphasized)
     {
-        string[] candidates = { "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Arial Unicode MS" };
         string[] installed = Font.GetOSInstalledFontNames();
-        foreach (string candidate in candidates)
-        {
-            foreach (string name in installed)
-            {
-                if (string.Equals(name, candidate, StringComparison.OrdinalIgnoreCase))
-                    return Font.CreateDynamicFontFromOSFont(name, 32);
-            }
-        }
+        string latin = FindInstalledFont(
+            installed,
+            emphasized
+                ? new[] { "Segoe UI Semibold", "Segoe UI", "Arial" }
+                : new[] { "Segoe UI", "Segoe UI Semilight", "Arial" });
+        string cjk = FindInstalledFont(
+            installed,
+            emphasized
+                ? new[] { "Microsoft YaHei UI Bold", "Microsoft YaHei Bold", "Microsoft YaHei UI", "Microsoft YaHei" }
+                : new[] { "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Arial Unicode MS" });
+
+        if (!string.IsNullOrEmpty(latin) && !string.IsNullOrEmpty(cjk)
+            && !string.Equals(latin, cjk, StringComparison.OrdinalIgnoreCase))
+            return Font.CreateDynamicFontFromOSFont(new[] { latin, cjk }, 32);
+        if (!string.IsNullOrEmpty(cjk))
+            return Font.CreateDynamicFontFromOSFont(cjk, 32);
+        if (!string.IsNullOrEmpty(latin))
+            return Font.CreateDynamicFontFromOSFont(latin, 32);
 
         foreach (Font font in Resources.FindObjectsOfTypeAll<Font>())
         {
@@ -1251,12 +1326,27 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         return Resources.GetBuiltinResource<Font>("Arial.ttf");
     }
+
+    private static string FindInstalledFont(string[] installed, string[] candidates)
+    {
+        foreach (string candidate in candidates)
+        {
+            foreach (string name in installed)
+            {
+                if (string.Equals(name, candidate, StringComparison.OrdinalIgnoreCase))
+                    return name;
+            }
+        }
+
+        return null;
+    }
 }
 
 internal sealed class VRWristMenuButtonTarget : MonoBehaviour
 {
     private Image _background;
     private Text _label;
+    private Outline _outline;
     private Color _normalColor;
     private Color _hoverColor;
     private Action _onClick;
@@ -1266,8 +1356,9 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
     {
         _background = background;
         _label = label;
-        _normalColor = normalColor;
-        _hoverColor = hoverColor;
+        _outline = background != null ? background.GetComponent<Outline>() : null;
+        _normalColor = RefineColor(normalColor, false);
+        _hoverColor = RefineColor(hoverColor, true);
         _onClick = onClick;
         SetHovered(false);
     }
@@ -1277,12 +1368,20 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
         _hovered = hovered;
         if (_background != null)
             _background.color = hovered ? _hoverColor : _normalColor;
+        if (_label != null)
+            _label.color = hovered
+                ? Color.white
+                : new Color(0.92f, 0.94f, 0.98f, 1f);
+        if (_outline != null)
+            _outline.effectColor = hovered
+                ? new Color(0.74f, 0.86f, 1f, 0.26f)
+                : new Color(0.82f, 0.9f, 1f, 0.1f);
     }
 
     public void SetColors(Color normalColor, Color hoverColor)
     {
-        _normalColor = normalColor;
-        _hoverColor = hoverColor;
+        _normalColor = RefineColor(normalColor, false);
+        _hoverColor = RefineColor(hoverColor, true);
         SetHovered(_hovered);
     }
 
@@ -1301,5 +1400,19 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
     public void Activate()
     {
         _onClick?.Invoke();
+    }
+
+    private static Color RefineColor(Color accent, bool hovered)
+    {
+        float brightest = Mathf.Max(accent.r, Mathf.Max(accent.g, accent.b));
+        Color tint = brightest > 0.001f
+            ? new Color(accent.r / brightest, accent.g / brightest, accent.b / brightest, 1f)
+            : new Color(0.68f, 0.76f, 0.86f, 1f);
+        Color neutral = hovered
+            ? new Color(0.075f, 0.09f, 0.12f, 1f)
+            : new Color(0.045f, 0.056f, 0.078f, 1f);
+        Color result = Color.Lerp(neutral, tint, hovered ? 0.3f : 0.18f);
+        result.a = hovered ? 0.94f : 0.86f;
+        return result;
     }
 }
