@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Studio;
 using VRGIN.Core;
 
@@ -19,6 +20,20 @@ internal static class VRCharacterClothingService
         "鞋子"
     };
 
+    private static readonly string[] CoordinateNames =
+    {
+        "校服 1",
+        "校服 2",
+        "运动服",
+        "泳装",
+        "社团服",
+        "便服",
+        "睡衣"
+    };
+
+    private static bool _moreOutfitsSearched;
+    private static MethodInfo _getMoreOutfitName;
+
     public static int PartCount => PartNames.Length;
 
     public static string GetPartName(int partId)
@@ -31,6 +46,166 @@ internal static class VRCharacterClothingService
         if (character?.treeNodeObject != null && !string.IsNullOrEmpty(character.treeNodeObject.textName))
             return character.treeNodeObject.textName;
         return "当前角色";
+    }
+
+    public static string GetCoordinateName(int coordinateIndex)
+    {
+        return coordinateIndex >= 0 && coordinateIndex < CoordinateNames.Length
+            ? CoordinateNames[coordinateIndex]
+            : "预设服装";
+    }
+
+    public static string GetCoordinateName(OCIChar character, int coordinateIndex)
+    {
+        if (coordinateIndex >= 0 && coordinateIndex < CoordinateNames.Length)
+            return CoordinateNames[coordinateIndex];
+
+        string customName = TryGetMoreOutfitName(character?.charInfo, coordinateIndex);
+        string moreOutfitsDefault = "Outfit " + (coordinateIndex + 1);
+        return !string.IsNullOrEmpty(customName)
+            && !string.Equals(customName, moreOutfitsDefault, StringComparison.OrdinalIgnoreCase)
+                ? customName
+                : "服装 " + (coordinateIndex + 1);
+    }
+
+    public static int GetCoordinateCount(OCIChar character)
+    {
+        try
+        {
+            return character?.charInfo?.chaFile?.coordinate?.Length ?? 0;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
+
+    public static int GetCurrentCoordinateIndex(OCIChar character)
+    {
+        try
+        {
+            if (character?.charInfo?.fileStatus == null)
+                return -1;
+            int coordinateIndex = character.charInfo.fileStatus.coordinateType;
+            return coordinateIndex >= 0 && coordinateIndex < GetCoordinateCount(character)
+                ? coordinateIndex
+                : -1;
+        }
+        catch (Exception)
+        {
+            return -1;
+        }
+    }
+
+    public static bool TrySetCoordinate(int objectKey, int coordinateIndex, out string status)
+    {
+        if (coordinateIndex < 0)
+        {
+            status = "不支持的预设服装";
+            return false;
+        }
+
+        OCIChar character;
+        if (!TryGetCharacter(objectKey, out character, out status))
+            return false;
+        if (coordinateIndex >= GetCoordinateCount(character))
+        {
+            status = "不支持的预设服装";
+            return false;
+        }
+
+        try
+        {
+            if (!character.charInfo.loadEnd)
+            {
+                status = "预设服装仍在读取，请稍后";
+                return false;
+            }
+            if (character.charInfo?.chaFile?.coordinate == null
+                || coordinateIndex >= character.charInfo.chaFile.coordinate.Length
+                || character.charInfo.chaFile.coordinate[coordinateIndex] == null)
+            {
+                status = GetCharacterName(character) + "：角色没有这个预设服装";
+                return false;
+            }
+
+            string coordinateName = GetCoordinateName(character, coordinateIndex);
+            if (GetCurrentCoordinateIndex(character) == coordinateIndex)
+            {
+                status = GetCharacterName(character) + "：已是预设服装 " + coordinateName;
+                return true;
+            }
+
+            character.SetCoordinateInfo((ChaFileDefine.CoordinateType)coordinateIndex);
+            if (GetCurrentCoordinateIndex(character) != coordinateIndex)
+            {
+                status = "预设服装切换失败：工作室没有接受切换请求";
+                return false;
+            }
+            status = GetCharacterName(character) + "：已切换到预设服装 " + coordinateName;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "预设服装切换失败：" + ex.Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
+    public static void RefreshStudioCharacterPanel(OCIChar character)
+    {
+        if (character == null)
+            return;
+
+        try
+        {
+            MPCharCtrl panel = UnityEngine.Object.FindObjectOfType<MPCharCtrl>();
+            if (panel != null && object.ReferenceEquals(panel.ociChar, character))
+                panel.ociChar = character;
+        }
+        catch (Exception ex)
+        {
+            VRLog.Warn("Unable to refresh Studio clothing panel: " + ex.Message);
+        }
+    }
+
+    private static string TryGetMoreOutfitName(ChaControl chaControl, int coordinateIndex)
+    {
+        if (chaControl == null || coordinateIndex < CoordinateNames.Length)
+            return null;
+
+        try
+        {
+            if (!_moreOutfitsSearched)
+            {
+                _moreOutfitsSearched = true;
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    Type pluginType = assembly.GetType("KK_Plugins.MoreOutfits.Plugin", false);
+                    if (pluginType == null)
+                        continue;
+
+                    _getMoreOutfitName = pluginType.GetMethod(
+                        "GetCoodinateName",
+                        BindingFlags.Public | BindingFlags.Static,
+                        null,
+                        new[] { typeof(ChaControl), typeof(int) },
+                        null);
+                    break;
+                }
+            }
+
+            return _getMoreOutfitName?.Invoke(
+                null,
+                new object[] { chaControl, coordinateIndex }) as string;
+        }
+        catch (Exception)
+        {
+            // More Outfit Slots can be absent, still initializing, or a different
+            // version. The caller will use a stable numbered fallback label.
+            return null;
+        }
     }
 
     public static bool TryGetCharacter(int objectKey, out OCIChar character, out string status)

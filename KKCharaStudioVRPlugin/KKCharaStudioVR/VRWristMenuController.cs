@@ -29,6 +29,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         Root,
         Clothing,
+        Coordinate,
         Browser,
         SceneSave,
         CharacterCards,
@@ -300,6 +301,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         _rootPage = CreateRectObject("RootPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _clothingPage = CreateRectObject("ClothingPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _coordinatePage = CreateRectObject("CoordinatePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _browserPage = CreateRectObject("BrowserPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _sceneSavePage = CreateRectObject("SceneSavePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterCardsPage = CreateRectObject("CharacterCardsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
@@ -384,7 +386,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
         CreateButton(
             "OpenClothing",
-            L("服装状态  ›\n快速切换穿脱", "服装状態  ›\n着脱をすばやく変更", "Clothing states  ›\nQuickly change dress state"),
+            L("换装  ›\n预设服装与穿脱状态", "着替え  ›\n衣装プリセット・着脱", "Outfits  ›\nPresets and dress states"),
             200f,
             320f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
@@ -408,6 +410,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
 
         BuildClothingPage();
+        BuildCoordinatePage();
         BuildBrowserPage();
         BuildSceneSavePage();
         BuildCharacterCardsPage();
@@ -435,6 +438,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleRight, SecondaryTextColor);
 
         _clothingPage.SetActive(false);
+        _coordinatePage.SetActive(false);
         _browserPage.SetActive(false);
         _sceneSavePage.SetActive(false);
         _characterCardsPage.SetActive(false);
@@ -461,68 +465,84 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             58f,
             38f,
             28);
-        CreateText("ClothingTitle", _clothingPage.transform, L("服装状态", "服装状態", "Clothing states"), 92f, 10f, 444f, 40f, 28,
+        CreateText("ClothingTitle", _clothingPage.transform, L("换装", "着替え", "Outfits"), 92f, 10f, 444f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
 
         _clothingTargetButton = CreateButton(
             "ClothingTarget",
             L("选择场景角色  >", "シーンのキャラを選択  >", "Select a scene character  >"),
             24f,
-            66f,
+            64f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleChooseClothingTarget,
             _clothingPage.transform,
             512f,
-            38f,
+            36f,
             17);
 
-        CreateText("ClothingPresetSection", _clothingPage.transform, L("整套预设", "一括プリセット", "Full presets"), 24f, 112f, 512f, 24f, 18,
+        _coordinatePresetButton = CreateButton(
+            "OpenCoordinatePresets",
+            L(
+                "角色预设服装  ›\n校服、便服、泳装等",
+                "キャラ衣装プリセット  ›\n制服・私服・水着など",
+                "Character outfit presets  ›\nSchool, casual, swimwear, and more"),
+            24f,
+            106f,
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            HandleOpenCoordinatePresets,
+            _clothingPage.transform,
+            512f,
+            48f,
+            16);
+
+        CreateText("ClothingPresetSection", _clothingPage.transform, L("穿脱状态", "着脱状態", "Dress states"), 24f, 162f, 512f, 20f, 17,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "ClothingDressed",
             L("全部穿好", "すべて着る", "Fully dressed"),
             24f,
-            140f,
+            186f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             () => HandleClothingPreset(0),
             _clothingPage.transform,
             165f,
-            48f,
-            17);
+            40f,
+            16);
         CreateButton(
             "ClothingHalf",
             L("半脱状态", "半脱ぎ", "Half dressed"),
             198f,
-            140f,
+            186f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             () => HandleClothingPreset(1),
             _clothingPage.transform,
             164f,
-            48f,
-            17);
+            40f,
+            16);
         CreateButton(
             "ClothingUndressed",
             L("全部脱下", "すべて脱ぐ", "Undressed"),
             371f,
-            140f,
+            186f,
             new Color(0.3f, 0.09f, 0.12f, 0.46f),
             new Color(0.58f, 0.15f, 0.2f, 0.74f),
             () => HandleClothingPreset(3),
             _clothingPage.transform,
             165f,
-            48f,
-            17);
+            40f,
+            16);
 
-        CreateText("ClothingPartsSection", _clothingPage.transform, L("单独部位", "部位ごと", "Individual parts"), 24f, 198f, 512f, 24f, 18,
+        CreateText("ClothingPartsSection", _clothingPage.transform, L("单独部位", "部位ごと", "Individual parts"), 24f, 234f, 512f, 20f, 17,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
         for (int i = 0; i < _clothingPartButtons.Length; i++)
         {
             int partId = i;
             float x = i % 2 == 0 ? 24f : 288f;
-            float y = 226f + i / 2 * 45f;
+            float y = 258f + i / 2 * 37f;
             _clothingPartButtons[i] = CreateButton(
                 "ClothingPart" + i,
                 GetClothingPartLabel(i) + "  -",
@@ -533,8 +553,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                 () => HandleCycleClothingPart(partId),
                 _clothingPage.transform,
                 248f,
-                39f,
-                17);
+                33f,
+                15);
         }
     }
 
@@ -1046,6 +1066,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             _rootPage.SetActive(page == WristMenuPage.Root);
         if (_clothingPage != null)
             _clothingPage.SetActive(page == WristMenuPage.Clothing);
+        if (_coordinatePage != null)
+            _coordinatePage.SetActive(page == WristMenuPage.Coordinate);
         if (_browserPage != null)
             _browserPage.SetActive(page == WristMenuPage.Browser);
         if (_sceneSavePage != null)
@@ -1064,6 +1086,11 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (page == WristMenuPage.Clothing)
         {
             RefreshClothingPage();
+            _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.Coordinate)
+        {
+            RefreshCoordinatePage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
         else if (page == WristMenuPage.MmdSettings)
@@ -1118,6 +1145,21 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             hasCharacter
                 ? L("当前角色  ", "現在のキャラ  ", "Current character  ") + selectionStatus + "  >"
                 : L("选择场景角色  >", "シーンのキャラを選択  >", "Select a scene character  >"));
+
+        if (_coordinatePresetButton != null)
+        {
+            int coordinateIndex = hasCharacter
+                ? VRCharacterClothingService.GetCurrentCoordinateIndex(character)
+                : -1;
+            _coordinatePresetButton.SetLabel(
+                coordinateIndex >= 0
+                    ? L("角色预设服装  ›\n当前：", "キャラ衣装プリセット  ›\n現在：", "Character outfit presets  ›\nCurrent: ")
+                        + GetCoordinatePresetLabel(coordinateIndex, character)
+                    : L(
+                        "角色预设服装  ›\n校服、便服、泳装等",
+                        "キャラ衣装プリセット  ›\n制服・私服・水着など",
+                        "Character outfit presets  ›\nSchool, casual, swimwear, and more"));
+        }
 
         for (int i = 0; i < _clothingPartButtons.Length; i++)
         {
@@ -1327,9 +1369,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         if (_statusUntil > 0f && Time.unscaledTime > _statusUntil)
             SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
-        if (_page == WristMenuPage.Clothing && Time.unscaledTime >= _nextClothingRefresh)
+        if ((_page == WristMenuPage.Clothing || _page == WristMenuPage.Coordinate)
+            && Time.unscaledTime >= _nextClothingRefresh)
         {
-            RefreshClothingPage();
+            if (_page == WristMenuPage.Clothing)
+                RefreshClothingPage();
+            else
+                RefreshCoordinatePage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
         if (_page == WristMenuPage.MmdSettings && Time.unscaledTime >= _nextTimelineRefresh)

@@ -81,6 +81,22 @@ public sealed partial class VRWristMenuController
         { "动作目标：", "モーション対象：" },
         { "无法选择动作目标：", "モーション対象を選択できません：" },
         { "整套换装失败：", "一括着替えに失敗：" },
+        { "预设服装切换失败：", "衣装プリセットの切り替えに失敗：" },
+        { "工作室没有接受切换请求", "スタジオが切り替え要求を受け付けませんでした" },
+        { "预设服装仍在读取，请稍后", "衣装プリセットを読み込み中です。しばらくお待ちください" },
+        { "角色没有这个预设服装", "このキャラにはこの衣装プリセットがありません" },
+        { "不支持的预设服装", "対応していない衣装プリセットです" },
+        { "已切换到预设服装 服装 ", "衣装プリセットを切り替えました：衣装 " },
+        { "已是预设服装 服装 ", "現在の衣装プリセット：衣装 " },
+        { "已切换到预设服装 ", "衣装プリセットを切り替えました：" },
+        { "已是预设服装 ", "現在の衣装プリセット：" },
+        { "校服 1", "制服 1" },
+        { "校服 2", "制服 2" },
+        { "运动服", "体操着" },
+        { "泳装", "水着" },
+        { "社团服", "部活着" },
+        { "便服", "私服" },
+        { "睡衣", "パジャマ" },
         { "没有可切换状态", "切り替え可能な状態がありません" },
         { "没有其他状态", "ほかの状態がありません" },
         { "切换失败：", "切り替えに失敗：" },
@@ -165,6 +181,22 @@ public sealed partial class VRWristMenuController
         { "动作目标：", "Motion target: " },
         { "无法选择动作目标：", "Could not select motion target: " },
         { "整套换装失败：", "Could not change the full outfit: " },
+        { "预设服装切换失败：", "Could not switch the outfit preset: " },
+        { "工作室没有接受切换请求", "Studio did not accept the switch request" },
+        { "预设服装仍在读取，请稍后", "The outfit preset is still loading. Please wait" },
+        { "角色没有这个预设服装", "This character does not have that outfit preset" },
+        { "不支持的预设服装", "Unsupported outfit preset" },
+        { "已切换到预设服装 服装 ", "Switched to outfit preset: Outfit " },
+        { "已是预设服装 服装 ", "Current outfit preset: Outfit " },
+        { "已切换到预设服装 ", "Switched to outfit preset: " },
+        { "已是预设服装 ", "Current outfit preset: " },
+        { "校服 1", "School 1" },
+        { "校服 2", "School 2" },
+        { "运动服", "Gym clothes" },
+        { "泳装", "Swimwear" },
+        { "社团服", "Club outfit" },
+        { "便服", "Casual" },
+        { "睡衣", "Pajamas" },
         { "没有可切换状态", "No switchable state" },
         { "没有其他状态", "No other state" },
         { "切换失败：", "Could not switch: " },
@@ -332,6 +364,7 @@ public sealed partial class VRWristMenuController
         _menuRect = null;
         _rootPage = null;
         _clothingPage = null;
+        ClearCoordinateMenuReferences();
         _browserPage = null;
         _sceneSavePage = null;
         _characterCardsPage = null;
