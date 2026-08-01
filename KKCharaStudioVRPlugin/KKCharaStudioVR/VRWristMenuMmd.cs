@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using VRGIN.Core;
 
 namespace KKCharaStudioVR;
 
@@ -43,7 +44,7 @@ public sealed partial class VRWristMenuController
         CreateText(
             "MmdTitle",
             _mmdPage.transform,
-            "完美 MMD",
+            "MMD 控制台",
             92f,
             10f,
             444f,
@@ -52,40 +53,89 @@ public sealed partial class VRWristMenuController
             TextAnchor.MiddleLeft,
             Color.white);
 
-        _vmdRootButton = CreateButton(
-            "VmdRoot",
-            "动作目录\n未设置 · 点击选择",
+        CreateText(
+            "MmdPlaybackHeading",
+            _mmdPage.transform,
+            "播放与动作",
             24f,
-            72f,
+            60f,
+            512f,
+            20f,
+            17,
+            TextAnchor.MiddleLeft,
+            new Color(1f, 0.72f, 0.25f, 1f));
+
+        CreateButton(
+            "ToggleMmd",
+            "MMDD\n播放 / 暂停",
+            24f,
+            86f,
+            new Color(0.28f, 0.2f, 0.07f, 0.48f),
+            new Color(0.55f, 0.36f, 0.1f, 0.74f),
+            HandleToggleMmd,
+            _mmdPage.transform,
+            116f,
+            56f,
+            15);
+        _timelineButton = CreateButton(
+            "ToggleTimeline",
+            "TIMELINE\n播放 / 暂停",
+            156f,
+            86f,
+            new Color(0.12f, 0.17f, 0.3f, 0.5f),
+            new Color(0.18f, 0.36f, 0.62f, 0.8f),
+            HandleToggleTimeline,
+            _mmdPage.transform,
+            116f,
+            56f,
+            15);
+        _loadVmdButton = CreateButton(
+            "LoadVmd",
+            "VMD\n读取文件",
+            288f,
+            86f,
             VmdRootMissingColor,
             VmdRootMissingHoverColor,
-            HandleChangeVmdRoot,
+            HandleLoadVmd,
             _mmdPage.transform,
-            248f,
-            64f,
-            19);
+            116f,
+            56f,
+            15);
         CreateButton(
             "OpenHighHeels",
-            "高跟鞋  >\nHIGH HEELS",
-            288f,
-            72f,
+            "高跟鞋\n参数  ›",
+            420f,
+            86f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleOpenHighHeels,
             _mmdPage.transform,
-            248f,
-            64f,
-            19);
+            116f,
+            56f,
+            15);
+
+        _vmdRootButton = CreateButton(
+            "VmdRoot",
+            "动作目录\n未设置 · 点击选择",
+            24f,
+            154f,
+            VmdRootMissingColor,
+            VmdRootMissingHoverColor,
+            HandleChangeVmdRoot,
+            _mmdPage.transform,
+            512f,
+            44f,
+            16);
 
         CreateText(
             "FixedFovHeading",
             _mmdPage.transform,
             "VR 镜头  FIXED FOV",
             24f,
-            160f,
+            210f,
             512f,
-            28f,
-            19,
+            24f,
+            17,
             TextAnchor.MiddleLeft,
             new Color(1f, 0.72f, 0.25f, 1f));
 
@@ -93,34 +143,34 @@ public sealed partial class VRWristMenuController
             "FixedFovToggle",
             "Fixed FOV",
             24f,
-            198f,
+            242f,
             new Color(0.28f, 0.2f, 0.07f, 0.48f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleToggleFixedFov,
             _mmdPage.transform,
             150f,
-            58f,
+            52f,
             17);
         CreateButton(
             "FixedFovMinus",
             "-",
             190f,
-            198f,
+            242f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
             new Color(0.22f, 0.34f, 0.42f, 0.8f),
             () => HandleAdjustFixedFov(-1f),
             _mmdPage.transform,
             54f,
-            58f,
+            52f,
             26);
         _fixedFovValueText = CreateText(
             "FixedFovValue",
             _mmdPage.transform,
             "53.13",
             252f,
-            198f,
+            242f,
             100f,
-            58f,
+            52f,
             23,
             TextAnchor.MiddleCenter,
             Color.white);
@@ -128,34 +178,34 @@ public sealed partial class VRWristMenuController
             "FixedFovPlus",
             "+",
             360f,
-            198f,
+            242f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
             new Color(0.22f, 0.34f, 0.42f, 0.8f),
             () => HandleAdjustFixedFov(1f),
             _mmdPage.transform,
             54f,
-            58f,
+            52f,
             26);
         CreateButton(
             "FixedFovReset",
             "重置\n53.13",
             426f,
-            198f,
+            242f,
             new Color(0.12f, 0.16f, 0.2f, 0.56f),
             new Color(0.22f, 0.34f, 0.42f, 0.8f),
             HandleResetFixedFov,
             _mmdPage.transform,
             110f,
-            58f,
+            52f,
             16);
 
         Image stateBackground = CreateImage(
             "FixedFovStateBackground",
             _mmdPage.transform,
             24f,
-            278f,
+            306f,
             512f,
-            58f,
+            44f,
             new Color(0.7f, 0.84f, 0.94f, 0.065f));
         ApplyGlassEffects(stateBackground, new Color(0.86f, 0.96f, 1f, 0.12f), false, 0f);
         _fixedFovCameraCountText = CreateText(
@@ -163,10 +213,10 @@ public sealed partial class VRWristMenuController
             _mmdPage.transform,
             "MMDD 镜头控制器  --",
             38f,
-            284f,
+            310f,
             484f,
-            46f,
-            18,
+            36f,
+            16,
             TextAnchor.MiddleLeft,
             new Color(0.76f, 0.88f, 0.94f, 1f));
     }
@@ -798,6 +848,10 @@ public sealed partial class VRWristMenuController
 
     private void ReportMmdResult(bool success, string status)
     {
+        if (success)
+            VRLog.Info(status);
+        else
+            VRLog.Warn(status);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),

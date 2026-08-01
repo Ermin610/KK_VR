@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Xml.Serialization;
+using BepInEx;
 using Studio;
 using VRGIN.Core;
 
@@ -67,6 +68,7 @@ internal static class VRHighHeelsPresetStore
             }
 
             status = cardName + "：高跟鞋参数已" + (replacing ? "覆盖" : "保存");
+            VRLog.Info(status + " -> " + path);
             return true;
         }
         catch (Exception ex)
@@ -130,7 +132,7 @@ internal static class VRHighHeelsPresetStore
         out string status)
     {
         path = null;
-        cardName = GetCharacterCardName(character);
+        cardName = DefaultCardName;
         if (character == null)
         {
             status = "请选择要保存高跟鞋参数的角色";
@@ -139,10 +141,14 @@ internal static class VRHighHeelsPresetStore
 
         try
         {
+            cardName = GetCharacterCardName(character);
             string safeName = SanitizeFileName(cardName);
+            string gameRoot = Paths.GameRootPath;
+            if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot))
+                gameRoot = AppDomain.CurrentDomain.BaseDirectory;
             string directory = Path.Combine(
                 Path.Combine(
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData"),
+                    Path.Combine(gameRoot, "UserData"),
                     "VR"),
                 "HighHeels");
             path = Path.Combine(directory, safeName + ".xml");
@@ -152,6 +158,7 @@ internal static class VRHighHeelsPresetStore
         catch (Exception ex)
         {
             status = "无法生成高跟鞋参数文件名：" + ex.Message;
+            VRLog.Error(status);
             return false;
         }
     }

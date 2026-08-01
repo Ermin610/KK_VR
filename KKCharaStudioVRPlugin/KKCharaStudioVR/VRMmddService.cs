@@ -151,7 +151,8 @@ internal static class VRMmddService
         VRVmdActorTarget target;
         if (!VRVmdTargetService.TryGetTarget(objectKey, out target, out status))
             return false;
-        if (!RefreshHighHeels(objectKey, out status))
+        if (!VRMmddStateBridge.HighHeelsReported
+            && !RefreshHighHeels(objectKey, out status))
             return false;
 
         VRHighHeelsPreset preset = new VRHighHeelsPreset

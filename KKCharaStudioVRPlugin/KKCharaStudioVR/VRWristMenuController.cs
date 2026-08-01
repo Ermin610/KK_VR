@@ -55,6 +55,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private VRWristMenuButtonTarget _loadVmdButton;
     private Texture2D _roundedTexture;
     private Sprite _roundedSprite;
+    private Texture2D _cursorTexture;
+    private Sprite _cursorSprite;
     private readonly VRWristMenuButtonTarget[] _clothingPartButtons =
         new VRWristMenuButtonTarget[VRCharacterClothingService.PartCount];
     private int _clothingTargetObjectKey = -1;
@@ -63,10 +65,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private Font _font;
     private Font _emphasizedFont;
     private LineRenderer _laser;
-    private GameObject _cursor;
-    private Renderer _cursorRenderer;
+    private Image _surfaceCursor;
+    private Image _surfaceCursorInner;
+    private Image _surfaceCursorDot;
     private Material _laserMaterial;
-    private Material _cursorMaterial;
     private Transform _rightTransform;
     private int _visibleLayer;
     private int _colliderLayer;
@@ -143,6 +145,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             Destroy(_roundedSprite);
         if (_roundedTexture != null)
             Destroy(_roundedTexture);
+        if (_cursorSprite != null)
+            Destroy(_cursorSprite);
+        if (_cursorTexture != null)
+            Destroy(_cursorTexture);
         ReleaseCharacterPreviewTexture();
         if (Instance == this)
             Instance = null;
@@ -340,53 +346,17 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         CreateText("MmdSection", _rootPage.transform, "MMD", 24f, 178f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
         CreateButton(
-            "ToggleMmd",
-            "MMDD\n播放 / 暂停",
-            24f,
-            208f,
-            new Color(0.28f, 0.2f, 0.07f, 0.46f),
-            new Color(0.55f, 0.36f, 0.1f, 0.74f),
-            HandleToggleMmd,
-            _rootPage.transform,
-            116f,
-            68f,
-            16);
-        _timelineButton = CreateButton(
-            "ToggleTimeline",
-            "TIMELINE\n播放",
-            156f,
-            208f,
-            new Color(0.12f, 0.17f, 0.3f, 0.5f),
-            new Color(0.18f, 0.36f, 0.62f, 0.8f),
-            HandleToggleTimeline,
-            _rootPage.transform,
-            116f,
-            68f,
-            16);
-        _loadVmdButton = CreateButton(
-            "LoadVmd",
-            "VMD\n读取文件",
-            288f,
-            208f,
-            new Color(0.28f, 0.2f, 0.07f, 0.46f),
-            new Color(0.55f, 0.36f, 0.1f, 0.74f),
-            HandleLoadVmd,
-            _rootPage.transform,
-            116f,
-            68f,
-            16);
-        CreateButton(
             "OpenMmdSettings",
-            "MMD 设置  ›\n镜头与高跟鞋",
-            420f,
+            "打开 MMD 控制台  ›\n播放、VMD、镜头与高跟鞋",
+            24f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleOpenMmdSettings,
             _rootPage.transform,
-            116f,
+            512f,
             68f,
-            15);
+            18);
 
         CreateText("CharacterSection", _rootPage.transform, "角色  CHARACTER", 24f, 290f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
@@ -604,6 +574,37 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             new Vector4(border, border, border, border));
         _roundedSprite.name = "KKVR_GlassRoundedSprite";
         _roundedSprite.hideFlags = HideFlags.HideAndDontSave;
+
+        const int cursorSize = 32;
+        float cursorCenter = (cursorSize - 1f) * 0.5f;
+        float cursorRadius = cursorSize * 0.5f - 1f;
+        Color[] cursorPixels = new Color[cursorSize * cursorSize];
+        for (int y = 0; y < cursorSize; y++)
+        {
+            for (int x = 0; x < cursorSize; x++)
+            {
+                float dx = x - cursorCenter;
+                float dy = y - cursorCenter;
+                float alpha = Mathf.Clamp01(cursorRadius + 0.5f - Mathf.Sqrt(dx * dx + dy * dy));
+                cursorPixels[y * cursorSize + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        _cursorTexture = new Texture2D(cursorSize, cursorSize, TextureFormat.ARGB32, false);
+        _cursorTexture.name = "KKVR_SurfaceCursorTexture";
+        _cursorTexture.filterMode = FilterMode.Bilinear;
+        _cursorTexture.wrapMode = TextureWrapMode.Clamp;
+        _cursorTexture.hideFlags = HideFlags.HideAndDontSave;
+        _cursorTexture.SetPixels(cursorPixels);
+        _cursorTexture.Apply(false, true);
+
+        _cursorSprite = Sprite.Create(
+            _cursorTexture,
+            new Rect(0f, 0f, cursorSize, cursorSize),
+            new Vector2(0.5f, 0.5f),
+            100f);
+        _cursorSprite.name = "KKVR_SurfaceCursorSprite";
+        _cursorSprite.hideFlags = HideFlags.HideAndDontSave;
     }
 
     private Image CreateImage(
@@ -858,21 +859,16 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         SetHoveredButton(target);
         SetPointerVisible(true);
 
-        _laser.SetPosition(0, origin);
-        Vector3 visibleEnd = hasMenuSurfaceHit || target != null
-            ? end - direction * 0.0035f
-            : end;
-        _laser.SetPosition(1, visibleEnd);
-        _cursor.SetActive(hasMenuSurfaceHit || target != null);
-        if (hasMenuSurfaceHit || target != null)
-            _cursor.transform.position = end - direction * 0.005f;
-
         Color pointerColor = target != null
             ? new Color(0.25f, 1f, 0.82f, 1f)
             : new Color(0.2f, 0.78f, 0.95f, 1f);
+        _laser.SetPosition(0, origin);
+        _laser.SetPosition(1, end);
         _laser.SetColors(pointerColor, pointerColor);
-        if (_cursorMaterial != null && _cursorMaterial.HasProperty("_Color"))
-            _cursorMaterial.color = pointerColor;
+        UpdateSurfaceCursor(
+            hasMenuSurfaceHit || target != null,
+            hasMenuSurfaceHit ? menuSurfacePoint : end,
+            pointerColor);
 
         if (target != null && rightDevice.GetPressDown(EVRButtonId.k_EButton_Axis1))
         {
@@ -904,23 +900,6 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                 if (_laserMaterial == null)
                     throw new InvalidOperationException("No pointer shader is available.");
                 _laser.sharedMaterial = _laserMaterial;
-
-                _cursor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                _cursor.name = "KKVR_WristMenuCursor";
-                _cursor.SetActive(false);
-                _cursor.layer = _visibleLayer;
-                _cursor.transform.SetParent(transform, false);
-                _cursor.transform.localScale = Vector3.one * 0.012f;
-                Collider cursorCollider = _cursor.GetComponent<Collider>();
-                if (cursorCollider != null)
-                    Destroy(cursorCollider);
-                _cursorRenderer = _cursor.GetComponent<Renderer>();
-                _cursorMaterial = VRPointerVisuals.CreateMaterial(
-                    "KKVR Wrist Menu Cursor",
-                    new Color(0.2f, 0.78f, 0.95f, 1f));
-                if (_cursorRenderer == null || _cursorMaterial == null)
-                    throw new InvalidOperationException("No cursor renderer or material is available.");
-                _cursorRenderer.sharedMaterial = _cursorMaterial;
             }
             catch (Exception ex)
             {
@@ -929,6 +908,9 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                 return false;
             }
         }
+
+        if (!EnsureSurfaceCursor())
+            return false;
 
         if (_rightTransform != right)
         {
@@ -942,6 +924,72 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         return true;
     }
 
+    private bool EnsureSurfaceCursor()
+    {
+        if (_surfaceCursor != null)
+            return true;
+        if (_menuRect == null || _cursorSprite == null)
+            return false;
+
+        _surfaceCursor = CreateImage(
+            "PointerReticle",
+            _menuRect,
+            0f,
+            0f,
+            20f,
+            20f,
+            new Color(0.2f, 0.78f, 0.95f, 0.98f),
+            false);
+        _surfaceCursor.sprite = _cursorSprite;
+        _surfaceCursor.type = Image.Type.Simple;
+        RectTransform cursorRect = _surfaceCursor.rectTransform;
+        cursorRect.anchorMin = _menuRect.pivot;
+        cursorRect.anchorMax = _menuRect.pivot;
+        cursorRect.pivot = new Vector2(0.5f, 0.5f);
+        cursorRect.anchoredPosition = Vector2.zero;
+
+        _surfaceCursorInner = CreateImage(
+            "PointerReticleInner",
+            _surfaceCursor.transform,
+            5f,
+            5f,
+            10f,
+            10f,
+            new Color(0.018f, 0.026f, 0.04f, 0.96f),
+            false);
+        _surfaceCursorInner.sprite = _cursorSprite;
+        _surfaceCursorInner.type = Image.Type.Simple;
+        _surfaceCursorDot = CreateImage(
+            "PointerReticleDot",
+            _surfaceCursorInner.transform,
+            3f,
+            3f,
+            4f,
+            4f,
+            Color.white,
+            false);
+        _surfaceCursorDot.sprite = _cursorSprite;
+        _surfaceCursorDot.type = Image.Type.Simple;
+        _surfaceCursor.transform.SetAsLastSibling();
+        _surfaceCursor.gameObject.SetActive(false);
+        return true;
+    }
+
+    private void UpdateSurfaceCursor(bool visible, Vector3 worldPoint, Color color)
+    {
+        if (_surfaceCursor == null)
+            return;
+
+        _surfaceCursor.gameObject.SetActive(visible);
+        if (!visible)
+            return;
+
+        Vector3 localPoint = _menuRect.InverseTransformPoint(worldPoint);
+        _surfaceCursor.rectTransform.anchoredPosition = new Vector2(localPoint.x, localPoint.y);
+        _surfaceCursor.color = color;
+        _surfaceCursor.transform.SetAsLastSibling();
+    }
+
     private void DestroyPointerVisuals()
     {
         if (_laser != null)
@@ -949,23 +997,23 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             Destroy(_laser.gameObject);
             _laser = null;
         }
-        if (_cursor != null)
+        if (_surfaceCursor != null)
         {
-            Destroy(_cursor);
-            _cursor = null;
+            Destroy(_surfaceCursor.gameObject);
+            _surfaceCursor = null;
         }
-        _cursorRenderer = null;
+        _surfaceCursorInner = null;
+        _surfaceCursorDot = null;
         _rightTransform = null;
         VRPointerVisuals.DestroyMaterial(ref _laserMaterial);
-        VRPointerVisuals.DestroyMaterial(ref _cursorMaterial);
     }
 
     private void SetPointerVisible(bool visible)
     {
         if (_laser != null)
             _laser.gameObject.SetActive(visible);
-        if (_cursor != null)
-            _cursor.SetActive(false);
+        if (_surfaceCursor != null)
+            _surfaceCursor.gameObject.SetActive(false);
     }
 
     private void SetHoveredButton(VRWristMenuButtonTarget target)
@@ -1003,20 +1051,16 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (_settingsPage != null)
             _settingsPage.SetActive(page == WristMenuPage.Settings);
 
-        if (page == WristMenuPage.Root)
-        {
-            RefreshTimelineButton();
-            RefreshVmdRootVisuals();
-            _nextTimelineRefresh = Time.unscaledTime + 0.25f;
-        }
-        else if (page == WristMenuPage.Clothing)
+        if (page == WristMenuPage.Clothing)
         {
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
         else if (page == WristMenuPage.MmdSettings)
         {
+            RefreshTimelineButton();
             RefreshMmdSettingsPage();
+            _nextTimelineRefresh = Time.unscaledTime + 0.25f;
         }
         else if (page == WristMenuPage.HighHeels)
         {
@@ -1276,7 +1320,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             RefreshClothingPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
-        if (_page == WristMenuPage.Root && Time.unscaledTime >= _nextTimelineRefresh)
+        if (_page == WristMenuPage.MmdSettings && Time.unscaledTime >= _nextTimelineRefresh)
         {
             RefreshTimelineButton();
             _nextTimelineRefresh = Time.unscaledTime + 0.25f;
