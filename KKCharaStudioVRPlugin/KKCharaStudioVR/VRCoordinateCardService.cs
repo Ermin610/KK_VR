@@ -315,24 +315,40 @@ internal static class VRCoordinateCardService
                 return false;
             }
 
-            // A full replacement deliberately follows Studio's native coordinate path.
-            // This is the only reliable way to clear trailing MoreAccessories slots and
-            // apply every coordinate-level extension as a complete card.
+            // Full outfit loading uses the same append-only CLO path as the custom
+            // accessory picker. Only occupied source slots are selected so empty source
+            // slots are never counted as additions and existing target accessories are
+            // never overwritten (including accessory-based hair).
             if (mode == VRCoordinateReplaceMode.Full)
             {
-                return TryBeginNativeFullReplace(
-                    character,
+                List<VRCoordinateAccessorySlotInfo> sourceAccessorySlots;
+                string sourceAccessoryStatus;
+                if (!TryGetCoordinateAccessorySlots(
                     path,
-                    coordinateName,
-                    out session,
-                    out status);
+                    out sourceAccessorySlots,
+                    out sourceAccessoryStatus))
+                {
+                    status = "无法准备整套换装的饰品追加：" + sourceAccessoryStatus;
+                    return false;
+                }
+
+                selectedAccessorySlots = sourceAccessorySlots
+                    .Select(slot => slot.SlotIndex)
+                    .Distinct()
+                    .OrderBy(slot => slot)
+                    .ToArray();
             }
 
             int accessoryCount = pluginAssembly != null
                 ? GetAccessoryCount(pluginAssembly, coordinate)
                 : Math.Max(20, coordinate.accessory?.parts?.Length ?? 0);
+            if (selectedAccessorySlots != null && selectedAccessorySlots.Length > 0)
+                accessoryCount = Math.Max(accessoryCount, selectedAccessorySlots.Max() + 1);
 
-            if (mode == VRCoordinateReplaceMode.ClothesOnly)
+            if (mode == VRCoordinateReplaceMode.ClothesOnly
+                || (mode == VRCoordinateReplaceMode.Full
+                    && selectedAccessorySlots != null
+                    && selectedAccessorySlots.Length == 0))
             {
                 if (pluginAssembly == null)
                 {
@@ -354,7 +370,8 @@ internal static class VRCoordinateCardService
                     ClothesToggleNames,
                     new int[0],
                     true,
-                    false);
+                    false,
+                    mode);
                 if (!clothesOnlyCandidate.Begin(out status))
                 {
                     bool canFallback = !clothesOnlyCandidate.TargetMayHaveChanged;
@@ -385,7 +402,9 @@ internal static class VRCoordinateCardService
                 session = clothesOnlyCandidate;
                 RegisterSession(session);
                 if (string.IsNullOrEmpty(status))
-                    status = "正在通过 Coordinate Load Option 只替换衣服";
+                    status = mode == VRCoordinateReplaceMode.Full
+                        ? "正在完整替换衣服；源卡没有饰品，现有饰品保持不变"
+                        : "正在通过 Coordinate Load Option 只替换衣服";
                 return true;
             }
 
@@ -427,7 +446,9 @@ internal static class VRCoordinateCardService
                         out status);
                 }
 
-                status = "自选饰品需要 Coordinate Load Option；未执行换装";
+                status = mode == VRCoordinateReplaceMode.Full
+                    ? "整套换装的饰品追加需要 Coordinate Load Option；未执行换装"
+                    : "自选饰品需要 Coordinate Load Option；未执行换装";
                 return false;
             }
 
@@ -450,7 +471,9 @@ internal static class VRCoordinateCardService
                         out status);
                 }
 
-                status = "自选饰品未执行：" + boundDataReason;
+                status = mode == VRCoordinateReplaceMode.Full
+                    ? "整套换装未执行：" + boundDataReason
+                    : "自选饰品未执行：" + boundDataReason;
                 return false;
             }
 
@@ -463,7 +486,8 @@ internal static class VRCoordinateCardService
                 ClothesToggleNames,
                 normalizedSlots,
                 false,
-                GetMoreAccessoriesMode(pluginAssembly) != 1);
+                GetMoreAccessoriesMode(pluginAssembly) != 1,
+                mode);
             if (!candidate.Begin(out status))
             {
                 bool canFallback = !candidate.TargetMayHaveChanged;
@@ -478,6 +502,12 @@ internal static class VRCoordinateCardService
 
                 if (!canFallback)
                     return false;
+
+                if (mode == VRCoordinateReplaceMode.Full)
+                {
+                    status = "整套换装未执行：" + status;
+                    return false;
+                }
 
                 VRLog.Warn(
                     "Coordinate Load Option adapter unavailable before loading began; switching to the clothing-only path: "
@@ -494,7 +524,9 @@ internal static class VRCoordinateCardService
             session = candidate;
             RegisterSession(session);
             if (string.IsNullOrEmpty(status))
-                status = "正在换衣服并把所选饰品追加到空槽";
+                status = mode == VRCoordinateReplaceMode.Full
+                    ? "正在完整替换衣服，并把全部源饰品追加到空槽"
+                    : "正在换衣服并把所选饰品追加到空槽";
             return true;
         }
         catch (Exception ex)
@@ -560,40 +592,6 @@ internal static class VRCoordinateCardService
         {
             session = null;
             status = "兼容模式换装失败：" + Unwrap(ex).Message;
-            return false;
-        }
-    }
-
-    private static bool TryBeginNativeFullReplace(
-        OCIChar character,
-        string path,
-        string coordinateName,
-        out VRCoordinateLoadSession session,
-        out string status)
-    {
-        try
-        {
-            status = "服装卡已完整替换，饰品、妆容及坐标扩展数据已覆盖：" + coordinateName;
-            Exception loadError;
-            if (!VRCoordinateLoadSession.TryCreateNativeAndRun(
-                character,
-                status,
-                "完整替换失败：",
-                () => character.LoadClothesFile(path),
-                false,
-                out session,
-                out loadError))
-            {
-                status = "完整替换失败：" + Unwrap(loadError).Message;
-                return false;
-            }
-            RegisterSession(session);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            session = null;
-            status = "完整替换失败：" + Unwrap(ex).Message;
             return false;
         }
     }
@@ -1089,6 +1087,7 @@ internal sealed class VRCoordinateLoadSession
     private readonly bool _verifySelectedAccessories;
     private int _accessoryOccupiedCountBackup;
     private readonly bool _isUndoOperation;
+    private readonly VRCoordinateReplaceMode _replaceMode;
     private bool _coordinateControllerReloadPending;
     private int _completionObservedFrame = -1;
 
@@ -1101,7 +1100,8 @@ internal sealed class VRCoordinateLoadSession
         string[] clothesToggleNames,
         IEnumerable<int> selectedAccessorySlots,
         bool strictPreserveAccessories,
-        bool verifySelectedAccessories)
+        bool verifySelectedAccessories,
+        VRCoordinateReplaceMode replaceMode)
     {
         _assembly = assembly;
         _character = character;
@@ -1112,6 +1112,7 @@ internal sealed class VRCoordinateLoadSession
         _selectedAccessorySlots = new HashSet<int>(selectedAccessorySlots ?? Enumerable.Empty<int>());
         _strictPreserveAccessories = strictPreserveAccessories;
         _verifySelectedAccessories = verifySelectedAccessories;
+        _replaceMode = replaceMode;
     }
 
     private VRCoordinateLoadSession(
@@ -1124,6 +1125,7 @@ internal sealed class VRCoordinateLoadSession
         _nativeStatus = completedStatus;
         _strictPreserveAccessories = strictPreserveAccessories;
         _isUndoOperation = isUndoOperation;
+        _replaceMode = VRCoordinateReplaceMode.ClothesOnly;
         CaptureTargetCoordinateSnapshot();
     }
 
@@ -1570,7 +1572,9 @@ internal sealed class VRCoordinateLoadSession
 
                 if (_strictPreserveAccessories && !AccessoriesMatchBackup())
                 {
-                    string accessoryFailureStatus = "只换衣服被中止：检测到饰品数据发生变化";
+                    string accessoryFailureStatus = _replaceMode == VRCoordinateReplaceMode.Full
+                        ? "整套换装被中止：检测到现有饰品数据发生变化"
+                        : "只换衣服被中止：检测到饰品数据发生变化";
                     if (BeginRecovery(accessoryFailureStatus))
                     {
                         status = null;
@@ -1585,8 +1589,9 @@ internal sealed class VRCoordinateLoadSession
 
                 if (!SelectedAccessoriesWereAdded())
                 {
-                    string accessoryFailureStatus =
-                        "自选饰品未完成：目标角色没有足够的空饰品槽";
+                    string accessoryFailureStatus = _replaceMode == VRCoordinateReplaceMode.Full
+                        ? "整套换装未完成：目标角色没有足够的空饰品槽"
+                        : "自选饰品未完成：目标角色没有足够的空饰品槽";
                     if (BeginRecovery(accessoryFailureStatus))
                     {
                         status = null;
@@ -1599,9 +1604,14 @@ internal sealed class VRCoordinateLoadSession
                     return true;
                 }
 
-                status = _selectedAccessorySlots.Count == 0
-                    ? "已只替换衣服，现有饰品保持不变：" + _coordinateName
-                    : "已换衣服并把所选饰品追加到空槽：" + _coordinateName;
+                status = _replaceMode == VRCoordinateReplaceMode.Full
+                    ? _selectedAccessorySlots.Count == 0
+                        ? "已完整替换衣服；源卡没有饰品，现有饰品保持不变：" + _coordinateName
+                        : "已完整替换衣服，并把全部源饰品追加到空槽；现有饰品保持不变："
+                            + _coordinateName
+                    : _selectedAccessorySlots.Count == 0
+                        ? "已只替换衣服，现有饰品保持不变：" + _coordinateName
+                        : "已换衣服并把所选饰品追加到空槽：" + _coordinateName;
                 VRCoordinateCardService.StoreUndoSnapshot(this);
                 Restore();
                 return true;

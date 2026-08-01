@@ -176,7 +176,7 @@ public sealed partial class VRWristMenuController
             15);
         _coordinateFullButton = CreateButton(
             "CoordinateFullReplace",
-            L("完整替换\n会覆盖饰品", "完全適用\nアクセ上書き", "Full replace\nOverwrite accessories"),
+            L("完整换装\n全部饰品追加", "一式着替え\n全アクセを追加", "Full outfit\nAdd all accessories"),
             284f,
             356f,
             new Color(0.28f, 0.13f, 0.08f, 0.5f),
@@ -541,9 +541,9 @@ public sealed partial class VRWristMenuController
                         "キャラを選択：選択アクセは空き枠へ追加し、現在のアクセは上書きしません",
                         "Select a character: picked accessories are added to empty slots without overwriting existing ones")
                     : L(
-                    "选择角色：将覆盖全部饰品（含发饰）、妆容及坐标扩展数据",
-                    "キャラを選択：全アクセ（髪アクセ含む）、メイク、コーディネート拡張データを上書きします",
-                    "Select a character: all accessories (including hair), makeup, and coordinate extension data will be overwritten"),
+                    "选择角色：完整替换衣服，源卡全部饰品追加到空槽，现有饰品不变",
+                    "キャラを選択：衣服を一式変更し、元カードの全アクセを空き枠へ追加します。現在のアクセは維持します",
+                    "Select a character: replace all clothes and add every source accessory to empty slots; current accessories stay unchanged"),
             out targetStatus);
     }
 

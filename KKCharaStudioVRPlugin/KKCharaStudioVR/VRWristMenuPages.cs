@@ -1374,9 +1374,9 @@ public sealed partial class VRWristMenuController
                             "服を変更し、選択アクセを空き枠へ追加しています…",
                             "Changing clothes and adding selected accessories to empty slots…")
                         : L(
-                            "正在完整替换服装与饰品…",
-                            "衣装とアクセを完全に置き換えています…",
-                            "Replacing the full outfit and accessories…"),
+                            "正在完整替换衣服，并把全部源饰品追加到空槽…",
+                            "衣服を一式変更し、元カードの全アクセを空き枠へ追加しています…",
+                            "Replacing all clothes and adding every source accessory to empty slots…"),
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
         VRCoordinateLoadSession session = null;
