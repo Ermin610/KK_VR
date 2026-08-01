@@ -136,6 +136,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void OnDisable()
     {
+        VRCoordinateCardService.AbortActiveSession();
+        _operationInProgress = false;
         SetOpen(false);
     }
 
@@ -232,8 +234,21 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             _menuRoot.SetActive(open);
         if (open)
         {
-            ShowPage(WristMenuPage.Root);
-            SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+            if (_operationInProgress)
+            {
+                SetStatus(
+                    L(
+                        "操作仍在进行，请稍候",
+                        "処理中です。しばらくお待ちください",
+                        "An operation is still running. Please wait"),
+                    new Color(1f, 0.72f, 0.25f, 1f),
+                    0f);
+            }
+            else
+            {
+                ShowPage(WristMenuPage.Root);
+                SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
+            }
         }
 
         VRLog.Info("Wrist menu " + (open ? "opened." : "closed."));
@@ -465,8 +480,20 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             58f,
             38f,
             28);
-        CreateText("ClothingTitle", _clothingPage.transform, L("换装", "着替え", "Outfits"), 92f, 10f, 444f, 40f, 28,
+        CreateText("ClothingTitle", _clothingPage.transform, L("换装", "着替え", "Outfits"), 92f, 10f, 250f, 40f, 28,
             TextAnchor.MiddleLeft, Color.white);
+        CreateButton(
+            "OpenCoordinateCards",
+            L("服装卡  ›", "衣装カード  ›", "Outfit cards  ›"),
+            358f,
+            10f,
+            new Color(0.12f, 0.16f, 0.2f, 0.56f),
+            new Color(0.22f, 0.34f, 0.42f, 0.8f),
+            HandleOpenCoordinateCards,
+            _clothingPage.transform,
+            178f,
+            38f,
+            16);
 
         _clothingTargetButton = CreateButton(
             "ClothingTarget",
@@ -903,6 +930,17 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (target != null && rightDevice.GetPressDown(EVRButtonId.k_EButton_Axis1))
         {
             rightDevice.TriggerHapticPulse(800, EVRButtonId.k_EButton_Axis0);
+            if (_operationInProgress)
+            {
+                SetStatus(
+                    L(
+                        "操作仍在进行，请稍候",
+                        "処理中です。しばらくお待ちください",
+                        "An operation is still running. Please wait"),
+                    new Color(1f, 0.72f, 0.25f, 1f),
+                    4f);
+                return;
+            }
             target.Activate();
         }
     }

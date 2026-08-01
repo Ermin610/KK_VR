@@ -48,6 +48,47 @@ public sealed partial class VRWristMenuController
         { "角色替换失败：", "キャラの置換に失敗：" },
         { "已添加女角色：", "女性キャラを追加：" },
         { "已添加男角色：", "男性キャラを追加：" },
+        { "上一项操作尚未完成", "前の操作がまだ完了していません" },
+        { "工作室主相机尚未就绪", "スタジオのメインカメラはまだ準備できていません" },
+        { "无法打开服装卡目录：", "衣装カードフォルダーを開けません：" },
+        { "服装卡文件无效", "衣装カードファイルが無効です" },
+        { "文件不是有效的服装卡", "有効な衣装カードではありません" },
+        { "服装卡面读取失败：", "衣装カード画像の読込に失敗：" },
+        { "卡面预览失败：", "カード画像のプレビューに失敗：" },
+        { "已有服装卡正在替换，请稍后", "別の衣装カードを適用中です。しばらくお待ちください" },
+        { "所选角色仍在读取，请稍后再换装", "選択したキャラを読込中です。しばらくしてから着替えてください" },
+        { "Coordinate Load Option 正在处理其他换装，请稍后", "Coordinate Load Optionが別の着替えを処理中です" },
+        { "Coordinate Load Option 正在处理其他换装", "Coordinate Load Optionが別の着替えを処理中です" },
+        { "Coordinate Load Option 接口不可用", "Coordinate Load Optionのインターフェースを利用できません" },
+        { "Coordinate Load Option 接口不兼容：", "Coordinate Load Optionのインターフェースに互換性がありません：" },
+        { "Coordinate Load Option 启动失败，正在恢复角色状态", "Coordinate Load Optionの起動に失敗したため、キャラ状態を復元中です" },
+        { "服装卡已替换，并保护现有发饰：", "現在の髪アクセを保護して衣装カードを適用：" },
+        { "已用兼容模式只替换衣服，并保留全部现有饰品：", "互換モードで衣服のみを適用し、現在の全アクセを保持：" },
+        { "为保护发饰，已只替换衣服并保留全部现有饰品：", "髪アクセ保護のため衣服のみを適用し、現在の全アクセを保持：" },
+        { "服装卡已完整替换，饰品、妆容及坐标扩展数据已覆盖：", "衣装カードを完全適用し、アクセ・メイク・コーディネート拡張データを上書き：" },
+        { "；角色恢复读取超时，已解除界面等待；请重载场景后再换装", "。キャラ復元がタイムアウトしたため画面の待機を解除しました。シーン再読込後に着替えてください" },
+        { "；自动恢复角色状态失败：", "。キャラ状態の自動復元に失敗：" },
+        { "；已恢复角色状态", "。キャラ状態を復元しました" },
+        { "服装卡替换异常：", "衣装カード適用中に異常が発生：" },
+        { "服装卡替换已取消", "衣装カードの適用をキャンセルしました" },
+        { "ExtensibleSaveFormat 服装快照接口不兼容", "ExtensibleSaveFormatの衣装スナップショットに互換性がありません" },
+        { "服装扩展数据快照为空", "衣装拡張データのスナップショットが空です" },
+        { "目标角色服装快照不可用", "対象キャラの衣装スナップショットを利用できません" },
+        { "无法读取换装前的服装扩展数据快照", "着替え前の衣装拡張データを読み込めません" },
+        { "工作室没有接受服装快照恢复请求", "スタジオが衣装スナップショットの復元要求を受け付けませんでした" },
+        { "服装卡替换失败：", "衣装カードの適用に失敗：" },
+        { "完整替换失败：目标角色已经失效", "完全な着替えに失敗：対象キャラが無効です" },
+        { "完整替换失败：", "完全な着替えに失敗：" },
+        { "服装卡替换异常，已恢复角色状态：", "衣装カード適用中に異常が発生し、キャラ状態を復元：" },
+        { "服装卡替换没有启动", "衣装カードの適用を開始できませんでした" },
+        { "Coordinate Load Option 未完成加载", "Coordinate Load Optionが読込を完了できませんでした" },
+        { "兼容模式换装失败：", "互換モードの着替えに失敗：" },
+        { "服装卡替换超时，已恢复角色状态", "衣装カードの適用がタイムアウトしたため、キャラ状態を復元しました" },
+        { "完整服装读取时间过长，已解除界面等待；完成或重载场景前不能再次换装", "完全な衣装の読込に時間がかかっているため、画面の待機を解除しました。読込完了またはシーン再読込までは再度着替えできません" },
+        { "目标角色已经失效", "対象キャラが無効です" },
+        { "场景角色已变化，换装结果未继续绑定到新角色", "シーンのキャラが変わったため、新しいキャラには適用していません" },
+        { "场景角色已变化，后台换装结果未继续绑定到新角色", "シーンのキャラが変わったため、バックグラウンドの着替え結果を新しいキャラには適用していません" },
+        { "当前场景没有可替换服装的角色", "着替え可能なキャラがいません" },
         { "角色光阴影已开启", "キャラ光の影をオンにしました" },
         { "角色光阴影已关闭", "キャラ光の影をオフにしました" },
         { "角色光尚未初始化", "キャラ光が初期化されていません" },
@@ -148,6 +189,47 @@ public sealed partial class VRWristMenuController
         { "角色替换失败：", "Could not replace character: " },
         { "已添加女角色：", "Added female character: " },
         { "已添加男角色：", "Added male character: " },
+        { "上一项操作尚未完成", "The previous operation has not finished yet" },
+        { "工作室主相机尚未就绪", "The Studio main camera is not ready" },
+        { "无法打开服装卡目录：", "Could not open the outfit-card folder: " },
+        { "服装卡文件无效", "The outfit-card file is invalid" },
+        { "文件不是有效的服装卡", "The file is not a valid outfit card" },
+        { "服装卡面读取失败：", "Could not load the outfit-card preview: " },
+        { "卡面预览失败：", "Could not preview the card: " },
+        { "已有服装卡正在替换，请稍后", "Another outfit card is being applied. Please wait" },
+        { "所选角色仍在读取，请稍后再换装", "The selected character is still loading. Please wait before changing outfits" },
+        { "Coordinate Load Option 正在处理其他换装，请稍后", "Coordinate Load Option is processing another outfit change" },
+        { "Coordinate Load Option 正在处理其他换装", "Coordinate Load Option is processing another outfit change" },
+        { "Coordinate Load Option 接口不可用", "The Coordinate Load Option interface is unavailable" },
+        { "Coordinate Load Option 接口不兼容：", "The Coordinate Load Option interface is incompatible: " },
+        { "Coordinate Load Option 启动失败，正在恢复角色状态", "Coordinate Load Option failed to start; restoring the character state" },
+        { "服装卡已替换，并保护现有发饰：", "Applied outfit card and protected current hair accessories: " },
+        { "已用兼容模式只替换衣服，并保留全部现有饰品：", "Applied clothing only in compatibility mode and kept all current accessories: " },
+        { "为保护发饰，已只替换衣服并保留全部现有饰品：", "Applied clothing only and kept all current accessories to protect hair: " },
+        { "服装卡已完整替换，饰品、妆容及坐标扩展数据已覆盖：", "Fully applied the outfit card and overwrote accessories, makeup, and coordinate extension data: " },
+        { "；角色恢复读取超时，已解除界面等待；请重载场景后再换装", ". Character recovery timed out, so the UI wait was released. Reload the scene before changing outfits again" },
+        { "；自动恢复角色状态失败：", ". Automatic character-state recovery failed: " },
+        { "；已恢复角色状态", ". The character state was restored" },
+        { "服装卡替换异常：", "The outfit-card load failed unexpectedly: " },
+        { "服装卡替换已取消", "The outfit-card load was cancelled" },
+        { "ExtensibleSaveFormat 服装快照接口不兼容", "The ExtensibleSaveFormat outfit-snapshot interface is incompatible" },
+        { "服装扩展数据快照为空", "The outfit extension-data snapshot is empty" },
+        { "目标角色服装快照不可用", "The target character outfit snapshot is unavailable" },
+        { "无法读取换装前的服装扩展数据快照", "Could not read the pre-change outfit extension-data snapshot" },
+        { "工作室没有接受服装快照恢复请求", "Studio did not accept the outfit-snapshot recovery request" },
+        { "服装卡替换失败：", "Could not apply outfit card: " },
+        { "完整替换失败：目标角色已经失效", "Full outfit replacement failed: The target character is no longer valid" },
+        { "完整替换失败：", "Full outfit replacement failed: " },
+        { "服装卡替换异常，已恢复角色状态：", "The outfit load failed and the character state was recovered: " },
+        { "服装卡替换没有启动", "The outfit-card load did not start" },
+        { "Coordinate Load Option 未完成加载", "Coordinate Load Option did not finish loading" },
+        { "兼容模式换装失败：", "Compatibility-mode outfit change failed: " },
+        { "服装卡替换超时，已恢复角色状态", "The outfit-card load timed out and the character state was recovered" },
+        { "完整服装读取时间过长，已解除界面等待；完成或重载场景前不能再次换装", "The full outfit is taking too long to load, so the UI wait was released. You cannot change outfits again until loading finishes or the scene is reloaded" },
+        { "目标角色已经失效", "The target character is no longer valid" },
+        { "场景角色已变化，换装结果未继续绑定到新角色", "The scene character changed; the result was not bound to the new character" },
+        { "场景角色已变化，后台换装结果未继续绑定到新角色", "The scene character changed; the background outfit result was not bound to the new character" },
+        { "当前场景没有可替换服装的角色", "There is no character whose outfit can be replaced" },
         { "角色光阴影已开启", "Character-light shadows enabled" },
         { "角色光阴影已关闭", "Character-light shadows disabled" },
         { "角色光尚未初始化", "Character light is not initialized" },
@@ -279,6 +361,15 @@ public sealed partial class VRWristMenuController
 
     private void HandleSetLanguage(string language)
     {
+        if (_operationInProgress)
+        {
+            SetStatus(
+                L("换装仍在进行，请稍候", "着替え中です。しばらくお待ちください", "The outfit change is still running"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                4f);
+            return;
+        }
+
         ResolveSettings();
         if (_settings == null)
         {
@@ -410,6 +501,7 @@ public sealed partial class VRWristMenuController
         _characterPreviewRect = null;
         _characterPreviewMessageText = null;
         _characterPreviewNameText = null;
+        _characterPreviewTitleText = null;
         _characterPreviewLoadButton = null;
         _characterPreviewReplaceButton = null;
         for (int i = 0; i < _clothingPartButtons.Length; i++)

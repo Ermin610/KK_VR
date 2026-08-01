@@ -1,6 +1,6 @@
 ### v0.3.0 - VR 腕表工作流 + MMD / 角色工具
 
-在 v0.2.0 ReShade VR 修复整合包基础上，加入完整的腕表快捷菜单与工作室制作流程。核心插件内部版本为 `0.0.14`。
+在 v0.2.0 ReShade VR 修复整合包基础上，加入完整的腕表快捷菜单与工作室制作流程。核心插件内部版本为 `0.0.16`。
 
 ![KK VR 腕表主界面](https://github.com/Ermin610/KK_VR/blob/v0.3.0/post_assets/v0.0.14/KKVR_%E4%B8%BB%E7%95%8C%E9%9D%A2_UI.png?raw=1)
 
@@ -12,13 +12,14 @@
 | 文件2 | BepIn4Patcher |
 | 文件3 | KK_MainGameVR 1.2.0 |
 | 文件4 | 已修补 VR 支持的 globalgamemanagers |
-| 文件5 | Ermin v0.0.14 插件、最新 VRGIN_KKCS、启动脚本与运行文件 |
+| 文件5 | Ermin v0.0.16 插件、最新 VRGIN_KKCS、启动脚本与运行文件 |
 | 教程 | 与上一版相同格式的中 / 英 / 日三语安装教程 |
 
 ### 更新日志
 
 - 新增苹果风格腕表快捷菜单，默认简体中文，并支持日本語与 English。
-- 在 VR 内载入/保存场景，预览、添加或替换角色卡，切换服装状态与 IK 控制器。
+- 在 VR 内载入/保存场景，预览、添加或替换角色卡，切换角色预设服装与服装状态，并控制 IK。
+- 新增服装卡目录与原生卡面预览；“智能换装”会保护已识别的现有发饰，遇到饰品绑定数据时自动降级为只换衣服；“完整替换”会套用整张坐标卡，并覆盖全部饰品（含发饰）、妆容及坐标扩展数据。
 - 集中整理 MMD 二级菜单：MMDD、Timeline、VMD、固定视野和高跟鞋工具。
 - VMD 根目录选择一次后自动保存，也可随时更换；修复场景重载后的读取失败。
 - 高跟鞋支持角色选择、鞋子检测、角度/鞋高偏移，以及按角色卡名称保存和读取参数。
@@ -34,6 +35,7 @@
 - **VN Game Engine（VNGE）**：原作者为 [Keitaro / KeiPlugins](https://www.patreon.com/KeiPlugins)；Countd360 是重要贡献者并维护后续发布。[Countd360 维护的 VNGE 发布说明](https://www.patreon.com/posts/vnge-release-92082611) 也明确记录了这一作者关系。KK VR 通过 VNGE 与 MMDD 联动，不会把两者嵌入自身插件。
 - **安装与兼容性**：请按 Countd360 的 [VNGE / MMDD 安装教程](https://www.patreon.com/posts/vnge-and-mmdd-94912633) 安装适用于 KK 的版本及其上游依赖。当前开发与实测环境为 **MMDD 2.9.6 + VNGE 44.0**；MMDD 将 2.9.6 标为 3.0 前测试版，不代表兼容所有旧版或未来版本。
 - **高跟鞋使用前提**：目标角色须先载入动作 VMD，形成 MMDD 动作控制器；同时 MMDD 须检测到 KK 支持的 Stiletto/KK_Stiletto，或 BonerStateSync + KKABMX。
+- **Coordinate Load Option**：由 [Jim Chen](https://xn--jgy.tw/Koikatu/coordinate-load-option/) 开发。KK VR 仅通过软兼容桥调用其已安装的选择性换装能力，不复制或捆绑其源码；未安装或检测到不适合合并的饰品绑定数据时，会使用保留全部现有饰品的衣服-only 安全路径。
 
 ### 快速开始
 

@@ -1,5 +1,5 @@
 ========================================================================
-        KK CharaStudio VR Plugin - Ermin Edition v0.0.14
+        KK CharaStudio VR Plugin - Ermin Edition v0.0.16
 ========================================================================
 
 [安装 / Installation]
@@ -19,13 +19,19 @@ Copy everything inside this package root to the game root directory and allow ov
 - 右摇杆上下：滚动腕表文件列表。
 - 设置 > 通用：切换简体中文、日本語、English。
 
-主要功能：场景载入与保存、角色卡预览/添加/替换、服装状态、IK 显示、
+主要功能：场景载入与保存、角色卡预览/添加/替换、角色预设服装、服装卡预览与发饰保护换装、服装状态、IK 显示、
 MMDD/Timeline 播放、VMD 读取、固定视野、高跟鞋参数预设，以及背景、
 角色光和声音设置。
 
+服装卡模式 / Outfit-card modes:
+- “智能换装 / Smart Replace”会保护已识别的现有发饰；若无法安全合并，则只替换衣服并保留全部现有饰品。
+  Smart Replace protects recognized current hair accessories. If a safe merge is unavailable, it loads clothing only and keeps every current accessory.
+- “完整替换 / Full Replace”会套用整张坐标卡，并覆盖全部饰品（含发饰）、妆容及坐标扩展数据。
+  Full Replace applies the entire coordinate and overwrites all accessories (including hair accessories), makeup, and coordinate-level extension data.
+
 [Version]
 
-Core plugin: 0.0.14
+Core plugin: 0.0.16
 Integration pack: v0.3.0
 Maintainer and current edition author: Ermin
 

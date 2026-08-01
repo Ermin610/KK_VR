@@ -10,6 +10,12 @@ namespace KKCharaStudioVR;
 
 public sealed partial class VRWristMenuController
 {
+    private enum CardPreviewKind
+    {
+        Character,
+        Coordinate
+    }
+
     private const float CharacterPreviewAreaX = 168f;
     private const float CharacterPreviewAreaY = 58f;
     private const float CharacterPreviewAreaWidth = 224f;
@@ -19,6 +25,7 @@ public sealed partial class VRWristMenuController
     private RectTransform _characterPreviewRect;
     private Text _characterPreviewMessageText;
     private Text _characterPreviewNameText;
+    private Text _characterPreviewTitleText;
     private VRWristMenuButtonTarget _characterPreviewLoadButton;
     private VRWristMenuButtonTarget _characterPreviewReplaceButton;
     private Texture2D _characterPreviewTexture;
@@ -29,6 +36,8 @@ public sealed partial class VRWristMenuController
     private string _characterCardListRoot;
     private string _characterCardListDirectory;
     private int _characterCardListOffset;
+    private CardPreviewKind _cardPreviewKind;
+    private bool _pendingCoordinateProtectHair = true;
 
     private void BuildCharacterPreviewPage()
     {
@@ -44,7 +53,7 @@ public sealed partial class VRWristMenuController
             58f,
             38f,
             28);
-        CreateText(
+        _characterPreviewTitleText = CreateText(
             "CharacterPreviewTitle",
             _characterPreviewPage.transform,
             L("角色卡预览", "キャラカードのプレビュー", "Character card preview"),
@@ -136,6 +145,16 @@ public sealed partial class VRWristMenuController
 
     private void OpenCharacterCardPreview(string path)
     {
+        OpenCardPreview(path, CardPreviewKind.Character);
+    }
+
+    private void OpenCoordinateCardPreview(string path)
+    {
+        OpenCardPreview(path, CardPreviewKind.Coordinate);
+    }
+
+    private void OpenCardPreview(string path, CardPreviewKind kind)
+    {
         if (_operationInProgress)
         {
             SetStatus(
@@ -145,6 +164,7 @@ public sealed partial class VRWristMenuController
             return;
         }
 
+        _cardPreviewKind = kind;
         _characterCardListMode = _browserMode;
         _characterCardListRoot = _browserRoot;
         _characterCardListDirectory = _browserDirectory;
@@ -154,8 +174,16 @@ public sealed partial class VRWristMenuController
         _pendingCharacterCardPath = null;
         ReleaseCharacterPreviewTexture();
         ResetCharacterPreviewRect();
+        if (_characterPreviewTitleText != null)
+        {
+            _characterPreviewTitleText.text = kind == CardPreviewKind.Coordinate
+                ? L("服装卡预览", "衣装カードのプレビュー", "Outfit card preview")
+                : L("角色卡预览", "キャラカードのプレビュー", "Character card preview");
+        }
         _characterPreviewNameText.text = string.IsNullOrEmpty(path)
-            ? L("无效角色卡", "無効なキャラカード", "Invalid character card")
+            ? (kind == CardPreviewKind.Coordinate
+                ? L("无效服装卡", "無効な衣装カード", "Invalid outfit card")
+                : L("无效角色卡", "無効なキャラカード", "Invalid character card"))
             : Path.GetFileNameWithoutExtension(path);
         _characterPreviewMessageText.text = L("正在读取卡面预览…", "カード画像を読込中…", "Loading card preview…");
         _characterPreviewMessageText.gameObject.SetActive(true);
@@ -180,13 +208,26 @@ public sealed partial class VRWristMenuController
 
             string characterName;
             string previewStatus;
-            if (!VRCharacterCardService.TryLoadNativePreview(
+            bool loaded = _cardPreviewKind == CardPreviewKind.Coordinate
+                ? VRCoordinateCardService.TryLoadNativePreview(
+                    path,
+                    out texture,
+                    out characterName,
+                    out previewStatus)
+                : VRCharacterCardService.TryLoadNativePreview(
                     _characterCardMode,
                     path,
                     out texture,
                     out characterName,
-                    out previewStatus))
-                throw new IOException(previewStatus ?? "无法读取角色卡预览图");
+                    out previewStatus);
+            if (!loaded)
+            {
+                throw new IOException(
+                    previewStatus
+                    ?? (_cardPreviewKind == CardPreviewKind.Coordinate
+                        ? "无法读取服装卡预览图"
+                        : "无法读取角色卡预览图"));
+            }
 
             if (requestId != _characterPreviewRequestId)
             {
@@ -198,7 +239,9 @@ public sealed partial class VRWristMenuController
             ReleaseCharacterPreviewTexture();
             _characterPreviewTexture = texture;
             texture = null;
-            _characterPreviewTexture.name = "KKVR_CharacterCardPreview";
+            _characterPreviewTexture.name = _cardPreviewKind == CardPreviewKind.Coordinate
+                ? "KKVR_CoordinateCardPreview"
+                : "KKVR_CharacterCardPreview";
             _characterPreviewTexture.filterMode = FilterMode.Bilinear;
             _characterPreviewTexture.wrapMode = TextureWrapMode.Clamp;
             _characterPreviewImage.texture = _characterPreviewTexture;
@@ -210,12 +253,33 @@ public sealed partial class VRWristMenuController
             _pendingCharacterCardPath = path;
             _characterPreviewNameText.text = characterName;
             _characterPreviewMessageText.gameObject.SetActive(false);
-            _characterPreviewLoadButton.SetLabel(GetCharacterPreviewLoadLabel());
-            _characterPreviewReplaceButton.SetLabel(
-                L("替换场景角色", "シーンのキャラを置換", "Replace a scene character"));
+            if (_cardPreviewKind == CardPreviewKind.Coordinate)
+            {
+                _characterPreviewLoadButton.SetLabel(
+                    L(
+                        "智能换装\n保护现有发饰",
+                        "安全に着替え\n髪アクセを保護",
+                        "Smart replace\nProtect hair accessories"));
+                _characterPreviewReplaceButton.SetLabel(
+                    L(
+                        "完整替换\n含饰品与妆容",
+                        "完全適用\nアクセ・メイク込み",
+                        "Full replace\nAccessories + makeup"));
+            }
+            else
+            {
+                _characterPreviewLoadButton.SetLabel(GetCharacterPreviewLoadLabel());
+                _characterPreviewReplaceButton.SetLabel(
+                    L("替换场景角色", "シーンのキャラを置換", "Replace a scene character"));
+            }
             SetCharacterPreviewActionsVisible(true);
             SetStatus(
-                L("角色卡预览已就绪", "プレビューの準備完了", "Character preview is ready"),
+                _cardPreviewKind == CardPreviewKind.Coordinate
+                    ? L(
+                        "服装卡预览已就绪，建议使用保护发饰的安全替换",
+                        "衣装カードの準備完了。髪アクセ保護を推奨します",
+                        "Outfit preview is ready; smart replace protects hair accessories")
+                    : L("角色卡预览已就绪", "プレビューの準備完了", "Character preview is ready"),
                 new Color(0.35f, 1f, 0.62f, 1f),
                 0f);
         }
@@ -231,7 +295,13 @@ public sealed partial class VRWristMenuController
                 "カード画像の読込に失敗\n戻って別のカードを選択してください",
                 "Could not load the card preview\nGo back and choose another card");
             _characterPreviewMessageText.gameObject.SetActive(true);
-            VRLog.Warn("Character card preview failed for " + path + ": " + ex.Message);
+            VRLog.Warn(
+                (_cardPreviewKind == CardPreviewKind.Coordinate
+                    ? "Outfit card preview failed for "
+                    : "Character card preview failed for ")
+                + path
+                + ": "
+                + ex.Message);
             SetStatus(
                 "卡面预览失败：" + ex.Message,
                 new Color(1f, 0.38f, 0.34f, 1f),
@@ -291,6 +361,12 @@ public sealed partial class VRWristMenuController
         if (!HasPendingCharacterCard())
             return;
 
+        if (_cardPreviewKind == CardPreviewKind.Coordinate)
+        {
+            OpenCoordinateTargetBrowser(protectHairAccessories: true);
+            return;
+        }
+
         StartCoroutine(ExecuteCharacterAddAfterFrame(_pendingCharacterCardPath));
     }
 
@@ -298,6 +374,12 @@ public sealed partial class VRWristMenuController
     {
         if (!HasPendingCharacterCard())
             return;
+
+        if (_cardPreviewKind == CardPreviewKind.Coordinate)
+        {
+            OpenCoordinateTargetBrowser(protectHairAccessories: false);
+            return;
+        }
 
         string targetStatus;
         List<VRVmdActorTarget> targets = VRVmdTargetService.GetAllTargets(out targetStatus);
@@ -318,6 +400,35 @@ public sealed partial class VRWristMenuController
             BrowserMode.SelectCharacterReplaceActor,
             targets,
             "请选择要替换的场景角色",
+            out targetStatus);
+    }
+
+    private void OpenCoordinateTargetBrowser(bool protectHairAccessories)
+    {
+        string targetStatus;
+        List<VRVmdActorTarget> targets = VRVmdTargetService.GetAllTargets(out targetStatus);
+        if (targets.Count == 0)
+        {
+            SetStatus(
+                targetStatus ?? "当前场景没有可替换服装的角色",
+                new Color(1f, 0.38f, 0.34f, 1f),
+                7f);
+            return;
+        }
+
+        _pendingCoordinateProtectHair = protectHairAccessories;
+        OpenActorTargetBrowser(
+            BrowserMode.SelectCoordinateReplaceActor,
+            targets,
+            protectHairAccessories
+                ? L(
+                    "选择角色：载入卡片配饰，并保护现有发饰",
+                    "キャラを選択：カードのアクセを読み込み、現在の髪アクセを保護します",
+                    "Select a character; card accessories load while current hair accessories are protected")
+                : L(
+                    "选择角色：将覆盖全部饰品（含发饰）、妆容及坐标扩展数据",
+                    "キャラを選択：全アクセ（髪アクセ含む）、メイク、コーディネート拡張データを上書きします",
+                    "Select a character: all accessories (including hair), makeup, and coordinate extension data will be overwritten"),
             out targetStatus);
     }
 
@@ -349,15 +460,48 @@ public sealed partial class VRWristMenuController
             entry.ObjectKey));
     }
 
+    private void HandleCoordinateReplaceActorSelection(VRWristFileEntry entry)
+    {
+        if (!entry.IsActorTarget || !HasPendingCharacterCard())
+            return;
+
+        VRVmdActorTarget target;
+        string status;
+        if (!VRVmdTargetService.TryGetTarget(entry.ObjectKey, out target, out status))
+        {
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+            return;
+        }
+
+        StartCoroutine(ExecuteCoordinateReplacementAfterFrame(
+            _pendingCharacterCardPath,
+            entry.ObjectKey,
+            target.Character,
+            _pendingCoordinateProtectHair));
+    }
+
     private void HandleCharacterPreviewBack()
     {
+        if (_operationInProgress)
+        {
+            SetStatus(
+                L("换装仍在进行，请稍候", "着替え中です。しばらくお待ちください", "The outfit change is still running"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                4f);
+            return;
+        }
+
         ++_characterPreviewRequestId;
         _characterPreviewLoading = false;
 
         if (_characterCardListMode != BrowserMode.AddFemale
-            && _characterCardListMode != BrowserMode.AddMale)
+            && _characterCardListMode != BrowserMode.AddMale
+            && _characterCardListMode != BrowserMode.CoordinateCards)
         {
-            ShowPage(WristMenuPage.CharacterCards);
+            ShowPage(
+                _cardPreviewKind == CardPreviewKind.Coordinate
+                    ? WristMenuPage.Clothing
+                    : WristMenuPage.CharacterCards);
             return;
         }
 
@@ -370,7 +514,9 @@ public sealed partial class VRWristMenuController
         RefreshBrowserEntries();
         ShowPage(WristMenuPage.Browser);
         SetStatus(
-            "角色卡列表",
+            _cardPreviewKind == CardPreviewKind.Coordinate
+                ? L("服装卡列表", "衣装カード一覧", "Outfit card list")
+                : L("角色卡列表", "キャラカード一覧", "Character card list"),
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
     }
@@ -382,7 +528,15 @@ public sealed partial class VRWristMenuController
         if (_characterPreviewLoading)
         {
             SetStatus(
-                "卡面仍在读取，请稍候",
+                _cardPreviewKind == CardPreviewKind.Coordinate
+                    ? L(
+                        "服装卡面仍在读取，请稍候",
+                        "衣装カード画像を読込中です。お待ちください",
+                        "The outfit-card preview is still loading")
+                    : L(
+                        "角色卡面仍在读取，请稍候",
+                        "キャラカード画像を読込中です。お待ちください",
+                        "The character-card preview is still loading"),
                 new Color(1f, 0.72f, 0.25f, 1f),
                 4f);
             return false;
@@ -391,7 +545,9 @@ public sealed partial class VRWristMenuController
             return true;
 
         SetStatus(
-            "尚未选择角色卡",
+            _cardPreviewKind == CardPreviewKind.Coordinate
+                ? L("尚未选择服装卡", "衣装カードが未選択です", "No outfit card is selected")
+                : L("尚未选择角色卡", "キャラカードが未選択です", "No character card is selected"),
             new Color(1f, 0.38f, 0.34f, 1f),
             5f);
         return false;

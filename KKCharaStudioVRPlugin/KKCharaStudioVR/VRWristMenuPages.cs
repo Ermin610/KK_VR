@@ -25,6 +25,8 @@ public sealed partial class VRWristMenuController
         SelectClothingActor,
         SelectHighHeelsActor,
         SelectCharacterReplaceActor,
+        SelectCoordinateReplaceActor,
+        CoordinateCards,
         AddFemale,
         AddMale
     }
@@ -295,6 +297,26 @@ public sealed partial class VRWristMenuController
             SetStatus(status, new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
     }
 
+    private void HandleOpenCoordinateCards()
+    {
+        string root;
+        string status;
+        if (!VRCoordinateCardService.TryGetBrowserRoot(out root, out status))
+        {
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 6f);
+            return;
+        }
+
+        OpenFileBrowser(BrowserMode.CoordinateCards, root, root);
+        SetStatus(
+            L(
+                "选择服装卡后可预览并安全替换",
+                "衣装カードを選ぶとプレビューして安全に着替えられます",
+                "Choose an outfit card to preview and apply it safely"),
+            new Color(0.47f, 0.9f, 0.55f, 1f),
+            0f);
+    }
+
     private void OpenFileBrowser(BrowserMode mode, string root, string directory)
     {
         try
@@ -338,7 +360,8 @@ public sealed partial class VRWristMenuController
                 || _browserMode == BrowserMode.SelectVmdCamera
                 || _browserMode == BrowserMode.SelectClothingActor
                 || _browserMode == BrowserMode.SelectHighHeelsActor
-                || _browserMode == BrowserMode.SelectCharacterReplaceActor)
+                || _browserMode == BrowserMode.SelectCharacterReplaceActor
+                || _browserMode == BrowserMode.SelectCoordinateReplaceActor)
             && _browserFixedEntries != null)
         {
             _browserEntries = _browserFixedEntries;
@@ -356,6 +379,7 @@ public sealed partial class VRWristMenuController
                     break;
                 case BrowserMode.AddFemale:
                 case BrowserMode.AddMale:
+                case BrowserMode.CoordinateCards:
                     extensions = new[] { ".png" };
                     break;
                 default:
@@ -440,6 +464,10 @@ public sealed partial class VRWristMenuController
                 return L("服装：选择角色", "服装：キャラ選択", "Clothing: Select character");
             case BrowserMode.SelectCharacterReplaceActor:
                 return L("替换：选择场景角色", "置換：シーンのキャラを選択", "Replace: Select scene character");
+            case BrowserMode.SelectCoordinateReplaceActor:
+                return L("服装卡：选择场景角色", "衣装カード：キャラ選択", "Outfit card: Select character");
+            case BrowserMode.CoordinateCards:
+                return L("服装卡", "衣装カード", "Outfit cards");
             case BrowserMode.AddFemale:
                 return L("女性角色卡", "女性キャラカード", "Female character cards");
             case BrowserMode.AddMale:
@@ -454,7 +482,8 @@ public sealed partial class VRWristMenuController
         if (_browserMode == BrowserMode.SelectVmdActor
             || _browserMode == BrowserMode.SelectClothingActor
             || _browserMode == BrowserMode.SelectHighHeelsActor
-            || _browserMode == BrowserMode.SelectCharacterReplaceActor)
+            || _browserMode == BrowserMode.SelectCharacterReplaceActor
+            || _browserMode == BrowserMode.SelectCoordinateReplaceActor)
             return L("当前场景角色", "現在のシーンキャラ", "Current scene characters");
         if (_browserMode == BrowserMode.SelectVmdCamera)
             return L("同目录镜头", "同じフォルダーのカメラ", "Cameras in this folder");
@@ -494,11 +523,22 @@ public sealed partial class VRWristMenuController
             return "[" + kind + "]  " + entry.DisplayName;
         }
 
-        return L("[角色卡]  ", "[キャラカード]  ", "[Character card]  ") + entry.DisplayName;
+        return _browserMode == BrowserMode.CoordinateCards
+            ? L("[服装卡]  ", "[衣装カード]  ", "[Outfit card]  ") + entry.DisplayName
+            : L("[角色卡]  ", "[キャラカード]  ", "[Character card]  ") + entry.DisplayName;
     }
 
     private void HandleBrowserBack()
     {
+        if (_operationInProgress)
+        {
+            SetStatus(
+                L("换装仍在进行，请稍候", "着替え中です。しばらくお待ちください", "The outfit change is still running"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                4f);
+            return;
+        }
+
         if (_browserMode == BrowserMode.SelectVmdRoot)
         {
             HandleVmdRootPickerBack();
@@ -531,6 +571,14 @@ public sealed partial class VRWristMenuController
         {
             ShowPage(WristMenuPage.CharacterPreview);
             SetStatus(L("角色卡预览", "キャラカードのプレビュー", "Character card preview"),
+                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectCoordinateReplaceActor)
+        {
+            ShowPage(WristMenuPage.CharacterPreview);
+            SetStatus(L("服装卡预览", "衣装カードのプレビュー", "Outfit card preview"),
                 new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
             return;
         }
@@ -570,6 +618,12 @@ public sealed partial class VRWristMenuController
         {
             ShowPage(WristMenuPage.CharacterCards);
             SetStatus(L("角色卡", "キャラカード", "Character cards"),
+                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+        }
+        else if (_browserMode == BrowserMode.CoordinateCards)
+        {
+            ShowPage(WristMenuPage.Clothing);
+            SetStatus(L("服装卡", "衣装カード", "Outfit cards"),
                 new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         }
         else
@@ -619,6 +673,12 @@ public sealed partial class VRWristMenuController
                 break;
             case BrowserMode.SelectCharacterReplaceActor:
                 HandleCharacterReplaceActorSelection(entry);
+                break;
+            case BrowserMode.SelectCoordinateReplaceActor:
+                HandleCoordinateReplaceActorSelection(entry);
+                break;
+            case BrowserMode.CoordinateCards:
+                OpenCoordinateCardPreview(entry.FullPath);
                 break;
             case BrowserMode.AddFemale:
             case BrowserMode.AddMale:
@@ -1085,6 +1145,311 @@ public sealed partial class VRWristMenuController
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
             success ? 6f : 8f);
+    }
+
+    private IEnumerator ExecuteCoordinateReplacementAfterFrame(
+        string path,
+        int objectKey,
+        Studio.OCIChar expectedCharacter,
+        bool protectHairAccessories)
+    {
+        if (_operationInProgress)
+            yield break;
+
+        _operationInProgress = true;
+        SetStatus(
+            protectHairAccessories
+                ? L(
+                    "正在智能换装并保护现有发饰…",
+                    "現在の髪アクセを保護して着替えています…",
+                    "Applying the outfit while protecting current hair accessories…")
+                : L(
+                    "正在完整替换服装与饰品…",
+                    "衣装とアクセを完全に置き換えています…",
+                    "Replacing the full outfit and accessories…"),
+            new Color(0.47f, 0.9f, 0.55f, 1f),
+            0f);
+        VRCoordinateLoadSession session = null;
+        string status = "服装卡替换没有启动";
+        bool success = false;
+        try
+        {
+            yield return null;
+
+            bool started;
+            try
+            {
+                started = VRCoordinateCardService.TryBeginReplace(
+                    objectKey,
+                    expectedCharacter,
+                    path,
+                    protectHairAccessories,
+                    out session,
+                    out status);
+            }
+            catch (Exception ex)
+            {
+                started = false;
+                status = "服装卡替换失败：" + ex.Message;
+            }
+
+            if (started)
+            {
+                float warningDeadline = Time.realtimeSinceStartup + 30f;
+                float hardDeadline = Time.realtimeSinceStartup + 90f;
+                bool nativeWaitWarningShown = false;
+                while (true)
+                {
+                    bool completed;
+                    try
+                    {
+                        completed = session.TryGetCompletion(out success, out status);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (session.CanAbortSafely)
+                        {
+                            try
+                            {
+                                session.Abort();
+                            }
+                            catch (Exception abortException)
+                            {
+                                VRLog.Warn("Outfit-load recovery also failed: " + abortException.Message);
+                            }
+                            if (session.RequiresBackgroundMonitoring)
+                            {
+                                SetStatus(
+                                    L(
+                                        "换装读取异常，正在恢复角色状态…",
+                                        "着替えの読込エラー。キャラ状態を復元中…",
+                                        "Outfit loading failed; restoring the character…"),
+                                    new Color(1f, 0.72f, 0.25f, 1f),
+                                    0f);
+                                continue;
+                            }
+                            status = session.TerminalRecoveryStatus
+                                ?? ("服装卡替换异常，已恢复角色状态：" + ex.Message);
+                        }
+                        else
+                        {
+                            status = L(
+                                "完整服装读取状态异常；载入可能仍在后台执行，完成或重载场景前不能再次换装：",
+                                "完全な衣装の読込状態を確認できません。バックグラウンドで継続中の可能性があるため、完了またはシーン再読込まで再度着替えできません：",
+                                "Could not read the full-outfit load state. It may still be running in the background; do not change outfits again until it finishes or the scene is reloaded: ")
+                                + ex.Message;
+                            StartCoroutine(MonitorCoordinateReplacementInBackground(
+                                session,
+                                objectKey,
+                                expectedCharacter));
+                        }
+                        success = false;
+                        break;
+                    }
+
+                    if (completed)
+                    {
+                        if (session.RequiresBackgroundMonitoring)
+                        {
+                            StartCoroutine(MonitorCoordinateReplacementInBackground(
+                                session,
+                                objectKey,
+                                expectedCharacter));
+                        }
+                        break;
+                    }
+
+                    if (Time.realtimeSinceStartup >= warningDeadline)
+                    {
+                        if (session.CanAbortSafely)
+                        {
+                            session.Abort();
+                            if (session.RequiresBackgroundMonitoring)
+                            {
+                                SetStatus(
+                                    L(
+                                        "换装超时，正在恢复角色状态…",
+                                        "着替えがタイムアウトしました。キャラ状態を復元中…",
+                                        "The outfit load timed out; restoring the character…"),
+                                    new Color(1f, 0.72f, 0.25f, 1f),
+                                    0f);
+                                warningDeadline = Time.realtimeSinceStartup + 30f;
+                                continue;
+                            }
+                            success = false;
+                            status = session.TerminalRecoveryStatus
+                                ?? "服装卡替换超时，已恢复角色状态";
+                            break;
+                        }
+
+                        if (Time.realtimeSinceStartup >= hardDeadline)
+                        {
+                            success = false;
+                            status = "完整服装读取时间过长，已解除界面等待；完成或重载场景前不能再次换装";
+                            StartCoroutine(MonitorCoordinateReplacementInBackground(
+                                session,
+                                objectKey,
+                                expectedCharacter));
+                            break;
+                        }
+
+                        if (!nativeWaitWarningShown)
+                        {
+                            nativeWaitWarningShown = true;
+                            SetStatus(
+                                L(
+                                    "完整服装仍在读取，完成前不会开始下一次换装",
+                                    "完全な衣装を読込中です。完了まで次の着替えは開始しません",
+                                    "The full outfit is still loading; another outfit change will not start yet"),
+                                new Color(1f, 0.72f, 0.25f, 1f),
+                                0f);
+                        }
+                        warningDeadline = Time.realtimeSinceStartup + 30f;
+                    }
+                    yield return null;
+                }
+            }
+        }
+        finally
+        {
+            _operationInProgress = false;
+        }
+
+        ShowPage(WristMenuPage.CharacterPreview);
+        if (success)
+        {
+            Studio.OCIChar character;
+            string ignoredStatus;
+            if (VRCharacterCardService.TryGetCharacter(objectKey, out character, out ignoredStatus)
+                && ReferenceEquals(character, expectedCharacter))
+            {
+                _clothingTargetObjectKey = objectKey;
+                _clothingTargetCharacter = character;
+                VRCharacterClothingService.RefreshStudioCharacterPanel(character);
+                string highHeelStatus;
+                if (VRMmddService.RefreshHighHeels(objectKey, out highHeelStatus))
+                    VRLog.Info(highHeelStatus);
+            }
+            else
+            {
+                success = false;
+                status = "场景角色已变化，换装结果未继续绑定到新角色";
+            }
+            if (success)
+                VRLog.Info(status);
+        }
+        else
+        {
+            VRLog.Warn(status);
+        }
+
+        SetStatus(
+            status,
+            success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+            success ? 8f : 10f);
+    }
+
+    private IEnumerator MonitorCoordinateReplacementInBackground(
+        VRCoordinateLoadSession session,
+        int objectKey,
+        Studio.OCIChar expectedCharacter)
+    {
+        if (session == null)
+            yield break;
+
+        int pollingFailures = 0;
+        float retryAfter = 0f;
+        while (VRCoordinateCardService.IsActiveSession(session))
+        {
+            yield return null;
+            if (!VRCoordinateCardService.IsActiveSession(session))
+                yield break;
+            if (Time.realtimeSinceStartup < retryAfter)
+                continue;
+
+            bool completed;
+            bool success;
+            string status;
+            try
+            {
+                completed = session.TryGetCompletion(out success, out status);
+                pollingFailures = 0;
+            }
+            catch (Exception ex)
+            {
+                pollingFailures++;
+                if (pollingFailures <= 3 || pollingFailures % 20 == 0)
+                    VRLog.Warn("Background outfit-load monitor will retry: " + ex.Message);
+
+                if (session.CanAbortSafely)
+                {
+                    try
+                    {
+                        session.Abort();
+                    }
+                    catch (Exception abortException)
+                    {
+                        VRLog.Warn("Background outfit-load recovery also failed: "
+                            + abortException.Message);
+                    }
+
+                    if (!VRCoordinateCardService.IsActiveSession(session))
+                    {
+                        string terminalStatus = session.TerminalRecoveryStatus
+                            ?? ("后台换装监控失败：" + ex.Message);
+                        VRLog.Warn(terminalStatus);
+                        if (!_operationInProgress)
+                        {
+                            SetStatus(
+                                terminalStatus,
+                                new Color(1f, 0.38f, 0.34f, 1f),
+                                10f);
+                        }
+                        yield break;
+                    }
+                }
+
+                retryAfter = Time.realtimeSinceStartup + Mathf.Min(2f, 0.25f * pollingFailures);
+                continue;
+            }
+
+            if (!completed || session.RequiresBackgroundMonitoring)
+                continue;
+
+            if (success)
+            {
+                Studio.OCIChar character;
+                string ignoredStatus;
+                if (VRCharacterCardService.TryGetCharacter(objectKey, out character, out ignoredStatus)
+                    && ReferenceEquals(character, expectedCharacter))
+                {
+                    _clothingTargetObjectKey = objectKey;
+                    _clothingTargetCharacter = character;
+                    VRCharacterClothingService.RefreshStudioCharacterPanel(character);
+                    string highHeelStatus;
+                    if (VRMmddService.RefreshHighHeels(objectKey, out highHeelStatus))
+                        VRLog.Info(highHeelStatus);
+                }
+                else
+                {
+                    success = false;
+                    status = "场景角色已变化，后台换装结果未继续绑定到新角色";
+                }
+            }
+
+            if (success)
+                VRLog.Info("Background outfit load completed: " + status);
+            else
+                VRLog.Warn("Background outfit load finished with an error: " + status);
+            if (!_operationInProgress)
+            {
+                SetStatus(
+                    status,
+                    success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
+                    10f);
+            }
+            yield break;
+        }
     }
 
     private void HandleSaveSceneNow()
