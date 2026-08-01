@@ -5,8 +5,14 @@ namespace KKCharaStudioVR;
 
 public sealed partial class VRWristMenuController
 {
+    private static readonly Color VmdRootReadyColor = new Color(0.28f, 0.2f, 0.07f, 0.48f);
+    private static readonly Color VmdRootReadyHoverColor = new Color(0.55f, 0.36f, 0.1f, 0.74f);
+    private static readonly Color VmdRootMissingColor = new Color(0.42f, 0.075f, 0.065f, 0.72f);
+    private static readonly Color VmdRootMissingHoverColor = new Color(0.72f, 0.12f, 0.1f, 0.88f);
+
     private GameObject _mmdPage;
     private GameObject _highHeelsPage;
+    private VRWristMenuButtonTarget _vmdRootButton;
     private VRWristMenuButtonTarget _fixedFovToggleButton;
     private Text _fixedFovValueText;
     private Text _fixedFovCameraCountText;
@@ -14,6 +20,7 @@ public sealed partial class VRWristMenuController
     private VRWristMenuButtonTarget _highHeelsModeButton;
     private VRWristMenuButtonTarget _highHeelsShoesDetectButton;
     private VRWristMenuButtonTarget _shoesOffsetToggleButton;
+    private VRWristMenuButtonTarget _highHeelsLoadPresetButton;
     private readonly Text[] _highHeelsAngleTexts = new Text[3];
     private readonly Text[] _shoesOffsetTexts = new Text[2];
     private int _highHeelsTargetObjectKey = -1;
@@ -45,14 +52,14 @@ public sealed partial class VRWristMenuController
             TextAnchor.MiddleLeft,
             Color.white);
 
-        CreateButton(
-            "MmdPlayPause",
-            "MMDD\n播放 / 暂停",
+        _vmdRootButton = CreateButton(
+            "VmdRoot",
+            "动作目录\n未设置 · 点击选择",
             24f,
             72f,
-            new Color(0.28f, 0.2f, 0.07f, 0.48f),
-            new Color(0.55f, 0.36f, 0.1f, 0.74f),
-            HandleToggleMmd,
+            VmdRootMissingColor,
+            VmdRootMissingHoverColor,
+            HandleChangeVmdRoot,
             _mmdPage.transform,
             248f,
             64f,
@@ -308,6 +315,31 @@ public sealed partial class VRWristMenuController
 
         BuildShoesOffsetRow("ShoesOnOffset", "穿鞋高度", true, 344f, 0);
         BuildShoesOffsetRow("ShoesOffOffset", "脱鞋高度", false, 378f, 1);
+
+        CreateButton(
+            "HighHeelsSavePreset",
+            "保存参数\nSAVE",
+            368f,
+            344f,
+            new Color(0.075f, 0.24f, 0.14f, 0.48f),
+            new Color(0.11f, 0.46f, 0.24f, 0.76f),
+            HandleSaveHighHeelsPreset,
+            _highHeelsPage.transform,
+            168f,
+            28f,
+            15);
+        _highHeelsLoadPresetButton = CreateButton(
+            "HighHeelsLoadPreset",
+            "读取参数\nLOAD",
+            368f,
+            378f,
+            new Color(0.12f, 0.16f, 0.2f, 0.56f),
+            new Color(0.22f, 0.34f, 0.42f, 0.8f),
+            HandleLoadHighHeelsPreset,
+            _highHeelsPage.transform,
+            168f,
+            28f,
+            15);
     }
 
     private void BuildShoesOffsetRow(
@@ -369,6 +401,11 @@ public sealed partial class VRWristMenuController
     {
         SetStatus("MMDD 设置", new Color(1f, 0.72f, 0.25f, 1f), 0f);
         ShowPage(WristMenuPage.MmdSettings);
+    }
+
+    private void HandleChangeVmdRoot()
+    {
+        OpenVmdRootPicker(false, true);
     }
 
     private void HandleBackToMmdSettings()
@@ -437,11 +474,37 @@ public sealed partial class VRWristMenuController
 
     private void RefreshMmdSettingsPage()
     {
+        RefreshVmdRootVisuals();
         string status;
         bool success = VRMmddService.RefreshFixedFov(out status);
         RefreshFixedFovVisuals();
         if (!success)
             ReportMmdResult(false, status);
+    }
+
+    private void RefreshVmdRootVisuals()
+    {
+        string root = GetConfiguredVmdRoot();
+        bool configured = !string.IsNullOrEmpty(root);
+
+        if (_loadVmdButton != null)
+        {
+            _loadVmdButton.SetLabel(configured ? "VMD\n读取文件" : "VMD\n未设置目录");
+            _loadVmdButton.SetColors(
+                configured ? VmdRootReadyColor : VmdRootMissingColor,
+                configured ? VmdRootReadyHoverColor : VmdRootMissingHoverColor);
+        }
+
+        if (_vmdRootButton != null)
+        {
+            _vmdRootButton.SetLabel(
+                configured
+                    ? "动作目录\n已保存 · 点击更换"
+                    : "动作目录\n未设置 · 点击选择");
+            _vmdRootButton.SetColors(
+                configured ? VmdRootReadyColor : VmdRootMissingColor,
+                configured ? VmdRootReadyHoverColor : VmdRootMissingHoverColor);
+        }
     }
 
     private void RefreshFixedFovVisuals()
@@ -576,6 +639,24 @@ public sealed partial class VRWristMenuController
             _shoesOffsetTexts[0].text = available ? VRMmddStateBridge.ShoesOnOffset.ToString("F3") : "--";
         if (_shoesOffsetTexts[1] != null)
             _shoesOffsetTexts[1].text = available ? VRMmddStateBridge.ShoesOffOffset.ToString("F3") : "--";
+
+        if (_highHeelsLoadPresetButton != null)
+        {
+            bool hasPreset = false;
+            VRVmdActorTarget target;
+            string ignoredStatus;
+            if (_highHeelsTargetObjectKey >= 0
+                && VRVmdTargetService.TryGetTarget(
+                    _highHeelsTargetObjectKey,
+                    out target,
+                    out ignoredStatus)
+                && object.ReferenceEquals(_highHeelsTargetCharacter, target.Character))
+            {
+                hasPreset = VRHighHeelsPresetStore.HasPreset(target.Character);
+            }
+            _highHeelsLoadPresetButton.SetLabel(
+                hasPreset ? "读取参数\n已保存" : "读取参数\n无记录");
+        }
     }
 
     private void HandleToggleHighHeelsMode()
@@ -663,6 +744,34 @@ public sealed partial class VRWristMenuController
         ReportMmdResult(
             VRMmddService.AdjustShoesOffset(objectKey, shoesOn, delta, out status),
             status);
+        RefreshHighHeelsVisuals();
+    }
+
+    private void HandleSaveHighHeelsPreset()
+    {
+        string status;
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+
+        ReportMmdResult(VRMmddService.SaveHighHeelsPreset(objectKey, out status), status);
+        RefreshHighHeelsVisuals();
+    }
+
+    private void HandleLoadHighHeelsPreset()
+    {
+        string status;
+        int objectKey;
+        if (!TryGetHighHeelsTarget(out objectKey, out status))
+        {
+            ReportMmdResult(false, status);
+            return;
+        }
+
+        ReportMmdResult(VRMmddService.LoadHighHeelsPreset(objectKey, out status), status);
         RefreshHighHeelsVisuals();
     }
 

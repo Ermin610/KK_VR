@@ -145,6 +145,84 @@ internal static class VRMmddService
         return ExecuteHighHeelsAction(objectKey, action, "MMDD shoe offset value", out status);
     }
 
+    public static bool SaveHighHeelsPreset(int objectKey, out string status)
+    {
+        VRVmdActorTarget target;
+        if (!VRVmdTargetService.TryGetTarget(objectKey, out target, out status))
+            return false;
+        if (!RefreshHighHeels(objectKey, out status))
+            return false;
+
+        VRHighHeelsPreset preset = new VRHighHeelsPreset
+        {
+            AutoMode = VRMmddStateBridge.HighHeelsAutoMode,
+            ShoesDetect = VRMmddStateBridge.HighHeelsShoesDetect,
+            Ankle = VRMmddStateBridge.HighHeelsAnkle,
+            Heel = VRMmddStateBridge.HighHeelsHeel,
+            Toes = VRMmddStateBridge.HighHeelsToes,
+            ShoesOffsetEnabled = VRMmddStateBridge.ShoesOffsetEnabled,
+            ShoesOnOffset = VRMmddStateBridge.ShoesOnOffset,
+            ShoesOffOffset = VRMmddStateBridge.ShoesOffOffset
+        };
+        return VRHighHeelsPresetStore.Save(target.Character, preset, out status);
+    }
+
+    public static bool LoadHighHeelsPreset(int objectKey, out string status)
+    {
+        VRVmdActorTarget target;
+        if (!VRVmdTargetService.TryGetTarget(objectKey, out target, out status))
+            return false;
+
+        VRHighHeelsPreset preset;
+        if (!VRHighHeelsPresetStore.TryLoad(target.Character, out preset, out status))
+            return false;
+
+        float ankle = Math.Max(-180f, Math.Min(180f, preset.Ankle));
+        float heel = Math.Max(-180f, Math.Min(180f, preset.Heel));
+        float toes = Math.Max(-180f, Math.Min(180f, preset.Toes));
+        float shoesOnOffset = Math.Max(-1f, Math.Min(1f, preset.ShoesOnOffset));
+        float shoesOffOffset = Math.Max(-1f, Math.Min(1f, preset.ShoesOffOffset));
+
+        string action =
+            "preset_auto_mode = " + ToPythonBool(preset.AutoMode) + "\n"
+            + "mc.ShoesDetect = " + ToPythonBool(preset.ShoesDetect) + "\n"
+            + "if preset_auto_mode:\n"
+            + "    mc.HighHeels.refreshHeelInfo()\n"
+            + "    mc.enableHeelzCtrl(True)\n"
+            + "else:\n"
+            + "    mc.enableHeelzCtrl(False)\n"
+            + "    mc.setHeelzRotation("
+            + ankle.ToString("R", CultureInfo.InvariantCulture)
+            + ", "
+            + heel.ToString("R", CultureInfo.InvariantCulture)
+            + ", "
+            + toes.ToString("R", CultureInfo.InvariantCulture)
+            + ")\n"
+            + "mc.ShoesOffset[1] = "
+            + shoesOnOffset.ToString("R", CultureInfo.InvariantCulture)
+            + "\n"
+            + "mc.ShoesOffset[2] = "
+            + shoesOffOffset.ToString("R", CultureInfo.InvariantCulture)
+            + "\n"
+            + "mc.enableShoesOffsetCtrl("
+            + ToPythonBool(preset.ShoesOffsetEnabled)
+            + ")\n"
+            + "if mc.ShoesOffset[0]:\n"
+            + "    mc.setShoesOffset()\n";
+
+        if (!ExecuteHighHeelsAction(
+            objectKey,
+            action,
+            "MMDD high heels preset load",
+            out status))
+        {
+            return false;
+        }
+
+        status = preset.CharacterCardName + "：高跟鞋参数已应用";
+        return true;
+    }
+
     public static bool LoadVmdPackage(
         string motionPath,
         string cameraPath,
@@ -491,6 +569,11 @@ internal static class VRMmddService
         }
         escaped.Append('\'');
         return escaped.ToString();
+    }
+
+    private static string ToPythonBool(bool value)
+    {
+        return value ? "True" : "False";
     }
 
     private static string ToPythonIntList(int[] values)

@@ -51,6 +51,7 @@ public sealed partial class VRWristMenuController
     private float _nextBrowserStickScroll;
     private bool _operationInProgress;
     private bool _returnToVmdBrowserAfterRootPicker;
+    private bool _returnToMmdSettingsAfterRootPicker;
     private string _vmdRootPickerPreviousRoot;
     private string _vmdRootPickerPreviousDirectory;
     private int _vmdRootPickerPreviousOffset;
@@ -647,9 +648,11 @@ public sealed partial class VRWristMenuController
         }
     }
 
-    private void OpenVmdRootPicker(bool returnToVmdBrowser)
+    private void OpenVmdRootPicker(bool returnToVmdBrowser, bool returnToMmdSettings = false)
     {
+        _returnToMmdSettingsAfterRootPicker = returnToMmdSettings;
         _returnToVmdBrowserAfterRootPicker = returnToVmdBrowser
+            && !returnToMmdSettings
             && _browserMode == BrowserMode.LoadVmd
             && !string.IsNullOrEmpty(_browserRoot)
             && Directory.Exists(_browserRoot);
@@ -718,10 +721,15 @@ public sealed partial class VRWristMenuController
             _settings.VmdRootPath = root;
             _settings.Save();
             _vmdMotionDirectory = root;
+            bool returnToMmdSettings = _returnToMmdSettingsAfterRootPicker;
             _returnToVmdBrowserAfterRootPicker = false;
+            _returnToMmdSettingsAfterRootPicker = false;
             _vmdRootPickerPreviousRoot = null;
             _vmdRootPickerPreviousDirectory = null;
-            OpenFileBrowser(BrowserMode.LoadVmd, root, root);
+            if (returnToMmdSettings)
+                ShowPage(WristMenuPage.MmdSettings);
+            else
+                OpenFileBrowser(BrowserMode.LoadVmd, root, root);
             SetStatus("动作目录已保存：" + root, new Color(0.35f, 1f, 0.62f, 1f), 5f);
         }
         catch (Exception ex)
@@ -761,6 +769,14 @@ public sealed partial class VRWristMenuController
                 RefreshBrowserEntries();
                 return;
             }
+        }
+
+        if (_returnToMmdSettingsAfterRootPicker)
+        {
+            _returnToMmdSettingsAfterRootPicker = false;
+            ShowPage(WristMenuPage.MmdSettings);
+            SetStatus("MMDD 设置", new Color(1f, 0.72f, 0.25f, 1f), 0f);
+            return;
         }
 
         if (_returnToVmdBrowserAfterRootPicker

@@ -48,6 +48,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private RectTransform _menuRect;
     private Text _statusText;
     private VRWristMenuButtonTarget _clothingTargetButton;
+    private VRWristMenuButtonTarget _loadVmdButton;
     private Texture2D _roundedTexture;
     private Sprite _roundedSprite;
     private readonly VRWristMenuButtonTarget[] _clothingPartButtons =
@@ -315,41 +316,53 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         CreateText("MmdSection", _rootPage.transform, "MMD", 24f, 178f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
         CreateButton(
-            "OpenMmdSettings",
-            "MMDD  >\n播放 / VR 设置",
+            "ToggleMmd",
+            "MMDD\n播放 / 暂停",
             24f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
-            HandleOpenMmdSettings,
+            HandleToggleMmd,
             _rootPage.transform,
-            160f,
+            116f,
             68f,
-            17);
+            16);
         _timelineButton = CreateButton(
             "ToggleTimeline",
             "TIMELINE\n播放",
-            200f,
+            156f,
             208f,
             new Color(0.12f, 0.17f, 0.3f, 0.5f),
             new Color(0.18f, 0.36f, 0.62f, 0.8f),
             HandleToggleTimeline,
             _rootPage.transform,
-            160f,
+            116f,
             68f,
-            17);
-        CreateButton(
+            16);
+        _loadVmdButton = CreateButton(
             "LoadVmd",
             "VMD\n读取文件",
-            376f,
+            288f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleLoadVmd,
             _rootPage.transform,
-            160f,
+            116f,
             68f,
-            17);
+            16);
+        CreateButton(
+            "OpenMmdSettings",
+            "MMD 设置  >\n镜头 / 高跟鞋",
+            420f,
+            208f,
+            new Color(0.28f, 0.2f, 0.07f, 0.46f),
+            new Color(0.55f, 0.36f, 0.1f, 0.74f),
+            HandleOpenMmdSettings,
+            _rootPage.transform,
+            116f,
+            68f,
+            15);
 
         CreateText("CharacterSection", _rootPage.transform, "角色  CHARACTER", 24f, 290f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
@@ -914,6 +927,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         if (page == WristMenuPage.Root)
         {
             RefreshTimelineButton();
+            RefreshVmdRootVisuals();
             _nextTimelineRefresh = Time.unscaledTime + 0.25f;
         }
         else if (page == WristMenuPage.Clothing)
@@ -1246,6 +1260,7 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
     private Color _normalColor;
     private Color _hoverColor;
     private Action _onClick;
+    private bool _hovered;
 
     public void Configure(Image background, Text label, Color normalColor, Color hoverColor, Action onClick)
     {
@@ -1259,8 +1274,16 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
 
     public void SetHovered(bool hovered)
     {
+        _hovered = hovered;
         if (_background != null)
             _background.color = hovered ? _hoverColor : _normalColor;
+    }
+
+    public void SetColors(Color normalColor, Color hoverColor)
+    {
+        _normalColor = normalColor;
+        _hoverColor = hoverColor;
+        SetHovered(_hovered);
     }
 
     public void SetLabel(string value)
