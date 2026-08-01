@@ -53,7 +53,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Three-language interface**: Simplified Chinese is the default, with Japanese and English available under Settings > General. The selected language applies immediately and persists across launches.
 - **Focused submenus**: Scene commands, character cards, clothing presets, and MMD controls stay organized in the compact wrist interface.
 - **Native scene previews**: Scene Load opens Studio's original large scene browser so card thumbnails remain visible; Scene Save keeps its focused wrist page.
-- **Separate MMDD workflows**: MMDD's large UI retains its Windows system file dialog, while the wrist VMD browser remains fully in-headset and remembers the motion root selected by the user.
+- **Separate MMDD workflows**: KK VR does not replace MMDD's desktop UI or its configured file-dialog behavior; the wrist VMD browser is a separate fully in-headset workflow that remembers the motion root selected by the user.
 - **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
 - **MMDD VR controls**: The MMD submenu exposes play/pause, Fixed FOV on/off and value adjustment, plus MMDD's original automatic/manual high-heels controls with an in-wrist scene-character picker.
 - **Timeline transport**: A single wrist button starts or pauses Timeline and mirrors its current play state. Timeline remains an optional dependency; the button reports unavailable when it is not installed.
@@ -69,6 +69,15 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - The companion remains separate from the core DLL, so camera-follow behavior can be disabled or removed without changing hand tracking, laser input, or wrist-menu positioning.
 - Camera Sync `0.2.0` detects Timeline playback without a hard dependency, aligns the neutral HMD pose once when playback starts, follows full Timeline rotation, and converts animated desktop FOV into distance using MMDD's Fixed FOV formula.
 - Generic Studio movement remains on the conservative tracked defaults outside Timeline playback, and each Timeline-specific behavior has its own config switch for rollback.
+
+## Optional Integrations & Upstream Credits
+
+KK VR adds an in-headset control and compatibility layer for the independently developed projects below. **MMDD and VNGE are not created, modified, or bundled by this repository**; install their Koikatu releases separately before using the wrist MMD features.
+
+- **MMD Director (MMDD)** — created by [Countd360](https://www.patreon.com/c360plugins). See the [official MMD Director page](https://www.patreon.com/posts/mmd-director-pv-55604378) and [MMDD 2.9.6 release](https://www.patreon.com/posts/mmdd-v2-9-6-160423639). MMDD remains responsible for loading and playing VMD motion, expressions, camera, and audio; KK VR adds the headset file browser, scene-character selection, play/pause, Fixed FOV, and high-heels controls.
+- **VN Game Engine (VNGE)** — originally created by [Keitaro / KeiPlugins](https://www.patreon.com/KeiPlugins). Countd360 is an important contributor and maintains later releases; [Countd360's VNGE release page](https://www.patreon.com/posts/vnge-release-92082611) records that attribution. KK VR uses VNGE as the runtime bridge to MMDD rather than embedding either project.
+- **Installation and compatibility** — follow Countd360's [VNGE and MMDD installation guide](https://www.patreon.com/posts/vnge-and-mmdd-94912633), including its upstream dependencies, and choose the packages made for KK. The current development and test environment is **MMDD 2.9.6 + VNGE 44.0**; MMDD labels 2.9.6 as a pre-3.0 test release, and compatibility with every older or future version is not implied.
+- **High-heels prerequisite** — select a character that already has an MMDD motion controller loaded from a motion VMD. MMDD must also detect a supported KK high-heels integration: Stiletto/KK_Stiletto, or BonerStateSync together with KKABMX.
 
 ---
 
@@ -102,6 +111,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
   > - **Official HF Patch Repository**: [ManlyMarco/KK-HF_Patch](https://github.com/ManlyMarco/KK-HF_Patch)
 - **BepInEx** (v5.x recommended).
 - **OpenVR / SteamVR** runtime active.
+- **VNGE + MMD Director** (optional; required only for the wrist MMD/VMD/MMDD controls; install separately using the upstream guide above).
 - **Timeline 1.5.x** (optional; required only for the wrist Timeline play/pause button).
 
 ### Installation
