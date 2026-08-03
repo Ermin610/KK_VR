@@ -4,9 +4,9 @@ A customized interaction and physics overhaul plugin for Koikatu (Koikatsu) Char
 
 > [!TIP]
 > **Quick Download / 快速下载**:
-> You can download the complete pre-configured integration modpack containing BepInEx, patchers, Unity VR support, and our optimized plugin DLL together with a step-by-step setup tutorial directly from the [Releases Page](https://github.com/Ermin610/KK_VR/releases/tag/v0.3.0)!
+> You can download the complete pre-configured integration modpack containing BepInEx, patchers, Unity VR support, and our optimized plugin DLL together with a step-by-step setup tutorial directly from the [Releases Page](https://github.com/Ermin610/KK_VR/releases/tag/v0.4.0)!
 > 
-> 您可以在 [Release 发布页](https://github.com/Ermin610/KK_VR/releases/tag/v0.3.0) 直接一键下载包含 BepInEx、补丁加载器、Unity VR 支持、我们重构优化后的最新 DLL 以及**完整三语步骤教程**的整包！
+> 您可以在 [Release 发布页](https://github.com/Ermin610/KK_VR/releases/tag/v0.4.0) 直接一键下载包含 BepInEx、补丁加载器、Unity VR 支持、我们重构优化后的最新 DLL 以及**完整三语步骤教程**的整包！
 
 This plugin transforms the studio VR control feeling from clunky legacy wand controls into a premium, responsive, and immersive experience similar to **Virt-A-Mate (VaM)** and **VRChat**.
 
@@ -56,9 +56,9 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 - **Separate MMDD workflows**: KK VR does not replace MMDD's desktop UI or its configured file-dialog behavior; the wrist VMD browser is a separate fully in-headset workflow that remembers the motion root selected by the user.
 - **Guided wrist VMD loading**: The wrist browser distinguishes motion and camera metadata, asks for a target character when Studio has none selected, prompts for a related camera, and automatically matches nearby audio.
 - **MMDD VR controls**: The MMD submenu exposes play/pause, Fixed FOV on/off and value adjustment, plus MMDD's original automatic/manual high-heels controls with an in-wrist scene-character picker.
-- **Timeline transport**: A single wrist button starts or pauses Timeline and mirrors its current play state. Timeline remains an optional dependency; the button reports unavailable when it is not installed.
+- **Timeline control space**: Timeline has its own wrist page and right-stick transport. Click the right stick to play or pause; vertical input adjusts framing, while holding Grip changes vertical position and applies continuous linear yaw. The current FOV/height/yaw setup can be saved, loaded, or reset from the wrist page.
 - **Character-card preview**: Selecting a female or male card opens its real card image on a dedicated wrist page. Buttons below the image either load it as a new character or open an in-wrist same-sex scene-character picker before replacement.
-- **Outfit-card preview and hair-safe replacement**: Browse real coordinate-card thumbnails from `UserData\coordinate`, choose a scene character, then use Smart Replace to load the outfit and its accessories while protecting existing hair-type accessories. If accessory-bound plugin data makes a selective merge unsafe, KK VR automatically falls back to clothing-only loading and keeps every current accessory. Full Replace deliberately applies the entire coordinate and overwrites all accessories (including hair accessories), makeup, and coordinate-level extension data.
+- **Outfit-card preview and hair-safe replacement**: Browse real coordinate-card thumbnails from `UserData\coordinate`, choose a scene character, then load clothing only, append every source accessory to empty slots, or pick individual source accessories to append. These normal modes preserve all occupied accessory slots, including accessory-based hair. If Coordinate Load Option, MaterialEditor, or other extension data is bound to exact accessory slots, KK VR shows a risk confirmation before using the separate exact-slot compatibility path; every operation is snapshot-backed for rollback and undo.
 - **Studio settings in VR**: The Settings submenu changes the camera background preset (including an exact RGB `0, 180, 0` green screen), character-light state/intensity/shadow/color, and Master/BGM/Environment/System/Game audio without opening Studio's obstructed desktop panels.
 - **Thumbstick browsing**: Move the right thumbstick up or down to scroll long file lists without leaving VR.
 - **Input isolation**: While the menu is open, the right trigger controls only the wrist menu; object grabbing, GUI laser input, and two-hand scaling resume when it closes.
@@ -68,7 +68,7 @@ This plugin transforms the studio VR control feeling from clunky legacy wand con
 ### 8. Optional Timeline Camera Follow
 - [KK VR Camera Sync](https://github.com/YukyoMoe/KK_VR_CameraSync) can be installed as a separate companion plugin so the VR origin follows final Studio camera motion, including Timeline camera tracks.
 - The companion remains separate from the core DLL, so camera-follow behavior can be disabled or removed without changing hand tracking, laser input, or wrist-menu positioning.
-- Camera Sync `0.2.0` detects Timeline playback without a hard dependency, aligns the neutral HMD pose once when playback starts, follows full Timeline rotation, and converts animated desktop FOV into distance using MMDD's Fixed FOV formula.
+- Camera Sync `0.2.3` detects Timeline playback without a hard dependency, rebuilds the VR origin from one absolute camera-local anchor, converts animated desktop FOV into bounded distance compensation, and applies the saved height/yaw offsets without accumulating drift.
 - Generic Studio movement remains on the conservative tracked defaults outside Timeline playback, and each Timeline-specific behavior has its own config switch for rollback.
 
 ## Optional Integrations & Upstream Credits
@@ -88,8 +88,11 @@ KK VR adds an in-headset control and compatibility layer for the independently d
 | Control | Action |
 |:---|:---|
 | **Left Joystick** | Smooth Movement (WASD-style walk) |
-| **Right Joystick (Left/Right)** | Smooth Turn / Snap Turn |
-| **Right Joystick (Up/Down)** | Adjust Height (Vertical Y-Axis movement) |
+| **Right Joystick (Left/Right, outside Timeline)** | Smooth Turn / Snap Turn |
+| **Right Joystick (Up/Down, outside Timeline)** | Adjust Height (Vertical Y-Axis movement) |
+| **Right Joystick (Up/Down, Timeline playing)** | Adjust Timeline front/back framing |
+| **Right Grip + Right Joystick (Up/Down)** | Linearly adjust Timeline vertical offset |
+| **Right Grip + Right Joystick (Left/Right)** | Linearly adjust Timeline yaw offset |
 | **Right Joystick (Wrist file browser)** | Scroll the current file list |
 | **Grip (Middle Finger)** | Grab character IK targets / Drag UI panels |
 | **Trigger (Index Finger)** | Click VR UI / Select objects in workspace |
@@ -99,7 +102,8 @@ KK VR adds an in-headset control and compatibility layer for the independently d
 | **Timeline button (Wrist menu)** | Start / pause Timeline |
 | **Left Joystick Click (Press)** | Toggle MMDD play / pause |
 | **Left Grip + Left Joystick Click** | Summon the main GUI in front of your head |
-| **Right Joystick Click (Press)** | Undo last action in Studio |
+| **Right Joystick Click (Timeline context)** | Play / pause Timeline and claim its control space |
+| **Right Joystick Click (Timeline unavailable)** | Undo last action in Studio |
 | **Keyboard Spacebar** | Toggle Desktop Blackout Cover (Privacy / Performance Mode) |
 
 ---
@@ -114,12 +118,33 @@ KK VR adds an in-headset control and compatibility layer for the independently d
 - **BepInEx** (v5.x recommended).
 - **OpenVR / SteamVR** runtime active.
 - **VNGE + MMD Director** (optional; required only for the wrist MMD/VMD/MMDD controls; install separately using the upstream guide above).
-- **Timeline 1.5.x** (optional; required only for the wrist Timeline play/pause button).
+- **Timeline 1.5.x** (optional; required for Timeline transport and its VR camera control space).
 
 ### Installation
-1. Download the latest compiled release `KKCharaStudioVRPlugin.dll`.
-2. Place the DLL file in your game directory under `Koikatu3\BepInEx\plugins\` (or directly under BepInEx folder).
-3. Start the game in VR mode.
+1. Download the complete release package.
+2. Place `KKCharaStudioVRPlugin.dll` under `Koikatu3\BepInEx\`, replacing the previous KK VR DLL in that same location. Do not keep a second copy under `BepInEx\plugins`.
+3. Place `KKVRReShadeBridge.addon64` next to `CharaStudio.exe`. This native add-on is required only for the built-in ReShade switch and preset selector, but it must be present before Studio starts because ReShade cannot discover it later.
+4. Start the game in VR mode.
+
+### Starting normal Studio without OpenVR
+
+Use `StartCharaStudioNoVR.bat` from the game root. The release package enables
+VR support in `globalgamemanagers` so the VR/ReShade path can initialize before
+D3D11; consequently `--novr` alone is too late to stop Unity's native OpenVR
+bootstrap. The launcher supplies both required gates:
+
+```text
+CharaStudio.exe --novr -vrmode None
+```
+
+`-vrmode None` prevents `openvr_api.dll` from entering the process at Unity
+startup, while `--novr` prevents the managed VR loader and CameraSync patches
+from activating. No files are renamed or swapped, and the existing VR launcher
+continues to use the original early OpenVR/ReShade path.
+
+Use `StartCharaStudioVR.bat` for VR. It explicitly supplies `-vrmode OpenVR`
+and `--studiovr`; simply having SteamVR open no longer changes a normal Studio
+launch into VR.
 
 For Timeline camera-follow support, install the optional
 [`KK_VR_CameraSync.dll`](https://github.com/YukyoMoe/KK_VR_CameraSync)
@@ -143,11 +168,15 @@ Access the settings menu inside VR or on the desktop window to customize:
 This repository contains the heavily decompiled and modernized source code of the Chara Studio VR plugin. Built and compiled with Microsoft MSBuild targeting .NET 3.5 framework for Unity 5.x / 2017.x compatibility.
 
 ### Building from Source
-Run the following MSBuild command in the repository root:
+Release builds require Visual Studio 2022 with the **Desktop development with C++** workload and a Windows SDK. The main project builds the managed plug-in and native ReShade bridge together; it intentionally fails when the C++ toolchain is missing so an incomplete package is not mistaken for a release.
+
+Run the release staging script in the repository root:
 ```powershell
-& "MSBuild.exe" "KKCharaStudioVRPlugin\KKCharaStudioVRPlugin.csproj" /p:Configuration=Release
+.\build-release.ps1 -GameDir "E:\Koikatu3"
 ```
-The compiled DLL will be located under `KKCharaStudioVRPlugin\bin\Release\net35\KKCharaStudioVRPlugin.dll`.
+The default staged layout is under `output\release`: the managed DLL is placed under `BepInEx\`, matching the existing KK VR installation layout, while `KKVRReShadeBridge.addon64` is placed at the package root next to `CharaStudio.exe`.
+
+For an explicitly managed-only development build, pass `/p:BuildNativeReShadeBridge=false`. MSBuild emits a warning because that output cannot provide the ReShade controls and is not release-ready.
 
 ---
 

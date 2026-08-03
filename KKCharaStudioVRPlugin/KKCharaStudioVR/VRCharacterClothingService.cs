@@ -1,10 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Studio;
 using VRGIN.Core;
 
 namespace KKCharaStudioVR;
+
+internal sealed class VRClothingStateSnapshot
+{
+    public int ObjectKey;
+    public byte[] States;
+}
 
 internal static class VRCharacterClothingService
 {
@@ -290,6 +297,105 @@ internal static class VRCharacterClothingService
         }
     }
 
+    public static bool TrySetPartState(int objectKey, int partId, byte state, out string status)
+    {
+        OCIChar character;
+        if (!TryGetCharacter(objectKey, out character, out status))
+            return false;
+        if (!IsValidPart(character, partId))
+        {
+            status = GetCharacterName(character) + "：" + GetPartName(partId) + "不可用";
+            return false;
+        }
+
+        try
+        {
+            Dictionary<byte, string> supportedStates = character.charInfo.GetClothesStateKind(partId);
+            if (supportedStates == null || !supportedStates.ContainsKey(state))
+            {
+                status = GetCharacterName(character) + "：" + GetPartName(partId) + "不支持" + GetStateName(state);
+                return false;
+            }
+
+            if (character.charFileStatus.clothesState[partId] != state)
+                character.SetClothesState(partId, state);
+            byte actualState = character.charFileStatus.clothesState[partId];
+            if (actualState != state)
+            {
+                status = GetCharacterName(character) + "：" + GetPartName(partId) + "状态未生效";
+                return false;
+            }
+
+            status = GetCharacterName(character) + "：" + GetPartName(partId) + " " + GetStateName(actualState);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = GetPartName(partId) + "设置失败：" + ex.Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
+    public static bool TryCaptureStates(int objectKey, out VRClothingStateSnapshot snapshot, out string status)
+    {
+        snapshot = null;
+        OCIChar character;
+        if (!TryGetCharacter(objectKey, out character, out status))
+            return false;
+
+        try
+        {
+            if (character.charFileStatus?.clothesState == null)
+            {
+                status = GetCharacterName(character) + "：服装状态尚未就绪";
+                return false;
+            }
+
+            int count = Math.Min(PartNames.Length, character.charFileStatus.clothesState.Length);
+            byte[] states = new byte[count];
+            Array.Copy(character.charFileStatus.clothesState, states, count);
+            snapshot = new VRClothingStateSnapshot { ObjectKey = objectKey, States = states };
+            status = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "无法保存播放前服装状态：" + ex.Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
+    public static bool TryRestoreStates(VRClothingStateSnapshot snapshot, out string status)
+    {
+        status = null;
+        if (snapshot?.States == null)
+        {
+            status = "没有可恢复的服装状态";
+            return false;
+        }
+
+        bool restoredAny = false;
+        StringBuilder errors = new StringBuilder();
+        for (int partId = 0; partId < snapshot.States.Length; partId++)
+        {
+            string partStatus;
+            if (TrySetPartState(snapshot.ObjectKey, partId, snapshot.States[partId], out partStatus))
+            {
+                restoredAny = true;
+                continue;
+            }
+
+            if (errors.Length > 0)
+                errors.Append("；");
+            errors.Append(partStatus);
+        }
+
+        status = errors.Length == 0 ? "已恢复播放前服装" : errors.ToString();
+        return restoredAny && errors.Length == 0;
+    }
+
     public static string GetPartStateLabel(OCIChar character, int partId)
     {
         try
@@ -320,7 +426,7 @@ internal static class VRCharacterClothingService
             && partId < character.charFileStatus.clothesState.Length;
     }
 
-    private static string GetStateName(byte state)
+    public static string GetStateName(byte state)
     {
         switch (state)
         {
@@ -334,6 +440,21 @@ internal static class VRCharacterClothingService
                 return "脱下";
             default:
                 return "状态 " + state;
+        }
+    }
+
+    public static bool HasPart(OCIChar character, int partId)
+    {
+        try
+        {
+            if (!IsValidPart(character, partId))
+                return false;
+            Dictionary<byte, string> supportedStates = character.charInfo.GetClothesStateKind(partId);
+            return supportedStates != null && supportedStates.Count > 0;
+        }
+        catch (Exception)
+        {
+            return false;
         }
     }
 }

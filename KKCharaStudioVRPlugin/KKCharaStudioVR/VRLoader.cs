@@ -14,7 +14,12 @@ internal class VRLoader : ProtectedBehaviour
 {
 	private static string DeviceOpenVR = "OpenVR";
 
-	private static string DeviceNone = "None";
+	// Unity 5.6 disables native VR by loading an empty device name. "None" is
+	// the serialized fallback label in globalgamemanagers, not a valid runtime
+	// device name for VRSettings.LoadDeviceByName.
+	private static string DeviceNone = string.Empty;
+
+	private const float DeviceLoadTimeoutSeconds = 10f;
 
 	private static bool _isVREnable = false;
 
@@ -83,7 +88,7 @@ internal class VRLoader : ProtectedBehaviour
 
 	private IEnumerator LoadDevice(string newDevice)
 	{
-		bool vrMode = newDevice != DeviceNone;
+		bool vrMode = !string.IsNullOrEmpty(newDevice);
 		if (vrMode && VRSettings.enabled && VRSettings.loadedDeviceName == newDevice)
 		{
 			VRLog.Info("VR device '{0}' already active, skipping LoadDeviceByName", newDevice);
@@ -96,10 +101,35 @@ internal class VRLoader : ProtectedBehaviour
 			yield return null;
 			VRSettings.enabled = vrMode;
 			yield return null;
-			while (VRSettings.loadedDeviceName != newDevice || VRSettings.enabled != vrMode)
+			float deadline = Time.realtimeSinceStartup + DeviceLoadTimeoutSeconds;
+			while (VRSettings.enabled != vrMode
+				|| (vrMode && !string.Equals(
+					VRSettings.loadedDeviceName,
+					newDevice,
+					StringComparison.OrdinalIgnoreCase)))
 			{
+				if (Time.realtimeSinceStartup >= deadline)
+				{
+					VRLog.Error(
+						"Timed out while switching VR device to '{0}' (enabled={1}, loaded='{2}')",
+						vrMode ? newDevice : "<none>",
+						VRSettings.enabled,
+						VRSettings.loadedDeviceName);
+					if (vrMode)
+						yield break;
+
+					// A failed native unload cannot remove a DLL that Unity already
+					// mapped, but keeping VR disabled still restores desktop control.
+					VRSettings.enabled = false;
+					break;
+				}
 				yield return null;
 			}
+		}
+		if (!vrMode)
+		{
+			VRLog.Info("Native VR runtime disabled; managed VR objects were not created.");
+			yield break;
 		}
 		if (vrMode)
 		{
@@ -115,7 +145,10 @@ internal class VRLoader : ProtectedBehaviour
 			val.AddComponent<KKCharaStudioVRGUI>();
 			val.AddComponent<VRHandModelManager>();
 			val.AddComponent<VRQuickActions>();
+			val.AddComponent<VRMmdPlaybackController>();
+			val.AddComponent<VRMmdCameraAnchorController>();
 			val.AddComponent<VRWristMenuController>();
+			val.AddComponent<VRTimelineCameraFollowController>();
 			val.AddComponent<VRComfortVignette>();
 			val.AddComponent<VRTwoHandScale>(); // Controlled by TwoHandScaleEnabled setting
 			UnityEngine.Object.DontDestroyOnLoad(((Component)VRCamera.Instance).gameObject);

@@ -32,6 +32,10 @@ public sealed partial class VRWristMenuController
     private VRWristMenuButtonTarget _coordinateCustomButton;
     private VRWristMenuButtonTarget _coordinateFullButton;
     private VRWristMenuButtonTarget _coordinateUndoButton;
+    private VRWristMenuButtonTarget _coordinateManageButton;
+    private VRWristMenuButtonTarget _preserveOutfitButton;
+    private VRWristMenuButtonTarget _boundReplaceConfirmButton;
+    private VRWristMenuButtonTarget _boundReplaceCancelButton;
     private Texture2D _characterPreviewTexture;
     private string _pendingCharacterCardPath;
     private int _characterPreviewRequestId;
@@ -40,11 +44,14 @@ public sealed partial class VRWristMenuController
     private string _characterCardListRoot;
     private string _characterCardListDirectory;
     private int _characterCardListOffset;
+    private List<VRWristFileEntry> _characterCardListFixedEntries;
+    private bool _characterCardListSnapshotValid;
     private CardPreviewKind _cardPreviewKind;
     private VRCoordinateReplaceMode _pendingCoordinateReplaceMode = VRCoordinateReplaceMode.ClothesOnly;
     private int[] _pendingCoordinateAccessorySlots = new int[0];
     private int _lastCoordinateUndoObjectKey = -1;
     private Studio.OCIChar _lastCoordinateUndoCharacter;
+    private VRBoundAccessoryReplaceConfirmation _pendingBoundReplaceConfirmation;
 
     private void BuildCharacterPreviewPage()
     {
@@ -71,6 +78,32 @@ public sealed partial class VRWristMenuController
             28,
             TextAnchor.MiddleLeft,
             Color.white);
+        _coordinateManageButton = CreateButton(
+            "CoordinateManageAddedAccessories",
+            L("管理追加饰品", "追加アクセ管理", "Manage additions"),
+            390f,
+            10f,
+            new Color(0.12f, 0.16f, 0.2f, 0.5f),
+            new Color(0.22f, 0.38f, 0.48f, 0.8f),
+            HandleOpenTrackedAccessoryManager,
+            _characterPreviewPage.transform,
+            146f,
+            38f,
+            14);
+        _coordinateManageButton.SetVisible(false);
+        _preserveOutfitButton = CreateButton(
+            "CharacterPreserveOutfit",
+            L("保留当前服装  关", "現在の衣装を維持  オフ", "Keep current outfit  Off"),
+            376f,
+            10f,
+            new Color(0.12f, 0.16f, 0.2f, 0.5f),
+            new Color(0.22f, 0.38f, 0.48f, 0.8f),
+            HandleTogglePreserveOutfit,
+            _characterPreviewPage.transform,
+            160f,
+            38f,
+            13);
+        _preserveOutfitButton.SetVisible(false);
 
         Image previewBackground = CreateImage(
             "CharacterPreviewBackground",
@@ -123,6 +156,8 @@ public sealed partial class VRWristMenuController
             17,
             TextAnchor.MiddleCenter,
             new Color(0.72f, 0.9f, 0.96f, 1f));
+        _characterPreviewNameText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        _characterPreviewNameText.verticalOverflow = VerticalWrapMode.Truncate;
 
         _characterPreviewLoadButton = CreateButton(
             "CharacterPreviewLoad",
@@ -199,6 +234,32 @@ public sealed partial class VRWristMenuController
             50f,
             15);
 
+        _boundReplaceConfirmButton = CreateButton(
+            "CoordinateBoundReplaceConfirm",
+            L("确认原槽完整替换", "元スロット完全置換を確認", "Confirm exact-slot replacement"),
+            24f,
+            356f,
+            new Color(0.42f, 0.075f, 0.065f, 0.78f),
+            new Color(0.72f, 0.12f, 0.1f, 0.92f),
+            HandleConfirmBoundCoordinateReplace,
+            _characterPreviewPage.transform,
+            336f,
+            50f,
+            16);
+        _boundReplaceCancelButton = CreateButton(
+            "CoordinateBoundReplaceCancel",
+            L("取消", "キャンセル", "Cancel"),
+            376f,
+            356f,
+            new Color(0.12f, 0.16f, 0.2f, 0.56f),
+            new Color(0.22f, 0.34f, 0.42f, 0.8f),
+            HandleCancelBoundCoordinateReplace,
+            _characterPreviewPage.transform,
+            160f,
+            50f,
+            16);
+        SetBoundReplaceConfirmationVisible(false);
+
         SetCoordinatePreviewActionsVisible(false);
     }
 
@@ -228,6 +289,10 @@ public sealed partial class VRWristMenuController
         _characterCardListRoot = _browserRoot;
         _characterCardListDirectory = _browserDirectory;
         _characterCardListOffset = _browserOffset;
+        _characterCardListFixedEntries = _browserFixedEntries == null
+            ? null
+            : new List<VRWristFileEntry>(_browserFixedEntries);
+        _characterCardListSnapshotValid = IsCardPreviewBrowserMode(_browserMode);
         int requestId = ++_characterPreviewRequestId;
         _characterPreviewLoading = true;
         _pendingCharacterCardPath = null;
@@ -238,18 +303,23 @@ public sealed partial class VRWristMenuController
             _characterPreviewTitleText.text = kind == CardPreviewKind.Coordinate
                 ? L("服装卡预览", "衣装カードのプレビュー", "Outfit card preview")
                 : L("角色卡预览", "キャラカードのプレビュー", "Character card preview");
+            _characterPreviewTitleText.rectTransform.sizeDelta = new Vector2(
+                kind == CardPreviewKind.Coordinate ? 288f : 444f,
+                40f);
         }
-        _characterPreviewNameText.text = string.IsNullOrEmpty(path)
+        string previewFileName = GetCardPreviewFileName(path);
+        _characterPreviewNameText.text = string.IsNullOrEmpty(previewFileName)
             ? (kind == CardPreviewKind.Coordinate
                 ? L("无效服装卡", "無効な衣装カード", "Invalid outfit card")
                 : L("无效角色卡", "無効なキャラカード", "Invalid character card"))
-            : Path.GetFileNameWithoutExtension(path);
+            : EllipsizeTailForUi(previewFileName, CharacterPreviewNameMaxUiUnits);
         _characterPreviewMessageText.text = L("正在读取卡面预览…", "カード画像を読込中…", "Loading card preview…");
         _characterPreviewMessageText.gameObject.SetActive(true);
         SetCharacterPreviewActionsVisible(false);
         ShowPage(WristMenuPage.CharacterPreview);
         SetStatus(
-            L("正在读取卡面预览…", "カード画像を読込中…", "Loading card preview…"),
+            L("正在读取卡面预览：", "カード画像を読込中：", "Loading card preview: ")
+                + (string.IsNullOrEmpty(previewFileName) ? "-" : previewFileName),
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
         StartCoroutine(LoadCharacterCardPreviewAfterFrame(path, requestId));
@@ -310,7 +380,12 @@ public sealed partial class VRWristMenuController
                 _characterPreviewTexture.height);
 
             _pendingCharacterCardPath = path;
-            _characterPreviewNameText.text = characterName;
+            string fullPreviewName = NormalizeUiSingleLine(characterName);
+            if (string.IsNullOrEmpty(fullPreviewName))
+                fullPreviewName = GetCardPreviewFileName(path);
+            _characterPreviewNameText.text = EllipsizeTailForUi(
+                fullPreviewName,
+                CharacterPreviewNameMaxUiUnits);
             _characterPreviewMessageText.gameObject.SetActive(false);
             if (_cardPreviewKind == CardPreviewKind.Coordinate)
             {
@@ -326,10 +401,16 @@ public sealed partial class VRWristMenuController
             SetStatus(
                 _cardPreviewKind == CardPreviewKind.Coordinate
                     ? L(
-                        "服装卡预览已就绪，默认使用“只换衣服”最安全",
-                        "衣装カードの準備完了。「服だけ変更」が最も安全です",
-                        "Outfit preview is ready; Clothes only is the safest option")
-                    : L("角色卡预览已就绪", "プレビューの準備完了", "Character preview is ready"),
+                        "服装卡预览已就绪：",
+                        "衣装カードの準備完了：",
+                        "Outfit preview ready: ")
+                        + fullPreviewName
+                        + L(
+                            "；默认使用“只换衣服”最安全",
+                            "。「服だけ変更」が最も安全です",
+                            "; Clothes only is the safest option")
+                    : L("角色卡预览已就绪：", "プレビューの準備完了：", "Character preview ready: ")
+                        + fullPreviewName,
                 new Color(0.35f, 1f, 0.62f, 1f),
                 0f);
         }
@@ -380,9 +461,44 @@ public sealed partial class VRWristMenuController
     private void SetCharacterPreviewActionsVisible(bool visible)
     {
         bool showCharacterActions = visible && _cardPreviewKind == CardPreviewKind.Character;
+        if (!visible || showCharacterActions)
+        {
+            _pendingBoundReplaceConfirmation = null;
+            SetBoundReplaceConfirmationVisible(false);
+        }
         _characterPreviewLoadButton?.SetVisible(showCharacterActions);
         _characterPreviewReplaceButton?.SetVisible(showCharacterActions);
+        _preserveOutfitButton?.SetVisible(showCharacterActions);
+        if (showCharacterActions)
+            RefreshPreserveOutfitButton();
         SetCoordinatePreviewActionsVisible(visible && _cardPreviewKind == CardPreviewKind.Coordinate);
+    }
+
+    private void HandleTogglePreserveOutfit()
+    {
+        ResolveSettings();
+        if (_settings == null)
+            return;
+        _settings.PreserveOutfitOnCharacterReplace = !_settings.PreserveOutfitOnCharacterReplace;
+        bool saved = TrySaveInteractionSettings();
+        RefreshPreserveOutfitButton();
+        SetStatus(
+            _settings.PreserveOutfitOnCharacterReplace
+                ? L("替换角色时将保留当前服装", "キャラ置換時に現在の衣装を維持します", "Current outfit will be kept when replacing a character")
+                : L("替换角色时使用新角色服装", "キャラ置換時に新しいキャラの衣装を使います", "Replacement will use the new character's outfit"),
+            saved ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.72f, 0.25f, 1f),
+            saved ? 4f : 7f);
+    }
+
+    private void RefreshPreserveOutfitButton()
+    {
+        ResolveSettings();
+        if (_preserveOutfitButton == null)
+            return;
+        bool enabled = _settings != null && _settings.PreserveOutfitOnCharacterReplace;
+        _preserveOutfitButton.SetLabel(enabled
+            ? L("保留当前服装  开", "現在の衣装を維持  オン", "Keep current outfit  On")
+            : L("保留当前服装  关", "現在の衣装を維持  オフ", "Keep current outfit  Off"));
     }
 
     private void SetCoordinatePreviewActionsVisible(bool visible)
@@ -391,6 +507,15 @@ public sealed partial class VRWristMenuController
         _coordinateCustomButton?.SetVisible(visible);
         _coordinateFullButton?.SetVisible(visible);
         _coordinateUndoButton?.SetVisible(visible);
+        _coordinateManageButton?.SetVisible(visible);
+        if (visible)
+            SetBoundReplaceConfirmationVisible(false);
+    }
+
+    private void SetBoundReplaceConfirmationVisible(bool visible)
+    {
+        _boundReplaceConfirmButton?.SetVisible(visible);
+        _boundReplaceCancelButton?.SetVisible(visible);
     }
 
     private void FitCharacterPreview(int textureWidth, int textureHeight)
@@ -588,6 +713,36 @@ public sealed partial class VRWristMenuController
             return;
         }
 
+        if (_pendingCoordinateReplaceMode == VRCoordinateReplaceMode.Full)
+        {
+            VRBoundAccessoryReplaceConfirmation confirmation;
+            string confirmationStatus;
+            if (VRCoordinateCardService.TryPrepareBoundCompatibleReplace(
+                entry.ObjectKey,
+                target.Character,
+                _pendingCharacterCardPath,
+                out confirmation,
+                out confirmationStatus))
+            {
+                _pendingBoundReplaceConfirmation = confirmation;
+                SetCoordinatePreviewActionsVisible(false);
+                SetBoundReplaceConfirmationVisible(true);
+                ShowPage(WristMenuPage.CharacterPreview);
+                SetStatus(
+                    confirmation.Warning,
+                    new Color(1f, 0.25f, 0.2f, 1f),
+                    0f);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(confirmationStatus)
+                && confirmationStatus.IndexOf("没有检测到饰品绑定数据", StringComparison.Ordinal) < 0
+                && confirmationStatus.IndexOf("Coordinate Load Option", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                VRLog.Warn("Bound-accessory inspection did not produce a confirmation: " + confirmationStatus);
+            }
+        }
+
         StartCoroutine(ExecuteCoordinateReplacementAfterFrame(
             _pendingCharacterCardPath,
             entry.ObjectKey,
@@ -595,6 +750,42 @@ public sealed partial class VRWristMenuController
             _pendingCoordinateReplaceMode,
             _pendingCoordinateAccessorySlots,
             false));
+    }
+
+    private void HandleConfirmBoundCoordinateReplace()
+    {
+        VRBoundAccessoryReplaceConfirmation confirmation = _pendingBoundReplaceConfirmation;
+        _pendingBoundReplaceConfirmation = null;
+        SetBoundReplaceConfirmationVisible(false);
+        if (confirmation == null)
+        {
+            SetCoordinatePreviewActionsVisible(true);
+            SetStatus(
+                L("确认已失效，请重新选择目标", "確認が期限切れです。対象を選び直してください", "Confirmation expired; select the target again"),
+                new Color(1f, 0.38f, 0.34f, 1f),
+                7f);
+            return;
+        }
+
+        StartCoroutine(ExecuteCoordinateReplacementAfterFrame(
+            confirmation.Path,
+            confirmation.ObjectKey,
+            confirmation.Character,
+            VRCoordinateReplaceMode.BoundCompatibleFull,
+            new int[0],
+            false,
+            confirmation));
+    }
+
+    private void HandleCancelBoundCoordinateReplace()
+    {
+        _pendingBoundReplaceConfirmation = null;
+        SetBoundReplaceConfirmationVisible(false);
+        SetCoordinatePreviewActionsVisible(true);
+        SetStatus(
+            L("已取消原槽完整替换，角色保持不变", "元スロット完全置換をキャンセルしました", "Exact-slot replacement cancelled; the character was not changed"),
+            new Color(1f, 0.72f, 0.25f, 1f),
+            5f);
     }
 
     private void HandleCharacterPreviewBack()
@@ -609,33 +800,118 @@ public sealed partial class VRWristMenuController
         }
 
         ++_characterPreviewRequestId;
+        _pendingBoundReplaceConfirmation = null;
+        SetBoundReplaceConfirmationVisible(false);
         _characterPreviewLoading = false;
+        _pendingCharacterCardPath = null;
+        SetCharacterPreviewActionsVisible(false);
+        ReleaseCharacterPreviewTexture();
 
-        if (_characterCardListMode != BrowserMode.AddFemale
-            && _characterCardListMode != BrowserMode.AddMale
-            && _characterCardListMode != BrowserMode.CoordinateCards)
+        string restoreStatus;
+        if (TryRestoreCharacterCardBrowser(out restoreStatus))
         {
-            ShowPage(
-                _cardPreviewKind == CardPreviewKind.Coordinate
-                    ? WristMenuPage.Clothing
-                    : WristMenuPage.CharacterCards);
+            SetStatus(
+                restoreStatus,
+                new Color(0.47f, 0.9f, 0.55f, 1f),
+                5f);
             return;
         }
 
-        _browserMode = _characterCardListMode;
-        _browserRoot = _characterCardListRoot;
-        _browserDirectory = _characterCardListDirectory;
-        _browserFixedEntries = null;
-        _browserOffset = _characterCardListOffset;
-        _browserStickDirection = 0;
-        RefreshBrowserEntries();
-        ShowPage(WristMenuPage.Browser);
+        ShowPage(WristMenuPage.Root);
         SetStatus(
-            _cardPreviewKind == CardPreviewKind.Coordinate
-                ? L("服装卡列表", "衣装カード一覧", "Outfit card list")
-                : L("角色卡列表", "キャラカード一覧", "Character card list"),
-            new Color(0.47f, 0.9f, 0.55f, 1f),
-            0f);
+            L(
+                "原浏览位置已失效，已返回主菜单",
+                "元の閲覧位置が無効なため、メインメニューへ戻りました",
+                "The previous browser location is no longer valid; returned to the main menu"),
+            new Color(1f, 0.72f, 0.25f, 1f),
+            7f);
+    }
+
+    private bool TryRestoreCharacterCardBrowser(out string status)
+    {
+        status = null;
+        BrowserMode savedMode = _characterCardListMode;
+        string savedRoot = _characterCardListRoot;
+        string savedDirectory = _characterCardListDirectory;
+        int savedOffset = _characterCardListOffset;
+        List<VRWristFileEntry> savedFixedEntries = _characterCardListFixedEntries;
+        bool snapshotValid = _characterCardListSnapshotValid;
+        ClearCharacterCardListSnapshot();
+
+        if (!snapshotValid
+            || !IsCardPreviewBrowserMode(savedMode)
+            || string.IsNullOrEmpty(savedRoot)
+            || string.IsNullOrEmpty(savedDirectory))
+        {
+            return false;
+        }
+
+        try
+        {
+            string fullRoot = Path.GetFullPath(savedRoot);
+            string fullDirectory = Path.GetFullPath(savedDirectory);
+            if (!Directory.Exists(fullRoot)
+                || !Directory.Exists(fullDirectory)
+                || !VRWristFileCatalog.IsInsideRoot(fullRoot, fullDirectory))
+            {
+                return false;
+            }
+
+            _browserMode = savedMode;
+            _browserRoot = fullRoot;
+            _browserDirectory = fullDirectory;
+            _browserFixedEntries = savedFixedEntries;
+            _browserOffset = savedOffset;
+            _browserStickDirection = 0;
+            if (savedMode == BrowserMode.AddFemale)
+                _characterCardMode = VRCharacterCardMode.AddFemale;
+            else if (savedMode == BrowserMode.AddMale)
+                _characterCardMode = VRCharacterCardMode.AddMale;
+
+            RefreshBrowserEntries();
+            ShowPage(WristMenuPage.Browser);
+            status = (savedMode == BrowserMode.CoordinateCards
+                    ? L("已返回服装卡目录：", "衣装カードフォルダーへ戻りました：", "Returned to outfit-card folder: ")
+                    : L("已返回角色卡目录：", "キャラカードフォルダーへ戻りました：", "Returned to character-card folder: "))
+                + fullDirectory;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            VRLog.Warn("Could not restore the card browser snapshot: " + ex.Message);
+            return false;
+        }
+    }
+
+    private static bool IsCardPreviewBrowserMode(BrowserMode mode)
+    {
+        return mode == BrowserMode.AddFemale
+            || mode == BrowserMode.AddMale
+            || mode == BrowserMode.CoordinateCards;
+    }
+
+    private void ClearCharacterCardListSnapshot()
+    {
+        _characterCardListSnapshotValid = false;
+        _characterCardListMode = BrowserMode.None;
+        _characterCardListRoot = null;
+        _characterCardListDirectory = null;
+        _characterCardListOffset = 0;
+        _characterCardListFixedEntries = null;
+    }
+
+    private static string GetCardPreviewFileName(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return string.Empty;
+        try
+        {
+            return NormalizeUiSingleLine(Path.GetFileNameWithoutExtension(path));
+        }
+        catch (Exception)
+        {
+            return NormalizeUiSingleLine(path);
+        }
     }
 
     private bool HasPendingCharacterCard()

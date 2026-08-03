@@ -156,7 +156,45 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 				}
 
 				GUILayout.Label($"UI Spawn Distance: {settings.UISpawnDistance:F2}m");
-				settings.UISpawnDistance = GUILayout.HorizontalSlider(settings.UISpawnDistance, 0.5f, 3.0f);
+				settings.UISpawnDistance = GUILayout.HorizontalSlider(
+					settings.UISpawnDistance,
+					VRCameraMoveHelper.MinMainUIDistance,
+					VRCameraMoveHelper.MaxMainUIDistance);
+				GUILayout.Label($"Main UI Scale: {settings.UISpawnScale:F1}x");
+				settings.UISpawnScale = GUILayout.HorizontalSlider(
+					settings.UISpawnScale,
+					VRCameraMoveHelper.MinMainUIScale,
+					VRCameraMoveHelper.MaxMainUIScale);
+				if (GUILayout.Button("Apply / Recall Main Studio GUI"))
+				{
+					VRQuickActions actions = ((Component)this).gameObject.GetComponent<VRQuickActions>();
+					if (actions != null)
+						actions.SummonMainGUI();
+					else
+						VRCameraMoveHelper.RepositionMainUI(settings.UISpawnDistance, settings.UISpawnScale);
+				}
+
+				GUILayout.Label("Face Buttons (Wrist Menu / GUI Toggle)");
+				int controllerLayout = settings.ControllerFaceButtonLayout == KKCharaStudioVRSettings.ControllerLayoutLeftHand
+					? 1
+					: settings.ControllerFaceButtonLayout == KKCharaStudioVRSettings.ControllerLayoutRightHand
+						? 2
+						: 0;
+				int nextControllerLayout = GUILayout.SelectionGrid(
+					controllerLayout,
+					new[] { "Split X/A", "Left X/Y", "Right A/B" },
+					3);
+				if (nextControllerLayout != controllerLayout)
+				{
+					settings.ControllerFaceButtonLayout = nextControllerLayout == 1
+						? KKCharaStudioVRSettings.ControllerLayoutLeftHand
+						: nextControllerLayout == 2
+							? KKCharaStudioVRSettings.ControllerLayoutRightHand
+							: KKCharaStudioVRSettings.ControllerLayoutSplitHands;
+				}
+				settings.TimelineFollowCamera = GUILayout.Toggle(
+					settings.TimelineFollowCamera,
+					"Timeline follows camera (off = animation only)");
 
 				settings.WristMenuEnabled = GUILayout.Toggle(settings.WristMenuEnabled, "Wrist Quick Menu");
 				if (settings.WristMenuEnabled)
@@ -264,6 +302,9 @@ public class KKCharaStudioVRGUI : MonoBehaviour
 					settings.ProximityGrabEnabled = true;
 					settings.ProximityGrabRadius = 0.12f;
 					settings.UISpawnDistance = 2.0f;
+					settings.UISpawnScale = 1.0f;
+					settings.ControllerFaceButtonLayout = KKCharaStudioVRSettings.ControllerLayoutSplitHands;
+					settings.TimelineFollowCamera = true;
 					settings.ComfortVignetteEnabled = true;
 					settings.ComfortVignetteRadius = 0.5f;
 					settings.TwoHandScaleEnabled = true;

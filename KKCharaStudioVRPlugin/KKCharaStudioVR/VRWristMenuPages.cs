@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using Valve.VR;
@@ -14,6 +15,9 @@ public sealed partial class VRWristMenuController
     private const int BrowserVisibleRows = 6;
     private const float BrowserStickThreshold = 0.55f;
     private const float BrowserStickReleaseThreshold = 0.3f;
+    private const int BrowserPathMaxUiUnits = 56;
+    private const int BrowserEntryMaxUiUnits = 54;
+    private const int CharacterPreviewNameMaxUiUnits = 50;
 
     private enum BrowserMode
     {
@@ -25,8 +29,11 @@ public sealed partial class VRWristMenuController
         SelectClothingActor,
         SelectHighHeelsActor,
         SelectCharacterReplaceActor,
+        SelectCharacterRemoveActor,
         SelectCoordinateReplaceActor,
         SelectCoordinateAccessories,
+        SelectTrackedAccessoryActor,
+        ManageTrackedAccessories,
         CoordinateCards,
         AddFemale,
         AddMale
@@ -59,10 +66,18 @@ public sealed partial class VRWristMenuController
     private string _vmdRootPickerPreviousDirectory;
     private int _vmdRootPickerPreviousOffset;
     private VRWristMenuButtonTarget _browserGenderSwitchButton;
+    private VRWristMenuButtonTarget _browserRemoveCharacterButton;
     private readonly HashSet<int> _selectedCoordinateAccessorySlots = new HashSet<int>();
     private List<VRWristFileEntry> _coordinateAccessoryEntries =
         new List<VRWristFileEntry>();
     private int _coordinateAccessoryOffset;
+    private readonly HashSet<int> _selectedTrackedAccessorySlots = new HashSet<int>();
+    private List<VRWristFileEntry> _trackedAccessoryEntries =
+        new List<VRWristFileEntry>();
+    private int _trackedAccessoryOffset;
+    private int _trackedAccessoryTargetObjectKey = -1;
+    private Studio.OCIChar _trackedAccessoryTargetCharacter;
+    private string _trackedAccessoryTargetName;
 
     private void BuildBrowserPage()
     {
@@ -102,6 +117,19 @@ public sealed partial class VRWristMenuController
             38f,
             16);
         _browserHeaderActionButton.SetVisible(false);
+        _browserRemoveCharacterButton = CreateButton(
+            "BrowserRemoveCharacter",
+            L("移除人物", "人物を削除", "Remove"),
+            362f,
+            10f,
+            new Color(0.34f, 0.07f, 0.09f, 0.58f),
+            new Color(0.68f, 0.11f, 0.14f, 0.84f),
+            HandleOpenCharacterRemoval,
+            _browserPage.transform,
+            96f,
+            38f,
+            14);
+        _browserRemoveCharacterButton.SetVisible(false);
         _browserGenderSwitchButton = CreateButton(
             "BrowserGenderSwitch",
             L("男卡", "男性", "Male"),
@@ -136,6 +164,8 @@ public sealed partial class VRWristMenuController
             16,
             TextAnchor.MiddleLeft,
             new Color(0.76f, 0.88f, 0.94f, 1f));
+        _browserPathText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        _browserPathText.verticalOverflow = VerticalWrapMode.Truncate;
 
         for (int i = 0; i < _browserEntryButtons.Length; i++)
         {
@@ -442,6 +472,224 @@ public sealed partial class VRWristMenuController
         OpenCoordinateTargetBrowser(VRCoordinateReplaceMode.SelectedAccessories, selected);
     }
 
+    private void HandleOpenTrackedAccessoryManager()
+    {
+        string targetStatus;
+        List<VRVmdActorTarget> targets = VRVmdTargetService.GetAllTargets(out targetStatus);
+        targets.RemoveAll(target =>
+        {
+            if (target?.Character == null)
+                return true;
+            List<VRTrackedAccessorySlotInfo> slots;
+            string ignoredStatus;
+            return !VRCoordinateCardService.TryGetTrackedAccessorySlots(
+                    target.Character,
+                    out slots,
+                    out ignoredStatus)
+                || slots.Count == 0;
+        });
+
+        if (targets.Count == 0)
+        {
+            SetStatus(
+                L(
+                    "当前场景没有可管理的追加饰品",
+                    "現在のシーンに管理できる追加アクセはありません",
+                    "There are no appended accessories to manage in this scene"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                6f);
+            return;
+        }
+
+        if (targets.Count == 1)
+        {
+            OpenTrackedAccessoryManager(
+                targets[0].ObjectKey,
+                targets[0].Character,
+                targets[0].DisplayName,
+                0);
+            return;
+        }
+
+        OpenActorTargetBrowser(
+            BrowserMode.SelectTrackedAccessoryActor,
+            targets,
+            L(
+                "选择要管理追加饰品的角色",
+                "追加アクセを管理するキャラを選択",
+                "Select the character whose appended accessories you want to manage"),
+            out targetStatus);
+    }
+
+    private void HandleTrackedAccessoryActorSelection(VRWristFileEntry entry)
+    {
+        if (entry == null || !entry.IsActorTarget)
+            return;
+
+        VRVmdActorTarget target;
+        string status;
+        if (!VRVmdTargetService.TryGetTarget(entry.ObjectKey, out target, out status))
+        {
+            SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+            return;
+        }
+
+        OpenTrackedAccessoryManager(
+            entry.ObjectKey,
+            target.Character,
+            target.DisplayName,
+            0);
+    }
+
+    private void OpenTrackedAccessoryManager(
+        int objectKey,
+        Studio.OCIChar character,
+        string displayName,
+        int offset)
+    {
+        List<VRTrackedAccessorySlotInfo> slots;
+        string status;
+        if (!VRCoordinateCardService.TryGetTrackedAccessorySlots(
+            character,
+            out slots,
+            out status)
+            || slots.Count == 0)
+        {
+            SetStatus(
+                status ?? L(
+                    "这个角色没有可管理的追加饰品",
+                    "このキャラに管理できる追加アクセはありません",
+                    "This character has no appended accessories to manage"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                6f);
+            return;
+        }
+
+        _trackedAccessoryTargetObjectKey = objectKey;
+        _trackedAccessoryTargetCharacter = character;
+        _trackedAccessoryTargetName = displayName;
+        _selectedTrackedAccessorySlots.Clear();
+        _trackedAccessoryEntries = new List<VRWristFileEntry>(slots.Count + 1)
+        {
+            new VRWristFileEntry
+            {
+                DisplayName = L(
+                    "一键移除全部追加饰品",
+                    "追加アクセをすべて削除",
+                    "Remove all appended accessories"),
+                ObjectKey = -1
+            }
+        };
+        foreach (VRTrackedAccessorySlotInfo slot in slots)
+        {
+            string slotNumber = (slot.SlotIndex + 1).ToString("00");
+            string accessoryName = string.IsNullOrEmpty(slot.DisplayName)
+                ? L("追加饰品", "追加アクセ", "Appended accessory")
+                : slot.DisplayName;
+            _trackedAccessoryEntries.Add(new VRWristFileEntry
+            {
+                DisplayName = L("槽位 ", "スロット ", "Slot ")
+                    + slotNumber
+                    + "  "
+                    + accessoryName,
+                ObjectKey = slot.SlotIndex
+            });
+        }
+
+        ShowTrackedAccessoryManager(offset);
+        SetStatus(
+            L(
+                "只会移除本插件追加且指纹未变化的饰品",
+                "このプラグインが追加し、内容が変わっていないアクセだけを削除します",
+                "Only unchanged accessories appended by this plugin can be removed"),
+            new Color(0.47f, 0.9f, 0.55f, 1f),
+            0f);
+    }
+
+    private void ShowTrackedAccessoryManager(int offset)
+    {
+        _browserMode = BrowserMode.ManageTrackedAccessories;
+        _browserRoot = null;
+        _browserDirectory = null;
+        _browserFixedEntries = _trackedAccessoryEntries;
+        _browserEntries = _trackedAccessoryEntries;
+        _browserOffset = Mathf.Clamp(
+            offset,
+            0,
+            Math.Max(0, _browserEntries.Count - BrowserVisibleRows));
+        _browserStickDirection = 0;
+        RefreshBrowserVisuals();
+        ShowPage(WristMenuPage.Browser);
+    }
+
+    private void HandleTrackedAccessoryEntry(VRWristFileEntry entry)
+    {
+        if (entry == null)
+            return;
+        if (entry.ObjectKey < 0)
+        {
+            BeginTrackedAccessoryRemoval(true);
+            return;
+        }
+
+        if (!_selectedTrackedAccessorySlots.Add(entry.ObjectKey))
+            _selectedTrackedAccessorySlots.Remove(entry.ObjectKey);
+        RefreshBrowserVisuals();
+    }
+
+    private void BeginTrackedAccessoryRemoval(bool removeAll)
+    {
+        if (_operationInProgress)
+            return;
+        if (_trackedAccessoryTargetObjectKey < 0
+            || _trackedAccessoryTargetCharacter == null)
+        {
+            SetStatus(
+                L("饰品管理目标已失效", "アクセ管理対象が無効です", "The accessory-management target is no longer valid"),
+                new Color(1f, 0.38f, 0.34f, 1f),
+                6f);
+            return;
+        }
+
+        int[] slots;
+        if (removeAll)
+        {
+            List<VRTrackedAccessorySlotInfo> current;
+            string status;
+            if (!VRCoordinateCardService.TryGetTrackedAccessorySlots(
+                _trackedAccessoryTargetCharacter,
+                out current,
+                out status))
+            {
+                SetStatus(status, new Color(1f, 0.38f, 0.34f, 1f), 7f);
+                return;
+            }
+            slots = current.Select(slot => slot.SlotIndex).ToArray();
+        }
+        else
+        {
+            slots = _selectedTrackedAccessorySlots.OrderBy(slot => slot).ToArray();
+        }
+
+        if (slots.Length == 0)
+        {
+            SetStatus(
+                L("请至少勾选一个饰品", "アクセを1つ以上選択してください", "Select at least one accessory"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                5f);
+            return;
+        }
+
+        _trackedAccessoryOffset = _browserOffset;
+        StartCoroutine(ExecuteCoordinateReplacementAfterFrame(
+            null,
+            _trackedAccessoryTargetObjectKey,
+            _trackedAccessoryTargetCharacter,
+            VRCoordinateReplaceMode.RemoveTrackedAccessories,
+            slots,
+            false));
+    }
+
     private void OpenFileBrowser(BrowserMode mode, string root, string directory)
     {
         try
@@ -486,8 +734,11 @@ public sealed partial class VRWristMenuController
                 || _browserMode == BrowserMode.SelectClothingActor
                 || _browserMode == BrowserMode.SelectHighHeelsActor
                 || _browserMode == BrowserMode.SelectCharacterReplaceActor
+                || _browserMode == BrowserMode.SelectCharacterRemoveActor
                 || _browserMode == BrowserMode.SelectCoordinateReplaceActor
-                || _browserMode == BrowserMode.SelectCoordinateAccessories)
+                || _browserMode == BrowserMode.SelectCoordinateAccessories
+                || _browserMode == BrowserMode.SelectTrackedAccessoryActor
+                || _browserMode == BrowserMode.ManageTrackedAccessories)
             && _browserFixedEntries != null)
         {
             _browserEntries = _browserFixedEntries;
@@ -496,6 +747,7 @@ public sealed partial class VRWristMenuController
         {
             string[] extensions;
             bool inspectVmd = false;
+            bool filesBeforeDirectories = false;
             Func<string, bool> filter = null;
             switch (_browserMode)
             {
@@ -518,7 +770,8 @@ public sealed partial class VRWristMenuController
                 _browserDirectory,
                 extensions,
                 inspectVmd,
-                filter);
+                filter,
+                filesBeforeDirectories);
         }
 
         int maximumOffset = Math.Max(0, _browserEntries.Count - BrowserVisibleRows);
@@ -537,11 +790,13 @@ public sealed partial class VRWristMenuController
             && Directory.Exists(_browserDirectory);
         bool showHeaderAction = _browserMode == BrowserMode.LoadVmd
             || hasCurrentFolder
-            || _browserMode == BrowserMode.SelectCoordinateAccessories;
+            || _browserMode == BrowserMode.SelectCoordinateAccessories
+            || _browserMode == BrowserMode.ManageTrackedAccessories;
         _browserHeaderActionButton.SetVisible(showHeaderAction);
         bool showGenderSwitch = _browserMode == BrowserMode.AddFemale
             || _browserMode == BrowserMode.AddMale;
         _browserGenderSwitchButton.SetVisible(showGenderSwitch);
+        _browserRemoveCharacterButton.SetVisible(showGenderSwitch);
         if (showGenderSwitch)
         {
             _browserGenderSwitchButton.SetLabel(
@@ -556,6 +811,12 @@ public sealed partial class VRWristMenuController
                 _browserHeaderActionButton.SetLabel(
                     L("下一步 ", "次へ ", "Next ") + _selectedCoordinateAccessorySlots.Count);
             }
+            else if (_browserMode == BrowserMode.ManageTrackedAccessories)
+            {
+                _browserHeaderActionButton.SetLabel(
+                    L("移除所选 ", "選択を削除 ", "Remove ")
+                    + _selectedTrackedAccessorySlots.Count);
+            }
             else
             {
                 _browserHeaderActionButton.SetLabel(
@@ -566,13 +827,19 @@ public sealed partial class VRWristMenuController
         }
         int firstVisible = _browserEntries.Count == 0 ? 0 : _browserOffset + 1;
         int lastVisible = Math.Min(_browserEntries.Count, _browserOffset + BrowserVisibleRows);
-        _browserPathText.text = BuildBrowserPathLabel()
-            + "    "
-            + firstVisible
+        string rangeLabel = firstVisible
             + "-"
             + lastVisible
             + "/"
             + _browserEntries.Count;
+        int pathBudget = Math.Max(
+            10,
+            BrowserPathMaxUiUnits - GetUiVisualUnits(rangeLabel) - 4);
+        _browserPathText.text = EllipsizeMiddleForUi(
+                BuildBrowserPathLabel(),
+                pathBudget)
+            + "    "
+            + rangeLabel;
 
         for (int row = 0; row < _browserEntryButtons.Length; row++)
         {
@@ -610,10 +877,16 @@ public sealed partial class VRWristMenuController
                 return L("服装：选择角色", "服装：キャラ選択", "Clothing: Select character");
             case BrowserMode.SelectCharacterReplaceActor:
                 return L("替换：选择场景角色", "置換：シーンのキャラを選択", "Replace: Select scene character");
+            case BrowserMode.SelectCharacterRemoveActor:
+                return L("移除：选择场景人物", "削除：シーンの人物を選択", "Remove: Select scene character");
             case BrowserMode.SelectCoordinateReplaceActor:
                 return L("服装卡：选择场景角色", "衣装カード：キャラ選択", "Outfit card: Select character");
             case BrowserMode.SelectCoordinateAccessories:
                 return L("自选饰品", "アクセ選択", "Pick accessories");
+            case BrowserMode.SelectTrackedAccessoryActor:
+                return L("选择管理角色", "管理キャラ選択", "Select character");
+            case BrowserMode.ManageTrackedAccessories:
+                return L("管理追加饰品", "追加アクセ管理", "Manage appended accessories");
             case BrowserMode.CoordinateCards:
                 return L("服装卡", "衣装カード", "Outfit cards");
             case BrowserMode.AddFemale:
@@ -631,12 +904,21 @@ public sealed partial class VRWristMenuController
             || _browserMode == BrowserMode.SelectClothingActor
             || _browserMode == BrowserMode.SelectHighHeelsActor
             || _browserMode == BrowserMode.SelectCharacterReplaceActor
-            || _browserMode == BrowserMode.SelectCoordinateReplaceActor)
+            || _browserMode == BrowserMode.SelectCharacterRemoveActor
+            || _browserMode == BrowserMode.SelectCoordinateReplaceActor
+            || _browserMode == BrowserMode.SelectTrackedAccessoryActor)
             return L("当前场景角色", "現在のシーンキャラ", "Current scene characters");
         if (_browserMode == BrowserMode.SelectCoordinateAccessories)
         {
             return L("仅追加到空槽  ·  已选 ", "空き枠にのみ追加  ·  選択 ", "Empty slots only  ·  Selected ")
                 + _selectedCoordinateAccessorySlots.Count;
+        }
+        if (_browserMode == BrowserMode.ManageTrackedAccessories)
+        {
+            return L("角色：", "キャラ：", "Character: ")
+                + (_trackedAccessoryTargetName ?? "-")
+                + L("  ·  已选 ", "  ·  選択 ", "  ·  Selected ")
+                + _selectedTrackedAccessorySlots.Count;
         }
         if (_browserMode == BrowserMode.SelectVmdCamera)
             return L("同目录镜头", "同じフォルダーのカメラ", "Cameras in this folder");
@@ -658,15 +940,48 @@ public sealed partial class VRWristMenuController
     {
         if (_browserMode == BrowserMode.SelectCoordinateAccessories)
         {
-            return (_selectedCoordinateAccessorySlots.Contains(entry.ObjectKey) ? "[✓]  " : "[ ]  ")
-                + entry.DisplayName;
+            return BuildSingleLineEntryLabel(
+                _selectedCoordinateAccessorySlots.Contains(entry.ObjectKey) ? "[✓]  " : "[ ]  ",
+                entry.DisplayName,
+                null);
+        }
+        if (_browserMode == BrowserMode.ManageTrackedAccessories)
+        {
+            if (entry.ObjectKey < 0)
+            {
+                return BuildSingleLineEntryLabel(
+                    L("[全部]  ", "[すべて]  ", "[All]  "),
+                    entry.DisplayName,
+                    null);
+            }
+            return BuildSingleLineEntryLabel(
+                _selectedTrackedAccessorySlots.Contains(entry.ObjectKey) ? "[✓]  " : "[ ]  ",
+                entry.DisplayName,
+                null);
         }
         if (entry.IsSkipAction)
-            return L("不载入镜头\n仅使用角色动作", "カメラを読込まない\nモーションのみ", "Do not load camera\nMotion only");
+        {
+            return EllipsizeTailForUi(
+                L(
+                    "不载入镜头 · 仅使用角色动作",
+                    "カメラを読込まない · モーションのみ",
+                    "Do not load camera · Motion only"),
+                BrowserEntryMaxUiUnits);
+        }
         if (entry.IsActorTarget)
-            return L("[角色]  ", "[キャラ]  ", "[Character]  ") + entry.DisplayName;
+        {
+            return BuildSingleLineEntryLabel(
+                L("[角色]  ", "[キャラ]  ", "[Character]  "),
+                entry.DisplayName,
+                null);
+        }
         if (entry.IsDirectory)
-            return L("[目录]  ", "[フォルダー]  ", "[Folder]  ") + entry.DisplayName + "  >";
+        {
+            return BuildSingleLineEntryLabel(
+                L("[目录]  ", "[フォルダー]  ", "[Folder]  "),
+                entry.DisplayName,
+                "  >");
+        }
         if (entry.HasVmdMetadata)
         {
             bool actor = entry.VmdMetadata.HasActorData;
@@ -678,12 +993,164 @@ public sealed partial class VRWristMenuController
                     : (entry.VmdMetadata.Content & VRVmdContent.Motion) != 0
                         ? L("动作", "モーション", "Motion")
                         : L("表情", "表情", "Face");
-            return "[" + kind + "]  " + entry.DisplayName;
+            return BuildSingleLineEntryLabel(
+                "[" + kind + "]  ",
+                entry.DisplayName,
+                null);
         }
 
-        return _browserMode == BrowserMode.CoordinateCards
-            ? L("[服装卡]  ", "[衣装カード]  ", "[Outfit card]  ") + entry.DisplayName
-            : L("[角色卡]  ", "[キャラカード]  ", "[Character card]  ") + entry.DisplayName;
+        return BuildSingleLineEntryLabel(
+            _browserMode == BrowserMode.CoordinateCards
+                ? L("[服装卡]  ", "[衣装カード]  ", "[Outfit card]  ")
+                : L("[角色卡]  ", "[キャラカード]  ", "[Character card]  "),
+            entry.DisplayName,
+            null);
+    }
+
+    private static string BuildSingleLineEntryLabel(
+        string prefix,
+        string value,
+        string suffix)
+    {
+        string safePrefix = NormalizeUiSingleLine(prefix);
+        string safeSuffix = NormalizeUiSingleLine(suffix);
+        int nameBudget = BrowserEntryMaxUiUnits
+            - GetUiVisualUnits(safePrefix)
+            - GetUiVisualUnits(safeSuffix);
+        if (nameBudget < 3)
+        {
+            return EllipsizeTailForUi(
+                safePrefix + NormalizeUiSingleLine(value) + safeSuffix,
+                BrowserEntryMaxUiUnits);
+        }
+
+        return safePrefix
+            + EllipsizeTailForUi(value, nameBudget)
+            + safeSuffix;
+    }
+
+    private static string NormalizeUiSingleLine(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(value.Length);
+        bool previousWhitespace = false;
+        foreach (char character in value)
+        {
+            bool whitespace = char.IsWhiteSpace(character);
+            if (whitespace)
+            {
+                if (!previousWhitespace && builder.Length > 0)
+                    builder.Append(' ');
+            }
+            else
+            {
+                builder.Append(character);
+            }
+            previousWhitespace = whitespace;
+        }
+        return builder.ToString().Trim();
+    }
+
+    private static string EllipsizeTailForUi(string value, int maximumUnits)
+    {
+        string safeValue = NormalizeUiSingleLine(value);
+        if (maximumUnits <= 0)
+            return string.Empty;
+        if (GetUiVisualUnits(safeValue) <= maximumUnits)
+            return safeValue;
+        if (maximumUnits == 1)
+            return "…";
+        return TakeUiTextFromStart(safeValue, maximumUnits - 1) + "…";
+    }
+
+    private static string EllipsizeMiddleForUi(string value, int maximumUnits)
+    {
+        string safeValue = NormalizeUiSingleLine(value);
+        if (maximumUnits <= 0)
+            return string.Empty;
+        if (GetUiVisualUnits(safeValue) <= maximumUnits)
+            return safeValue;
+        if (maximumUnits == 1)
+            return "…";
+
+        int availableUnits = maximumUnits - 1;
+        int startUnits = Math.Max(1, availableUnits * 2 / 5);
+        int endUnits = Math.Max(1, availableUnits - startUnits);
+        return TakeUiTextFromStart(safeValue, startUnits)
+            + "…"
+            + TakeUiTextFromEnd(safeValue, endUnits);
+    }
+
+    private static int GetUiVisualUnits(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return 0;
+
+        int units = 0;
+        int[] indexes = System.Globalization.StringInfo.ParseCombiningCharacters(value);
+        for (int i = 0; i < indexes.Length; i++)
+        {
+            int length = (i + 1 < indexes.Length ? indexes[i + 1] : value.Length) - indexes[i];
+            string element = value.Substring(indexes[i], length);
+            units += IsAsciiUiElement(element) ? 1 : 2;
+        }
+        return units;
+    }
+
+    private static string TakeUiTextFromStart(string value, int maximumUnits)
+    {
+        if (string.IsNullOrEmpty(value) || maximumUnits <= 0)
+            return string.Empty;
+
+        int[] indexes = System.Globalization.StringInfo.ParseCombiningCharacters(value);
+        int usedUnits = 0;
+        int endIndex = 0;
+        for (int i = 0; i < indexes.Length; i++)
+        {
+            int nextIndex = i + 1 < indexes.Length ? indexes[i + 1] : value.Length;
+            string element = value.Substring(indexes[i], nextIndex - indexes[i]);
+            int elementUnits = IsAsciiUiElement(element) ? 1 : 2;
+            if (usedUnits + elementUnits > maximumUnits)
+                break;
+            usedUnits += elementUnits;
+            endIndex = nextIndex;
+        }
+        return value.Substring(0, endIndex);
+    }
+
+    private static string TakeUiTextFromEnd(string value, int maximumUnits)
+    {
+        if (string.IsNullOrEmpty(value) || maximumUnits <= 0)
+            return string.Empty;
+
+        int[] indexes = System.Globalization.StringInfo.ParseCombiningCharacters(value);
+        int usedUnits = 0;
+        int startIndex = value.Length;
+        for (int i = indexes.Length - 1; i >= 0; i--)
+        {
+            int nextIndex = i + 1 < indexes.Length ? indexes[i + 1] : value.Length;
+            string element = value.Substring(indexes[i], nextIndex - indexes[i]);
+            int elementUnits = IsAsciiUiElement(element) ? 1 : 2;
+            if (usedUnits + elementUnits > maximumUnits)
+                break;
+            usedUnits += elementUnits;
+            startIndex = indexes[i];
+        }
+        return value.Substring(startIndex);
+    }
+
+    private static bool IsAsciiUiElement(string element)
+    {
+        if (string.IsNullOrEmpty(element))
+            return true;
+        for (int i = 0; i < element.Length; i++)
+        {
+            if (element[i] > 0x7f)
+                return false;
+        }
+        return true;
     }
 
     private void HandleBrowserBack()
@@ -694,6 +1161,17 @@ public sealed partial class VRWristMenuController
                 L("换装仍在进行，请稍候", "着替え中です。しばらくお待ちください", "The outfit change is still running"),
                 new Color(1f, 0.72f, 0.25f, 1f),
                 4f);
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectTrackedAccessoryActor
+            || _browserMode == BrowserMode.ManageTrackedAccessories)
+        {
+            ShowPage(WristMenuPage.CharacterPreview);
+            SetStatus(
+                L("服装卡预览", "衣装カードのプレビュー", "Outfit card preview"),
+                new Color(0.47f, 0.9f, 0.55f, 1f),
+                0f);
             return;
         }
 
@@ -730,6 +1208,14 @@ public sealed partial class VRWristMenuController
             ShowPage(WristMenuPage.CharacterPreview);
             SetStatus(L("角色卡预览", "キャラカードのプレビュー", "Character card preview"),
                 new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            return;
+        }
+
+        if (_browserMode == BrowserMode.SelectCharacterRemoveActor)
+        {
+            RestoreCharacterRemovalBrowser(
+                L("已取消移除人物", "人物の削除をキャンセルしました", "Character removal cancelled"),
+                new Color(1f, 0.72f, 0.25f, 1f));
             return;
         }
 
@@ -807,6 +1293,14 @@ public sealed partial class VRWristMenuController
             SetStatus(L("服装卡", "衣装カード", "Outfit cards"),
                 new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         }
+        else if (_browserMode == BrowserMode.LoadVmd)
+        {
+            ShowPage(WristMenuPage.MmdPlayback);
+            SetStatus(
+                L("MMD 动作与播放", "MMD モーションと再生", "MMD motion and playback"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                0f);
+        }
         else
         {
             HandleBackToRoot();
@@ -828,8 +1322,17 @@ public sealed partial class VRWristMenuController
             _browserDirectory = entry.FullPath;
             _browserOffset = 0;
             RefreshBrowserEntries();
+            SetStatus(
+                L("当前目录：", "現在のフォルダー：", "Current folder: ") + entry.FullPath,
+                new Color(0.47f, 0.9f, 0.55f, 1f),
+                5f);
             return;
         }
+
+        SetStatus(
+            L("已选择：", "選択：", "Selected: ") + NormalizeUiSingleLine(entry.DisplayName),
+            new Color(0.47f, 0.9f, 0.55f, 1f),
+            3f);
 
         switch (_browserMode)
         {
@@ -855,11 +1358,20 @@ public sealed partial class VRWristMenuController
             case BrowserMode.SelectCharacterReplaceActor:
                 HandleCharacterReplaceActorSelection(entry);
                 break;
+            case BrowserMode.SelectCharacterRemoveActor:
+                HandleCharacterRemoveActorSelection(entry);
+                break;
             case BrowserMode.SelectCoordinateReplaceActor:
                 HandleCoordinateReplaceActorSelection(entry);
                 break;
             case BrowserMode.SelectCoordinateAccessories:
                 HandleCoordinateAccessoryToggle(entry);
+                break;
+            case BrowserMode.SelectTrackedAccessoryActor:
+                HandleTrackedAccessoryActorSelection(entry);
+                break;
+            case BrowserMode.ManageTrackedAccessories:
+                HandleTrackedAccessoryEntry(entry);
                 break;
             case BrowserMode.CoordinateCards:
                 OpenCoordinateCardPreview(entry.FullPath);
@@ -873,6 +1385,12 @@ public sealed partial class VRWristMenuController
 
     private void HandleBrowserHeaderAction()
     {
+        if (_browserMode == BrowserMode.ManageTrackedAccessories)
+        {
+            BeginTrackedAccessoryRemoval(false);
+            return;
+        }
+
         if (_browserMode == BrowserMode.SelectCoordinateAccessories)
         {
             HandleConfirmCoordinateAccessories();
@@ -995,7 +1513,7 @@ public sealed partial class VRWristMenuController
             _vmdRootPickerPreviousRoot = null;
             _vmdRootPickerPreviousDirectory = null;
             if (returnToMmdSettings)
-                ShowPage(WristMenuPage.MmdSettings);
+                ShowPage(WristMenuPage.MmdPlayback);
             else
                 OpenFileBrowser(BrowserMode.LoadVmd, root, root);
             SetStatus(L("动作目录已保存：", "モーションフォルダーを保存：", "Motion folder saved: ") + root,
@@ -1044,8 +1562,11 @@ public sealed partial class VRWristMenuController
         if (_returnToMmdSettingsAfterRootPicker)
         {
             _returnToMmdSettingsAfterRootPicker = false;
-            ShowPage(WristMenuPage.MmdSettings);
-            SetStatus(L("MMD 工具", "MMD ツール", "MMD tools"), new Color(1f, 0.72f, 0.25f, 1f), 0f);
+            ShowPage(WristMenuPage.MmdPlayback);
+            SetStatus(
+                L("MMD 动作与播放", "MMD モーションと再生", "MMD motion and playback"),
+                new Color(1f, 0.72f, 0.25f, 1f),
+                0f);
             return;
         }
 
@@ -1291,7 +1812,9 @@ public sealed partial class VRWristMenuController
         _operationInProgress = false;
         if (success)
         {
-            ShowPage(WristMenuPage.Root);
+            // Return to the dedicated transport page so playback, rewind, and
+            // maintenance controls remain immediately available after loading.
+            ShowPage(WristMenuPage.MmdPlayback);
             VRLog.Info(status);
         }
 
@@ -1307,12 +1830,40 @@ public sealed partial class VRWristMenuController
             yield break;
 
         _operationInProgress = true;
+        string ignoredTargetStatus;
+        HashSet<int> existingCharacterKeys = new HashSet<int>(
+            VRVmdTargetService.GetAllTargets(out ignoredTargetStatus)
+                .Select(target => target.ObjectKey));
         SetStatus(L("正在读取角色卡…", "キャラカードを読込中…", "Loading character card…"),
             new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
         yield return null;
 
         string status;
         bool success = VRCharacterCardService.ExecuteAdd(_characterCardMode, path, out status);
+        if (success && VRMmdPlaybackController.Instance != null)
+        {
+            // Studio.AddFemale/AddMale returns before the new ChaControl always
+            // becomes a live actor. Resolve only keys created by this operation,
+            // then let the high-heel controller retry until MMDD is ready.
+            float deadline = Time.realtimeSinceStartup + 15f;
+            int[] addedKeys = new int[0];
+            do
+            {
+                yield return null;
+                List<VRVmdActorTarget> liveTargets =
+                    VRVmdTargetService.GetAllTargets(out ignoredTargetStatus);
+                addedKeys = liveTargets
+                    .Where(target => !existingCharacterKeys.Contains(target.ObjectKey))
+                    .Select(target => target.ObjectKey)
+                    .ToArray();
+            }
+            while (addedKeys.Length == 0 && Time.realtimeSinceStartup < deadline);
+
+            if (addedKeys.Length > 0)
+                VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(addedKeys);
+            else
+                VRLog.Warn("Added character did not become ready in time for automatic high-heel preset detection.");
+        }
         _operationInProgress = false;
         ShowPage(WristMenuPage.CharacterPreview);
         if (success)
@@ -1329,20 +1880,342 @@ public sealed partial class VRWristMenuController
             yield break;
 
         _operationInProgress = true;
-        SetStatus(L("正在替换场景角色…", "シーンのキャラを置換中…", "Replacing scene character…"),
-            new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
-        yield return null;
+        VRTimelineMutationSession timelineSession = null;
+        bool characterReplaced = false;
+        bool timelineTargetReady = false;
+        try
+        {
+            SetStatus(L("正在替换场景角色…", "シーンのキャラを置換中…", "Replacing scene character…"),
+                new Color(0.47f, 0.9f, 0.55f, 1f), 0f);
+            yield return null;
 
-        string status;
-        bool success = VRCharacterCardService.ExecuteReplace(objectKey, path, out status);
+            ResolveSettings();
+            string status;
+            bool prepared = VRTimelineService.PauseForSceneMutation(
+                out timelineSession,
+                out status);
+        if (prepared && VRMmdPlaybackController.Instance != null)
+            VRMmdPlaybackController.Instance.PrepareForCharacterReplacement();
+        VRMmddCharacterReplacementSession vmdSession = null;
+        if (prepared)
+        {
+            prepared = VRMmddService.TryPrepareCharacterReplacement(
+                objectKey,
+                out vmdSession,
+                out status);
+        }
+        VRCharacterOutfitPreservationState outfitState = null;
+        bool preserveOutfit = _settings != null
+            && _settings.PreserveOutfitOnCharacterReplace;
+
+        if (prepared && preserveOutfit)
+        {
+            Studio.OCIChar originalCharacter;
+            string captureStatus;
+            if (!VRCharacterCardService.TryGetCharacter(
+                    objectKey,
+                    out originalCharacter,
+                    out captureStatus)
+                || !VRCharacterOutfitPreservationService.TryCapture(
+                    objectKey,
+                    originalCharacter,
+                    out outfitState,
+                    out captureStatus))
+            {
+                prepared = false;
+                status = L(
+                    "无法安全保留当前服装，角色未替换：",
+                    "現在の衣装を安全に保持できないため、キャラを置換しません：",
+                    "Could not safely preserve the current outfit; the character was not replaced: ")
+                    + captureStatus;
+                if (vmdSession != null)
+                {
+                    string rollbackStatus;
+                    if (!VRMmddService.TryRestoreCharacterReplacement(
+                        vmdSession,
+                        objectKey,
+                        out rollbackStatus))
+                    {
+                        status += "；原 VMD 恢复失败：" + rollbackStatus;
+                        VRMmddService.DiscardCharacterReplacement(vmdSession);
+                    }
+                }
+            }
+        }
+
+        if (prepared && vmdSession != null)
+        {
+            // MMDD removes its controller dictionaries synchronously, but Unity
+            // destroys the pose controller and generated bones at the end of the
+            // frame. Do not let ChangeChara rebuild the face/body while those old
+            // components can still write to the character hierarchy.
+            yield return new WaitForEndOfFrame();
+            yield return null;
+        }
+
+        bool success = false;
+        if (prepared)
+        {
+            if (vmdSession != null || outfitState != null)
+            {
+                SetStatus(
+                    L(
+                        preserveOutfit
+                            ? "已清理旧 VMD 并备份当前服装，正在替换角色…"
+                            : "已清理旧 VMD，正在替换角色…",
+                        preserveOutfit
+                            ? "古い VMD を解除して現在の衣装を保存し、キャラを置換しています…"
+                            : "古い VMD を解除し、キャラを置換しています…",
+                        preserveOutfit
+                            ? "Cleared the old VMD and saved the current outfit; replacing the character…"
+                            : "Cleared the old VMD; replacing the character…"),
+                    new Color(0.47f, 0.9f, 0.55f, 1f),
+                    0f);
+            }
+
+            string replacementStatus;
+            success = VRCharacterCardService.ExecuteReplace(
+                objectKey,
+                path,
+                out replacementStatus);
+            characterReplaced = success;
+            status = replacementStatus;
+
+            if (!success)
+            {
+                VRCharacterOutfitPreservationService.Discard(outfitState);
+                if (vmdSession != null)
+                {
+                    string rollbackStatus;
+                    if (VRMmddService.TryRestoreCharacterReplacement(
+                        vmdSession,
+                        objectKey,
+                        out rollbackStatus))
+                    {
+                        status += "；原 VMD 已恢复";
+                    }
+                    else
+                    {
+                        status += "；原 VMD 恢复失败：" + rollbackStatus;
+                        VRMmddService.DiscardCharacterReplacement(vmdSession);
+                    }
+                }
+            }
+            else
+            {
+                SetStatus(
+                    L(
+                        preserveOutfit
+                            ? "角色已替换，正在等待新骨架并合并旧服装…"
+                            : vmdSession != null
+                                ? "角色已替换，正在等待新骨架并重新绑定 VMD…"
+                                : "角色已替换，正在等待新骨架稳定…",
+                        preserveOutfit
+                            ? "キャラを置換しました。新しい骨格を待って衣装を統合しています…"
+                            : vmdSession != null
+                                ? "キャラを置換しました。新しい骨格を待って VMD を再接続しています…"
+                                : "キャラを置換しました。新しい骨格の安定を待っています…",
+                        preserveOutfit
+                            ? "Character replaced; waiting for the new skeleton and merging the old outfit…"
+                            : vmdSession != null
+                                ? "Character replaced; waiting for the new skeleton and rebinding VMD…"
+                                : "Character replaced; waiting for the new skeleton to stabilize…"),
+                    new Color(0.47f, 0.9f, 0.55f, 1f),
+                    0f);
+
+                // ChangeChara rebuilds the character over several frames. Let it enter
+                // the loading state first, then wait for its new bones before MMDD is
+                // allowed to create fresh motion and morph controllers.
+                yield return null;
+                yield return null;
+                float deadline = Time.realtimeSinceStartup + 30f;
+                Studio.OCIChar liveCharacter = null;
+                string liveStatus = null;
+                bool characterReady = false;
+                while (Time.realtimeSinceStartup < deadline)
+                {
+                    if (!VRCharacterCardService.TryGetCharacter(
+                        objectKey,
+                        out liveCharacter,
+                        out liveStatus))
+                    {
+                        break;
+                    }
+
+                    if (liveCharacter.charInfo != null
+                        && liveCharacter.charInfo.loadEnd)
+                    {
+                        characterReady = true;
+                        break;
+                    }
+                    yield return null;
+                }
+
+                if (!characterReady)
+                {
+                    success = false;
+                    status = string.IsNullOrEmpty(liveStatus)
+                        ? replacementStatus
+                            + "；新角色读取超时，旧 VMD 已安全清理但未重新绑定"
+                        : replacementStatus + "；" + liveStatus;
+                    VRCharacterOutfitPreservationService.Discard(outfitState);
+                    if (vmdSession != null)
+                        VRMmddService.DiscardCharacterReplacement(vmdSession);
+                }
+                else
+                {
+                    // loadEnd can become true before every child bone has completed its
+                    // Start/OnEnable pass. A short stabilization window avoids binding
+                    // MMDD to transient transforms.
+                    for (int frame = 0; frame < 6; frame++)
+                        yield return null;
+
+                    // Accessory States is registered through KKAPI and can be added a
+                    // few frames after ChaControl.loadEnd. Timeline clothing tracks
+                    // call it from a postfix without a null check, so wait for the
+                    // registered controller instead of resuming into a frame-wide NRE.
+                    string controllerStatus;
+                    float controllerDeadline = Time.realtimeSinceStartup + 5f;
+                    while (!VRCharacterCardService.AreReplacementControllersReady(
+                            liveCharacter,
+                            out controllerStatus)
+                        && Time.realtimeSinceStartup < controllerDeadline)
+                    {
+                        yield return null;
+                    }
+                    bool controllersReady = VRCharacterCardService.AreReplacementControllersReady(
+                        liveCharacter,
+                        out controllerStatus);
+                    if (!controllersReady)
+                    {
+                        VRLog.Warn(controllerStatus);
+                        success = false;
+                        status = replacementStatus + "；" + controllerStatus
+                            + "，Timeline 已保持暂停，避免当前帧写入未完成的新角色";
+                        VRCharacterOutfitPreservationService.Discard(outfitState);
+                        if (vmdSession != null)
+                            VRMmddService.DiscardCharacterReplacement(vmdSession);
+                    }
+                    else
+                    {
+                        timelineTargetReady = true;
+                        status = replacementStatus;
+                        if (outfitState != null)
+                        {
+                            VRCharacterOutfitRestoreSession outfitSession;
+                            string outfitStatus;
+                            bool outfitStarted = VRCharacterOutfitPreservationService.TryBeginRestore(
+                                outfitState,
+                                objectKey,
+                                liveCharacter,
+                                out outfitSession,
+                                out outfitStatus);
+                            if (outfitStarted)
+                            {
+                                VRCharacterOutfitRestoreResult outfitResult =
+                                    new VRCharacterOutfitRestoreResult();
+                                yield return StartCoroutine(MonitorCharacterOutfitRestore(
+                                    outfitSession,
+                                    outfitResult));
+                                outfitStatus = outfitResult.Status;
+                                outfitStarted = outfitResult.Success;
+                            }
+                            else
+                            {
+                                VRCharacterOutfitPreservationService.Discard(outfitState);
+                            }
+
+                            status += "；" + outfitStatus;
+                            if (!outfitStarted)
+                                success = false;
+                        }
+
+                        if (vmdSession != null)
+                        {
+                            string restoreStatus;
+                            bool restored = VRMmddService.TryRestoreCharacterReplacement(
+                                vmdSession,
+                                objectKey,
+                                true,
+                                out restoreStatus);
+                            if (!restored)
+                            {
+                                SetStatus(
+                                    L(
+                                        "新骨架尚未接受 VMD，正在重试…",
+                                        "新しい骨格へ VMD を再接続できないため、再試行しています…",
+                                        "The new skeleton did not accept VMD yet; retrying…"),
+                                    new Color(1f, 0.72f, 0.25f, 1f),
+                                    0f);
+                                for (int frame = 0; frame < 6; frame++)
+                                    yield return null;
+                                restored = VRMmddService.TryRestoreCharacterReplacement(
+                                    vmdSession,
+                                    objectKey,
+                                    true,
+                                    out restoreStatus);
+                            }
+
+                            if (restored)
+                            {
+                                status += "；" + restoreStatus;
+                                if (VRMmdPlaybackController.Instance != null)
+                                    VRMmdPlaybackController.Instance.NotifyCharacterReplacementRebound();
+                            }
+                            else
+                            {
+                                success = false;
+                                status += "；VMD 重新绑定失败，旧绑定已清理：" + restoreStatus;
+                                VRMmddService.DiscardCharacterReplacement(vmdSession);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        string timelineRestoreStatus;
+        bool timelineRestored = VRTimelineService.RestoreAfterSceneMutation(
+            timelineSession,
+            characterReplaced,
+            !characterReplaced || timelineTargetReady,
+            out timelineRestoreStatus);
+        if (!string.IsNullOrEmpty(timelineRestoreStatus))
+            status = string.IsNullOrEmpty(status)
+                ? timelineRestoreStatus
+                : status + "；" + timelineRestoreStatus;
+        if (!timelineRestored)
+            success = false;
+
+        if (characterReplaced && VRMmdPlaybackController.Instance != null)
+            VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(objectKey);
+
         _operationInProgress = false;
         ShowPage(WristMenuPage.CharacterPreview);
         if (success)
             VRLog.Info(status);
+        else
+            VRLog.Warn(status);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
             success ? 6f : 8f);
+        }
+        finally
+        {
+            if (timelineSession != null && !timelineSession.Completed)
+            {
+                string emergencyStatus;
+                VRTimelineService.RestoreAfterSceneMutation(
+                    timelineSession,
+                    characterReplaced,
+                    !characterReplaced || timelineTargetReady,
+                    out emergencyStatus);
+                if (!string.IsNullOrEmpty(emergencyStatus))
+                    VRLog.Warn("Timeline replacement cleanup: " + emergencyStatus);
+            }
+            _operationInProgress = false;
+        }
     }
 
     private IEnumerator ExecuteCoordinateReplacementAfterFrame(
@@ -1351,7 +2224,8 @@ public sealed partial class VRWristMenuController
         Studio.OCIChar expectedCharacter,
         VRCoordinateReplaceMode mode,
         int[] selectedAccessorySlots,
-        bool undo)
+        bool undo,
+        VRBoundAccessoryReplaceConfirmation boundConfirmation = null)
     {
         if (_operationInProgress)
             yield break;
@@ -1363,6 +2237,16 @@ public sealed partial class VRWristMenuController
                     "正在撤销上次换装…",
                     "直前の着替えを元に戻しています…",
                     "Undoing the last outfit change…")
+                : mode == VRCoordinateReplaceMode.BoundCompatibleFull
+                    ? L(
+                        "已确认风险，正在按原槽完整替换并保留绑定数据…",
+                        "確認済み：元スロットへ完全置換し、連動データを移行しています…",
+                        "Confirmed: replacing exact accessory slots with their bound data…")
+                : mode == VRCoordinateReplaceMode.RemoveTrackedAccessories
+                    ? L(
+                        "正在安全移除所选追加饰品…",
+                        "選択した追加アクセを安全に削除しています…",
+                        "Safely removing the selected appended accessories…")
                 : mode == VRCoordinateReplaceMode.ClothesOnly
                     ? L(
                         "正在只替换衣服，现有饰品保持不变…",
@@ -1380,7 +2264,11 @@ public sealed partial class VRWristMenuController
             new Color(0.47f, 0.9f, 0.55f, 1f),
             0f);
         VRCoordinateLoadSession session = null;
-        string status = undo ? "撤销换装没有启动" : "服装卡替换没有启动";
+        string status = undo
+            ? "撤销换装没有启动"
+            : mode == VRCoordinateReplaceMode.RemoveTrackedAccessories
+                ? "移除追加饰品没有启动"
+                : "服装卡替换没有启动";
         bool success = false;
         try
         {
@@ -1389,12 +2277,24 @@ public sealed partial class VRWristMenuController
             bool started;
             try
             {
-                started = undo
+                started = boundConfirmation != null
+                    ? VRCoordinateCardService.TryBeginBoundCompatibleReplace(
+                        boundConfirmation,
+                        out session,
+                        out status)
+                    : undo
                     ? VRCoordinateCardService.TryBeginUndoLastReplace(
                         objectKey,
                         expectedCharacter,
                         out session,
                         out status)
+                    : mode == VRCoordinateReplaceMode.RemoveTrackedAccessories
+                        ? VRCoordinateCardService.TryBeginRemoveTrackedAccessories(
+                            objectKey,
+                            expectedCharacter,
+                            selectedAccessorySlots,
+                            out session,
+                            out status)
                     : VRCoordinateCardService.TryBeginReplace(
                         objectKey,
                         expectedCharacter,
@@ -1407,7 +2307,12 @@ public sealed partial class VRWristMenuController
             catch (Exception ex)
             {
                 started = false;
-                status = (undo ? "撤销换装失败：" : "服装卡替换失败：") + ex.Message;
+                status = (undo
+                    ? "撤销换装失败："
+                    : mode == VRCoordinateReplaceMode.RemoveTrackedAccessories
+                        ? "移除追加饰品失败："
+                        : "服装卡替换失败：")
+                    + ex.Message;
             }
 
             if (started)
@@ -1559,9 +2464,25 @@ public sealed partial class VRWristMenuController
                     _lastCoordinateUndoCharacter = character;
                 }
                 VRCharacterClothingService.RefreshStudioCharacterPanel(character);
-                string highHeelStatus;
-                if (VRMmddService.RefreshHighHeels(objectKey, out highHeelStatus))
-                    VRLog.Info(highHeelStatus);
+                if (VRMmdPlaybackController.Instance != null)
+                    VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(objectKey);
+                if (mode == VRCoordinateReplaceMode.RemoveTrackedAccessories)
+                {
+                    List<VRTrackedAccessorySlotInfo> remaining;
+                    string remainingStatus;
+                    if (VRCoordinateCardService.TryGetTrackedAccessorySlots(
+                        character,
+                        out remaining,
+                        out remainingStatus)
+                        && remaining.Count > 0)
+                    {
+                        OpenTrackedAccessoryManager(
+                            objectKey,
+                            character,
+                            _trackedAccessoryTargetName,
+                            _trackedAccessoryOffset);
+                    }
+                }
             }
             else
             {
@@ -1670,9 +2591,8 @@ public sealed partial class VRWristMenuController
                         _lastCoordinateUndoCharacter = character;
                     }
                     VRCharacterClothingService.RefreshStudioCharacterPanel(character);
-                    string highHeelStatus;
-                    if (VRMmddService.RefreshHighHeels(objectKey, out highHeelStatus))
-                        VRLog.Info(highHeelStatus);
+                    if (VRMmdPlaybackController.Instance != null)
+                        VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(objectKey);
                 }
                 else
                 {

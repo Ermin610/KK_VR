@@ -92,10 +92,14 @@ internal class GripMoveKKCharaStudioTool : Tool
 	{
 		Transform head = VR.Camera.Head;
 		((Component)internalGui).transform.parent = ((Component)this).transform;
-		((Component)internalGui).transform.localScale = Vector3.one * 0.8f;
+		float guiScale = _settings != null ? _settings.UISpawnScale : 1.0f;
+		((Component)internalGui).transform.localScale = VRCameraMoveHelper.GetMainUIScale(guiScale);
 		if (head != null)
 		{
-			float dist = _settings != null ? _settings.UISpawnDistance : 2.0f;
+			float dist = Mathf.Clamp(
+				_settings != null ? _settings.UISpawnDistance : 2.0f,
+				VRCameraMoveHelper.MinMainUIDistance,
+				VRCameraMoveHelper.MaxMainUIDistance);
 			((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, dist));
 			((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
 		}
@@ -106,6 +110,20 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 		((Component)internalGui).transform.parent = ((Component)this).transform.parent;
 		internalGui.UpdateAspect();
+		if (VRQuickActions.Instance != null)
+			VRQuickActions.Instance.RememberMainGUIScale(internalGui);
+	}
+
+	internal static void CancelAllTimelineLockedInteraction()
+	{
+		// Work from a snapshot because releasing a tool can indirectly change the
+		// active tool set during a controller lifecycle transition.
+		var tools = new List<GripMoveKKCharaStudioTool>(ActiveTools);
+		foreach (GripMoveKKCharaStudioTool tool in tools)
+		{
+			if (tool != null)
+				tool.SuppressTimelineLockedInteraction();
+		}
 	}
 
 	private IEnumerator DelayedResetGUI()
@@ -437,12 +455,22 @@ internal class GripMoveKKCharaStudioTool : Tool
 			ApplyHandModelState(currentHandEnabled);
 		}
 
+		if (VRMmdPlaybackController.BlocksNormalInput)
+		{
+			SuppressTimelineLockedInteraction();
+			return;
+		}
+
 		if (!_isLeftHand && VRWristMenuController.IsOpen)
 		{
 			// Keep right-stick turning available while the wrist menu owns the
 			// trigger. Vertical locomotion stays disabled so menu scrolling cannot
 			// accidentally change the player's height.
-			HandleThumbstickLocomotion(true);
+			if (HandleThumbstickLocomotion(true))
+			{
+				SuppressTimelineLockedInteraction();
+				return;
+			}
 			SetComfortMoving(false);
 			ClearProximityHighlight();
 			if (grabbingObject != null || screenGrabbed)
@@ -452,7 +480,17 @@ internal class GripMoveKKCharaStudioTool : Tool
 			return;
 		}
 
-		HandleThumbstickLocomotion(false);
+		if (HandleThumbstickLocomotion(false))
+		{
+			SuppressTimelineLockedInteraction();
+			return;
+		}
+
+		if (VRTimelineCameraFollowController.IsManualMovementLocked)
+		{
+			SuppressTimelineLockedInteraction();
+			return;
+		}
 
 		if (VRQuickActions.ikVisible)
 		{
@@ -534,18 +572,60 @@ internal class GripMoveKKCharaStudioTool : Tool
 		}
 	}
 
-	private void HandleThumbstickLocomotion(bool wristMenuOpen)
+	private bool HandleThumbstickLocomotion(bool wristMenuOpen)
 	{
 		if (!wristMenuOpen && gripMenuHandler != null && gripMenuHandler.LaserVisible)
 		{
 			SetComfortMoving(false);
-			return;
+			return false;
 		}
 		Vector2 axis = controller.GetAxis(EVRButtonId.k_EButton_SteamVR_Touchpad);
 		bool isLeft = _isLeftHand;
+		bool stickClick = controller.GetPressDown(EVRButtonId.k_EButton_SteamVR_Touchpad);
+		bool clickChorded = controller.GetPress(EVRButtonId.k_EButton_Grip)
+			|| controller.GetPress(EVRButtonId.k_EButton_Axis1)
+			|| controller.GetPress(EVRButtonId.k_EButton_ApplicationMenu);
+		bool axisMovementIntent = isLeft
+			? Mathf.Abs(axis.y) > 0.1f || Mathf.Abs(axis.x) > 0.1f
+			: Mathf.Abs(axis.x) > 0.1f || (!wristMenuOpen && Mathf.Abs(axis.y) > 0.1f);
+		bool clickMovementIntent = stickClick && !clickChorded;
+
+		// The early MMD presentation controller releases its input lock as soon
+		// as the left stick pauses playback. Do not let that same edge leak into
+		// locomotion later in this frame.
+		if (isLeft && VRMmdPlaybackController.ConsumedPlaybackClickThisFrame)
+		{
+			SetComfortMoving(false);
+			return true;
+		}
+
+		// Right-stick click owns Timeline play/pause while the Timeline page,
+		// playback, or an already-claimed Timeline control space is active.
+		if (!isLeft && clickMovementIntent
+			&& VRTimelineCameraFollowController.ShouldClaimRightStickTransport)
+		{
+			VRTimelineCameraFollowController.TryHandleRightStickPlaybackToggle();
+			SetComfortMoving(false);
+			return true;
+		}
+
+		// While Timeline owns the camera, right-stick Y is the composition/FOV
+		// input even with the wrist page open. Consume it here as well so the
+		// locomotion tool does not incorrectly enable the comfort vignette.
+		bool timelineCompositionIntent = !isLeft
+			&& (Mathf.Abs(axis.y) > 0.1f
+				|| (controller.GetPress(EVRButtonId.k_EButton_Grip)
+					&& Mathf.Abs(axis.x) > 0.1f))
+			&& VRTimelineCameraFollowController.IsPlaybackInputLocked;
+		if ((axisMovementIntent || timelineCompositionIntent)
+			&& VRTimelineCameraFollowController.IsManualMovementLocked)
+		{
+			SetComfortMoving(false);
+			return true;
+		}
 
 		// Right thumbstick click: reset view orientation (fixes MMD animation rotation)
-		if (!isLeft && controller.GetPressDown(EVRButtonId.k_EButton_SteamVR_Touchpad))
+		if (!isLeft && stickClick)
 		{
 			Transform origin = VR.Camera.SteamCam.origin;
 			if (origin != null)
@@ -609,6 +689,28 @@ internal class GripMoveKKCharaStudioTool : Tool
 		{
 			SetComfortMoving(false);
 		}
+
+		return false;
+	}
+
+	private void SuppressTimelineLockedInteraction()
+	{
+		SetComfortMoving(false);
+		ClearProximityHighlight();
+		if (grabbingObject != null || screenGrabbed)
+			ReleaseActiveGrab(false);
+		if (_grabLine != null)
+			((Component)_grabLine).gameObject.SetActive(false);
+
+		// Keep the world-grab baseline current while movement is locked. If a
+		// grip remains held when Timeline is paused, the next frame starts from
+		// the hand's current pose instead of applying the whole playback delta.
+		if (marker != null)
+		{
+			marker.transform.position = ((Component)this).transform.position;
+			marker.transform.rotation = ((Component)this).transform.rotation;
+		}
+		nearestGrabable = float.MaxValue;
 	}
 
 	private void HandleButtonEvents()

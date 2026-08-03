@@ -5,10 +5,17 @@
     <TargetFramework>net35</TargetFramework>
     <KKGameDir Condition="'$(KKGameDir)' == ''">..\..\Koikatu3</KKGameDir>
     <LegacyLibDir Condition="'$(LegacyLibDir)' == ''">..\libs</LegacyLibDir>
+    <BuildNativeReShadeBridge Condition="'$(BuildNativeReShadeBridge)' == ''">true</BuildNativeReShadeBridge>
+    <ReShadeBridgeProject>$(MSBuildThisFileDirectory)..\native\KKVRReShadeBridge\KKVRReShadeBridge.vcxproj</ReShadeBridgeProject>
+    <ReShadeBridgeOutput>$(MSBuildThisFileDirectory)..\native\KKVRReShadeBridge\bin\x64\Release\KKVRReShadeBridge.addon64</ReShadeBridgeOutput>
   </PropertyGroup>
   <PropertyGroup>
     <LangVersion>11.0</LangVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <PropertyGroup>
     <RootNamespace />
@@ -49,4 +56,25 @@
     <EmbeddedResource Remove="**/*.resx" />
     <EmbeddedResource Include="KKCharaStudioVR.Resource.resources" />
   </ItemGroup>
+  <Target Name="BuildAndStageNativeReShadeBridge"
+          BeforeTargets="CoreCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeReShadeBridge)' == 'true'">
+    <Error Condition="!Exists('$(ReShadeBridgeProject)')"
+           Text="The tracked KKVRReShadeBridge native project is missing: $(ReShadeBridgeProject)" />
+    <MSBuild Projects="$(ReShadeBridgeProject)"
+             Targets="Build"
+             BuildInParallel="false"
+             Properties="Configuration=Release;Platform=x64" />
+    <Error Condition="!Exists('$(ReShadeBridgeOutput)')"
+           Text="KKVRReShadeBridge.addon64 was not produced. Install the Visual Studio 2022 Desktop development with C++ workload and Windows SDK." />
+    <MakeDir Directories="$(TargetDir)" />
+    <Copy SourceFiles="$(ReShadeBridgeOutput)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="WarnManagedOnlyBuild"
+          BeforeTargets="CoreCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeReShadeBridge)' != 'true'">
+    <Warning Text="BuildNativeReShadeBridge=false: this managed-only output is not a complete release package and ReShade controls will be unavailable." />
+  </Target>
 </Project>

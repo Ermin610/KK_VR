@@ -43,6 +43,11 @@ public class VRCameraMoveHelper : MonoBehaviour
 	private float DEFAULT_DISTANCE = 3f;
 
 	private float DISTANCE_RATIO = 1f;
+	private const float MainUIBaseScale = 0.8f;
+	public const float MinMainUIDistance = 0.3f;
+	public const float MaxMainUIDistance = 3.0f;
+	public const float MinMainUIScale = 0.6f;
+	public const float MaxMainUIScale = 2.0f;
 
 	public static VRCameraMoveHelper Instance => _instance;
 
@@ -86,43 +91,87 @@ public class VRCameraMoveHelper : MonoBehaviour
 		
 		// Reposition the main floating studio UI quad directly in front of the player's eyes
 		float dist = 2.0f;
+		float scale = 1.0f;
 		var settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
 		if (settings != null)
 		{
 			dist = settings.UISpawnDistance;
+			scale = settings.UISpawnScale;
 		}
-		RepositionMainUI(dist);
+		RepositionMainUI(dist, scale);
 	}
 
 	public static void RepositionMainUI(float dist)
+	{
+		float scale = 1.0f;
+		if (VR.Manager != null && VR.Manager.Context != null)
+		{
+			KKCharaStudioVRSettings settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+			if (settings != null)
+				scale = settings.UISpawnScale;
+		}
+		RepositionMainUI(dist, scale);
+	}
+
+	public static Vector3 GetMainUIScale(float multiplier)
+	{
+		float y = MainUIBaseScale * Mathf.Clamp(multiplier, MinMainUIScale, MaxMainUIScale);
+		float aspect = VRGUI.Height > 0 ? (float)VRGUI.Width / VRGUI.Height : 1f;
+		return new Vector3(y * aspect, y, 1f);
+	}
+
+	public static void RepositionMainUI(float dist, float scaleMultiplier)
+	{
+		RepositionMainUI(dist, scaleMultiplier, true);
+	}
+
+	public static void RepositionMainUI(float dist, float scaleMultiplier, bool ensureVisible)
 	{
 		try
 		{
 			Transform head = VR.Camera.Head;
 			if (head == null) return;
+			dist = Mathf.Clamp(dist, MinMainUIDistance, MaxMainUIDistance);
 
-			Type toolType = typeof(VRCameraMoveHelper).Assembly.GetType("KKCharaStudioVR.GripMoveKKCharaStudioTool");
-			if (toolType != null)
+			VRGIN.Visuals.GUIQuad internalGui = GetMainUI();
+			if (internalGui != null)
 			{
-				var guiField = toolType.GetField("internalGui", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-				if (guiField != null)
-				{
-					var internalGui = guiField.GetValue(null) as VRGIN.Visuals.GUIQuad;
-					if (internalGui != null)
-					{
-						VRLog.Info("RepositionMainUI: Repositioning internalGui directly!");
-						((Component)internalGui).gameObject.SetActive(true);
-						((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, dist));
-						((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
-						((Component)internalGui).transform.localScale = Vector3.one * 0.8f;
-						internalGui.UpdateAspect();
-					}
-				}
+				VRLog.Info("RepositionMainUI: Repositioning internalGui directly!");
+				if (ensureVisible)
+					((Component)internalGui).gameObject.SetActive(true);
+				((Component)internalGui).transform.position = head.TransformPoint(new Vector3(0f, 0f, dist));
+				((Component)internalGui).transform.rotation = Quaternion.LookRotation(head.TransformVector(new Vector3(0f, 0f, 1f)));
+				((Component)internalGui).transform.localScale = GetMainUIScale(scaleMultiplier);
+				internalGui.UpdateAspect();
+				if (VRQuickActions.Instance != null)
+					VRQuickActions.Instance.RememberMainGUIScale(internalGui);
 			}
 		}
 		catch (Exception ex)
 		{
 			VRLog.Error($"RepositionMainUI failed: {ex}");
+		}
+	}
+
+	internal static VRGIN.Visuals.GUIQuad GetMainUI()
+	{
+		try
+		{
+			Type toolType = typeof(VRCameraMoveHelper).Assembly.GetType("KKCharaStudioVR.GripMoveKKCharaStudioTool");
+			if (toolType == null)
+				return null;
+			var guiField = toolType.GetField(
+				"internalGui",
+				System.Reflection.BindingFlags.Static
+				| System.Reflection.BindingFlags.NonPublic
+				| System.Reflection.BindingFlags.Public);
+			return guiField == null
+				? null
+				: guiField.GetValue(null) as VRGIN.Visuals.GUIQuad;
+		}
+		catch
+		{
+			return null;
 		}
 	}
 

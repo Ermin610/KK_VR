@@ -111,9 +111,12 @@ internal static class VRWristFileCatalog
         string directory,
         string[] extensions,
         bool inspectVmd,
-        Func<string, bool> fileFilter)
+        Func<string, bool> fileFilter,
+        bool filesBeforeDirectories)
     {
         List<VRWristFileEntry> entries = new List<VRWristFileEntry>();
+        List<VRWristFileEntry> directoryEntries = new List<VRWristFileEntry>();
+        List<VRWristFileEntry> fileEntries = new List<VRWristFileEntry>();
         string safeRoot;
         string safeDirectory;
         if (!TryResolveDirectory(root, directory, out safeRoot, out safeDirectory))
@@ -125,7 +128,7 @@ internal static class VRWristFileCatalog
             Array.Sort(directories, StringComparer.CurrentCultureIgnoreCase);
             foreach (string child in directories)
             {
-                entries.Add(new VRWristFileEntry
+                directoryEntries.Add(new VRWristFileEntry
                 {
                     DisplayName = Path.GetFileName(child),
                     FullPath = child,
@@ -157,7 +160,18 @@ internal static class VRWristFileCatalog
                     entry.VmdMetadata = metadata;
                 }
 
-                entries.Add(entry);
+                fileEntries.Add(entry);
+            }
+
+            if (filesBeforeDirectories)
+            {
+                entries.AddRange(fileEntries);
+                entries.AddRange(directoryEntries);
+            }
+            else
+            {
+                entries.AddRange(directoryEntries);
+                entries.AddRange(fileEntries);
             }
         }
         catch (Exception)

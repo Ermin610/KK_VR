@@ -313,6 +313,8 @@ public sealed partial class VRWristMenuController
             else if (!timedOut)
             {
                 VRCharacterClothingService.RefreshStudioCharacterPanel(liveCharacter);
+                if (VRMmdPlaybackController.Instance != null)
+                    VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(_clothingTargetObjectKey);
             }
         }
 

@@ -11,6 +11,8 @@ namespace KKCharaStudioVR;
 
 public class VRQuickActions : MonoBehaviour
 {
+    private const float GuiTogglePressMaxDuration = 0.45f;
+
     public static VRQuickActions Instance { get; private set; }
 
     private bool uiVisible = true;
@@ -18,6 +20,11 @@ public class VRQuickActions : MonoBehaviour
     private float lastToggleTime = 0f;
     private Dictionary<GUIQuad, Vector3> originalScales = new Dictionary<GUIQuad, Vector3>();
     private Dictionary<GUIQuad, Coroutine> scaleCoroutines = new Dictionary<GUIQuad, Coroutine>();
+    private bool _guiTogglePressActive;
+    private bool _guiTogglePressChorded;
+    private float _guiTogglePressStarted;
+    private bool _presentationSuppressed;
+    private readonly Dictionary<GUIQuad, bool> _presentationStates = new Dictionary<GUIQuad, bool>();
 
     private void Awake()
     {
@@ -26,6 +33,7 @@ public class VRQuickActions : MonoBehaviour
 
     private void OnDestroy()
     {
+        SetPresentationSuppressed(false);
         if (Instance == this)
             Instance = null;
     }
@@ -33,23 +41,38 @@ public class VRQuickActions : MonoBehaviour
     private void Update()
     {
         if (VR.Mode == null) return;
+        if (_presentationSuppressed)
+        {
+            SuppressNewPresentationGuiQuads();
+            return;
+        }
+        if (VRMmdPlaybackController.ConsumedPlaybackClickThisFrame
+            || VRTimelineCameraFollowController.ConsumedRightStickTransportThisFrame
+            || VRMmdPlaybackController.BlocksNormalInput)
+            return;
         var left = VR.Mode.Left;
         var right = VR.Mode.Right;
 
         SteamVR_Controller.Device leftController = GetDevice(left);
         SteamVR_Controller.Device rightController = GetDevice(right);
 
-        // A 按钮（右手） —— 切换所有 UI
-        if (rightController != null && rightController.GetPressDown(EVRButtonId.k_EButton_A))
-        {
-            ToggleAllGUI();
-        }
+        // GUI 显隐按键可使用当前双手布局，或集中到左手 X/Y、右手 A/B。
+        KKCharaStudioVRSettings settings = GetSettings();
+        HandleGuiToggleButton(settings, leftController, rightController);
 
         // 左摇杆按下逻辑分支
         if (leftController != null && leftController.GetPressDown(EVRButtonId.k_EButton_Axis0))
         {
             bool isGripPressed = leftController.GetPress(EVRButtonId.k_EButton_Grip);
             bool isTriggerPressed = leftController.GetPress(EVRButtonId.k_EButton_Axis1);
+            bool isMenuPressed = leftController.GetPress(EVRButtonId.k_EButton_ApplicationMenu);
+
+            // The left stick belongs exclusively to MMD playback transport.
+            if (!isGripPressed && !isTriggerPressed && !isMenuPressed
+                && VRMmdPlaybackController.TryHandleLeftStickPlaybackToggle())
+            {
+                return;
+            }
 
             if (isGripPressed && isTriggerPressed)
             {
@@ -61,16 +84,28 @@ public class VRQuickActions : MonoBehaviour
                 // 左摇杆按下 + 中指 Grip (未按扳机) —— 召唤主菜单到面前
                 SummonMainGUI();
             }
-            else
+            else if (!isTriggerPressed && !isMenuPressed)
             {
                 // 左摇杆按下 (且未握住 Grip 和 Trigger) —— 切换 MMDD 播放/暂停
+                VRMmdPlaybackController.ConsumeLeftStickPlaybackClick();
                 ToggleMMDDPlayPause();
             }
         }
 
-        // 右摇杆按下 —— 撤销上一步操作
+        // 右摇杆按下优先控制 Timeline；不在 Timeline 控制空间时仍为撤销。
         if (rightController != null && rightController.GetPressDown(EVRButtonId.k_EButton_Axis0))
         {
+            bool isChorded = rightController.GetPress(EVRButtonId.k_EButton_Grip)
+                || rightController.GetPress(EVRButtonId.k_EButton_Axis1)
+                || rightController.GetPress(EVRButtonId.k_EButton_ApplicationMenu);
+            if (!isChorded)
+            {
+                if (VRTimelineCameraFollowController.TryHandleRightStickPlaybackToggle())
+                    return;
+                if (VRTimelineCameraFollowController.ShouldClaimRightStickTransport)
+                    return;
+            }
+
             TryUndo();
         }
     }
@@ -88,9 +123,113 @@ public class VRQuickActions : MonoBehaviour
         return null;
     }
 
-    private void ToggleAllGUI()
+    internal void SetPresentationSuppressed(bool suppressed)
     {
-        if (Time.time - lastToggleTime < 0.5f) return;
+        if (_presentationSuppressed == suppressed)
+            return;
+        _presentationSuppressed = suppressed;
+        _guiTogglePressActive = false;
+
+        if (suppressed)
+        {
+            _presentationStates.Clear();
+            SuppressNewPresentationGuiQuads();
+            return;
+        }
+
+        foreach (KeyValuePair<GUIQuad, bool> pair in new Dictionary<GUIQuad, bool>(_presentationStates))
+        {
+            GUIQuad quad = pair.Key;
+            if (quad != null && quad.gameObject != null)
+                quad.gameObject.SetActive(pair.Value);
+        }
+        _presentationStates.Clear();
+    }
+
+    private void SuppressNewPresentationGuiQuads()
+    {
+        foreach (GUIQuad quad in new List<GUIQuad>(GUIQuadRegistry.Quads))
+        {
+            if (quad == null || quad.gameObject == null)
+                continue;
+            if (!_presentationStates.ContainsKey(quad))
+                _presentationStates[quad] = quad.gameObject.activeSelf;
+            if (quad.gameObject.activeSelf)
+                quad.gameObject.SetActive(false);
+        }
+    }
+
+    private static KKCharaStudioVRSettings GetSettings()
+    {
+        if (VR.Manager == null || VR.Manager.Context == null)
+            return null;
+        return VR.Manager.Context.Settings as KKCharaStudioVRSettings;
+    }
+
+    private void HandleGuiToggleButton(
+        KKCharaStudioVRSettings settings,
+        SteamVR_Controller.Device leftController,
+        SteamVR_Controller.Device rightController)
+    {
+        string layout = settings != null
+            ? settings.ControllerFaceButtonLayout
+            : KKCharaStudioVRSettings.ControllerLayoutSplitHands;
+
+        SteamVR_Controller.Device device;
+        EVRButtonId button;
+
+        if (layout == KKCharaStudioVRSettings.ControllerLayoutLeftHand)
+        {
+            device = leftController;
+            button = EVRButtonId.k_EButton_ApplicationMenu;
+        }
+        else if (layout == KKCharaStudioVRSettings.ControllerLayoutRightHand)
+        {
+            device = rightController;
+            button = EVRButtonId.k_EButton_ApplicationMenu;
+        }
+        else
+        {
+            device = rightController;
+            button = EVRButtonId.k_EButton_A;
+        }
+
+        if (device == null)
+        {
+            _guiTogglePressActive = false;
+            return;
+        }
+
+        if (device.GetPressDown(button))
+        {
+            _guiTogglePressActive = true;
+            _guiTogglePressChorded = false;
+            _guiTogglePressStarted = Time.unscaledTime;
+        }
+
+        if (_guiTogglePressActive && device.GetPress(button))
+        {
+            // ApplicationMenu is also used for long-hold reset and Grip/Trigger
+            // chords. Only an unchorded short release may toggle GUI visibility.
+            _guiTogglePressChorded |= device.GetPress(EVRButtonId.k_EButton_Grip)
+                || device.GetPress(EVRButtonId.k_EButton_Axis1);
+        }
+
+        if (!_guiTogglePressActive || !device.GetPressUp(button))
+            return;
+
+        float duration = Time.unscaledTime - _guiTogglePressStarted;
+        _guiTogglePressActive = false;
+        if (!_guiTogglePressChorded && duration <= GuiTogglePressMaxDuration)
+        {
+            ToggleAllGUI();
+        }
+    }
+
+    private bool ToggleAllGUI(bool bypassDebounce = false)
+    {
+        if (!bypassDebounce && Time.time - lastToggleTime < 0.5f)
+            return false;
         lastToggleTime = Time.time;
 
         uiVisible = !uiVisible;
@@ -129,11 +268,7 @@ public class VRQuickActions : MonoBehaviour
             // GUIQuadRegistry when SetActive(false) triggered OnDisable → Unregister,
             // so GUIQuadRegistry.Quads is empty. We must use our saved references.
             Transform head = VR.Camera.Head;
-            KKCharaStudioVRSettings settings = null;
-            if (VR.Manager != null && VR.Manager.Context != null)
-            {
-                settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
-            }
+            KKCharaStudioVRSettings settings = GetSettings();
             float guiDistance = settings != null ? settings.UISpawnDistance : 2.0f;
             float guiDrop = 0.05f;
 
@@ -174,6 +309,7 @@ public class VRQuickActions : MonoBehaviour
             previousStates.Clear();
         }
         VRLog.Info($"Toggled UI Visibility to: {uiVisible}");
+        return true;
     }
 
     private IEnumerator ScaleAnimation(GUIQuad quad, Vector3 targetScale, bool hideAfter, Vector3 restoreScale)
@@ -209,11 +345,30 @@ public class VRQuickActions : MonoBehaviour
         }
     }
 
-    public void SummonMainGUI()
+    public bool SummonMainGUI()
+    {
+        return PlaceMainGUI(true);
+    }
+
+    public void RepositionMainGUIWithoutChangingVisibility()
+    {
+        PlaceMainGUI(false);
+    }
+
+    internal void RememberMainGUIScale(GUIQuad mainQuad)
+    {
+        if (mainQuad != null && mainQuad.gameObject != null
+            && mainQuad.transform.localScale != Vector3.zero)
+        {
+            originalScales[mainQuad] = mainQuad.transform.localScale;
+        }
+    }
+
+    private bool PlaceMainGUI(bool reveal)
     {
         // Search both registry (active quads) and previousStates (hidden quads)
-        GUIQuad mainQuad = null;
-        float maxSize = -1;
+        GUIQuad mainQuad = VRCameraMoveHelper.GetMainUI();
+        float maxSize = mainQuad != null ? float.MaxValue : -1f;
 
         foreach (var quad in GUIQuadRegistry.Quads)
         {
@@ -247,12 +402,9 @@ public class VRQuickActions : MonoBehaviour
             Transform head = VR.Camera.Head;
             if (head != null)
             {
-                KKCharaStudioVRSettings settings = null;
-                if (VR.Manager != null && VR.Manager.Context != null)
-                {
-                    settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
-                }
+                KKCharaStudioVRSettings settings = GetSettings();
                 float guiDistance = settings != null ? settings.UISpawnDistance : 2.0f;
+                float guiScale = settings != null ? settings.UISpawnScale : 1.0f;
 
                 Vector3 forward = head.forward;
                 forward.y = 0f;
@@ -261,22 +413,33 @@ public class VRQuickActions : MonoBehaviour
 
                 mainQuad.transform.position = head.position + forward * guiDistance - Vector3.up * 0.05f;
                 mainQuad.transform.rotation = Quaternion.LookRotation(forward);
-                VRLog.Info("Summoned main GUI panel to face");
+                VRLog.Info(reveal
+                    ? "Summoned main GUI panel to face"
+                    : "Updated main GUI placement without changing visibility");
 
-                if (!originalScales.ContainsKey(mainQuad) && mainQuad.transform.localScale != Vector3.zero)
-                {
-                    originalScales[mainQuad] = mainQuad.transform.localScale;
-                }
-                Vector3 targetScale = originalScales.ContainsKey(mainQuad) ? originalScales[mainQuad] : Vector3.one;
+                Vector3 targetScale = VRCameraMoveHelper.GetMainUIScale(guiScale);
+                originalScales[mainQuad] = targetScale;
 
                 if (!uiVisible)
                 {
-                    // If UI is hidden, toggle all on (which repositions everything)
-                    ToggleAllGUI();
+                    mainQuad.transform.localScale = targetScale;
+                    if (reveal)
+                    {
+                        // Explicit Recall reveals the prior UI set; +/- previews do not.
+                        if (!ToggleAllGUI(true))
+                            return false;
+                    }
                 }
                 else
                 {
-                    mainQuad.gameObject.SetActive(true);
+                    if (reveal)
+                        mainQuad.gameObject.SetActive(true);
+
+                    if (!mainQuad.gameObject.activeSelf)
+                    {
+                        mainQuad.transform.localScale = targetScale;
+                        return false;
+                    }
 
                     if (scaleCoroutines.ContainsKey(mainQuad) && scaleCoroutines[mainQuad] != null)
                     {
@@ -285,8 +448,10 @@ public class VRQuickActions : MonoBehaviour
                     mainQuad.transform.localScale = Vector3.zero;
                     scaleCoroutines[mainQuad] = StartCoroutine(ScaleAnimation(mainQuad, targetScale, false, targetScale));
                 }
+                return !reveal || (uiVisible && mainQuad.gameObject.activeSelf);
             }
         }
+        return false;
     }
 
     private void TryUndo()

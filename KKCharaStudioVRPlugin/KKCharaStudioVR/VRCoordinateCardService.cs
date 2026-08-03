@@ -16,7 +16,9 @@ internal enum VRCoordinateReplaceMode
 {
     ClothesOnly,
     SelectedAccessories,
-    Full
+    Full,
+    BoundCompatibleFull,
+    RemoveTrackedAccessories
 }
 
 internal sealed class VRCoordinateAccessorySlotInfo
@@ -25,6 +27,35 @@ internal sealed class VRCoordinateAccessorySlotInfo
     public int Type;
     public int Id;
     public string DisplayName;
+}
+
+/// <summary>
+/// One-shot proof that the user has seen the destructive, slot-aligned accessory
+/// replacement warning. The token binds the confirmation to one character, card,
+/// file revision, and target coordinate state so a stale second click cannot apply
+/// to a different target.
+/// </summary>
+internal sealed class VRBoundAccessoryReplaceConfirmation
+{
+    internal int ObjectKey;
+    internal OCIChar Character;
+    internal string Path;
+    internal long FileLength;
+    internal long FileWriteTicks;
+    internal byte[] TargetCoordinateBytes;
+    internal string[] SourcePluginGuids;
+    internal string[] TargetPluginGuids;
+    internal bool Consumed;
+
+    public string Warning { get; internal set; }
+
+    public string[] SourceBoundPluginGuids => SourcePluginGuids != null
+        ? (string[])SourcePluginGuids.Clone()
+        : new string[0];
+
+    public string[] TargetBoundPluginGuids => TargetPluginGuids != null
+        ? (string[])TargetPluginGuids.Clone()
+        : new string[0];
 }
 
 internal static class VRCoordinateCardService
@@ -165,6 +196,27 @@ internal static class VRCoordinateCardService
         }
     }
 
+    public static bool TryGetTrackedAccessorySlots(
+        OCIChar character,
+        out List<VRTrackedAccessorySlotInfo> slots,
+        out string status)
+    {
+        slots = new List<VRTrackedAccessorySlotInfo>();
+        if (character == null
+            || character.charInfo == null
+            || character.charInfo.nowCoordinate?.accessory?.parts == null)
+        {
+            status = "目标角色尚未初始化完成或已经失效";
+            return false;
+        }
+
+        slots = VRCoordinateAccessoryTracker.GetValidSlots(character);
+        status = slots.Count == 0
+            ? "这个角色没有由本插件追加且仍可安全管理的饰品"
+            : null;
+        return true;
+    }
+
     private static void TryAppendLegacyMoreAccessorySlots(
         ChaFileCoordinate coordinate,
         int firstSlot,
@@ -229,6 +281,256 @@ internal static class VRCoordinateCardService
         }
     }
 
+    public static bool TryPrepareBoundCompatibleReplace(
+        int objectKey,
+        OCIChar expectedCharacter,
+        string path,
+        out VRBoundAccessoryReplaceConfirmation confirmation,
+        out string status)
+    {
+        confirmation = null;
+        try
+        {
+            if (!TryEnsureNoActiveSession("确认原槽换装", out status))
+                return false;
+
+            ChaFileCoordinate coordinate;
+            if (!TryLoadCoordinate(path, out coordinate, out status))
+                return false;
+
+            OCIChar character;
+            if (!TryResolveReadyCharacter(
+                objectKey,
+                expectedCharacter,
+                "确认原槽换装",
+                out character,
+                out status))
+            {
+                return false;
+            }
+
+            Assembly pluginAssembly = FindLoadedAssembly(CoordinatePluginAssemblyName);
+            if (pluginAssembly == null)
+            {
+                status = "原槽兼容换装需要 Coordinate Load Option；未执行换装";
+                return false;
+            }
+            if (IsCoordinateLoadOptionBusy(pluginAssembly))
+            {
+                status = "Coordinate Load Option 正在处理其他换装，请稍后";
+                return false;
+            }
+
+            string lifecycleError;
+            if (!TryInvokeCharacterApiCoordinateLifecycle(
+                character.charInfo,
+                character.charInfo.nowCoordinate,
+                true,
+                out lifecycleError))
+            {
+                status = "无法同步目标角色的饰品绑定状态：" + lifecycleError;
+                return false;
+            }
+
+            string[] sourcePlugins;
+            string[] targetPlugins;
+            if (!TryInspectBoundAccessoryData(
+                pluginAssembly,
+                coordinate,
+                character.charInfo.nowCoordinate,
+                out sourcePlugins,
+                out targetPlugins,
+                out status))
+            {
+                return false;
+            }
+            if (sourcePlugins.Length == 0 && targetPlugins.Length == 0)
+            {
+                status = "没有检测到饰品绑定数据；请使用普通整套换装";
+                return false;
+            }
+
+            FileInfo file = new FileInfo(path);
+            confirmation = new VRBoundAccessoryReplaceConfirmation
+            {
+                ObjectKey = objectKey,
+                Character = character,
+                Path = Path.GetFullPath(path),
+                FileLength = file.Length,
+                FileWriteTicks = file.LastWriteTimeUtc.Ticks,
+                TargetCoordinateBytes = character.charInfo.nowCoordinate.SaveBytes(),
+                SourcePluginGuids = sourcePlugins,
+                TargetPluginGuids = targetPlugins,
+                Warning = BuildBoundCompatibleWarning(sourcePlugins, targetPlugins)
+            };
+            status = confirmation.Warning;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "无法准备原槽兼容换装确认：" + Unwrap(ex).Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
+    public static bool TryBeginBoundCompatibleReplace(
+        VRBoundAccessoryReplaceConfirmation confirmation,
+        out VRCoordinateLoadSession session,
+        out string status)
+    {
+        session = null;
+        try
+        {
+            if (confirmation == null || confirmation.Consumed)
+            {
+                status = "原槽换装确认已失效，请重新确认";
+                return false;
+            }
+            if (!TryEnsureNoActiveSession("原槽兼容换装", out status))
+                return false;
+
+            FileInfo file = new FileInfo(confirmation.Path ?? string.Empty);
+            if (!file.Exists
+                || file.Length != confirmation.FileLength
+                || file.LastWriteTimeUtc.Ticks != confirmation.FileWriteTicks)
+            {
+                status = "服装卡在确认后已变化，请重新确认";
+                return false;
+            }
+
+            ChaFileCoordinate coordinate;
+            if (!TryLoadCoordinate(confirmation.Path, out coordinate, out status))
+                return false;
+
+            OCIChar character;
+            if (!TryResolveReadyCharacter(
+                confirmation.ObjectKey,
+                confirmation.Character,
+                "原槽兼容换装",
+                out character,
+                out status))
+            {
+                return false;
+            }
+            byte[] currentTargetBytes = character.charInfo.nowCoordinate.SaveBytes();
+            if (confirmation.TargetCoordinateBytes == null
+                || currentTargetBytes == null
+                || !confirmation.TargetCoordinateBytes.SequenceEqual(currentTargetBytes))
+            {
+                status = "目标角色服装在确认后已变化，请重新确认";
+                return false;
+            }
+
+            Assembly pluginAssembly = FindLoadedAssembly(CoordinatePluginAssemblyName);
+            if (pluginAssembly == null)
+            {
+                status = "原槽兼容换装需要 Coordinate Load Option；未执行换装";
+                return false;
+            }
+            if (IsCoordinateLoadOptionBusy(pluginAssembly))
+            {
+                status = "Coordinate Load Option 正在处理其他换装，请稍后";
+                return false;
+            }
+
+            string lifecycleError;
+            if (!TryInvokeCharacterApiCoordinateLifecycle(
+                character.charInfo,
+                character.charInfo.nowCoordinate,
+                true,
+                out lifecycleError))
+            {
+                status = "无法同步目标角色的饰品绑定状态：" + lifecycleError;
+                return false;
+            }
+
+            string[] sourcePlugins;
+            string[] targetPlugins;
+            if (!TryInspectBoundAccessoryData(
+                pluginAssembly,
+                coordinate,
+                character.charInfo.nowCoordinate,
+                out sourcePlugins,
+                out targetPlugins,
+                out status))
+            {
+                return false;
+            }
+            if (!SamePluginSet(sourcePlugins, confirmation.SourcePluginGuids)
+                || !SamePluginSet(targetPlugins, confirmation.TargetPluginGuids))
+            {
+                status = "饰品绑定数据在确认后已变化，请重新确认";
+                return false;
+            }
+
+            int accessoryCount = GetAccessoryCount(pluginAssembly, coordinate);
+            string coordinateName = !string.IsNullOrEmpty(coordinate.coordinateName)
+                ? coordinate.coordinateName
+                : Path.GetFileNameWithoutExtension(confirmation.Path);
+            string[] boundPlugins = sourcePlugins
+                .Concat(targetPlugins)
+                .Where(guid => !string.IsNullOrEmpty(guid))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            VRCoordinateLoadSession candidate = new VRCoordinateLoadSession(
+                pluginAssembly,
+                character,
+                confirmation.Path,
+                coordinateName,
+                accessoryCount,
+                ClothesToggleNames,
+                Enumerable.Range(0, accessoryCount),
+                false,
+                false,
+                VRCoordinateReplaceMode.BoundCompatibleFull,
+                0,
+                true,
+                null,
+                coordinate,
+                boundPlugins);
+            if (!candidate.Begin(out status))
+            {
+                candidate.Abort();
+                return false;
+            }
+
+            confirmation.Consumed = true;
+            session = candidate;
+            RegisterSession(session);
+            if (string.IsNullOrEmpty(status))
+                status = "已确认覆盖风险，正在按原槽完整替换衣服和饰品";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "原槽兼容换装启动失败：" + Unwrap(ex).Message;
+            VRLog.Error(status);
+            return false;
+        }
+    }
+
+    internal static bool TryBeginPreservedOutfitRestore(
+        int objectKey,
+        OCIChar expectedCharacter,
+        string path,
+        int[] trackedAccessorySlots,
+        out VRCoordinateLoadSession session,
+        out string status)
+    {
+        return TryBeginReplaceCore(
+            objectKey,
+            expectedCharacter,
+            path,
+            trackedAccessorySlots != null && trackedAccessorySlots.Length > 0
+                ? VRCoordinateReplaceMode.SelectedAccessories
+                : VRCoordinateReplaceMode.ClothesOnly,
+            trackedAccessorySlots,
+            true,
+            out session,
+            out status);
+    }
+
     public static bool TryBeginReplace(
         int objectKey,
         OCIChar expectedCharacter,
@@ -258,9 +560,36 @@ internal static class VRCoordinateCardService
         out VRCoordinateLoadSession session,
         out string status)
     {
+        return TryBeginReplaceCore(
+            objectKey,
+            expectedCharacter,
+            path,
+            mode,
+            selectedAccessorySlots,
+            false,
+            out session,
+            out status);
+    }
+
+    private static bool TryBeginReplaceCore(
+        int objectKey,
+        OCIChar expectedCharacter,
+        string path,
+        VRCoordinateReplaceMode mode,
+        int[] selectedAccessorySlots,
+        bool shieldTargetBoundData,
+        out VRCoordinateLoadSession session,
+        out string status)
+    {
         session = null;
         try
         {
+            if (mode == VRCoordinateReplaceMode.BoundCompatibleFull)
+            {
+                status = "原槽兼容换装必须先取得二次确认令牌";
+                return false;
+            }
+
             if (_activeSession != null)
             {
                 bool priorSuccess;
@@ -339,6 +668,27 @@ internal static class VRCoordinateCardService
                     .ToArray();
             }
 
+            int skippedDuplicateAccessories = 0;
+            if (mode != VRCoordinateReplaceMode.ClothesOnly
+                && selectedAccessorySlots != null
+                && selectedAccessorySlots.Length > 0)
+            {
+                selectedAccessorySlots = VRCoordinateAccessoryTracker.FilterDuplicateSourceSlots(
+                    character,
+                    coordinate,
+                    selectedAccessorySlots,
+                    out skippedDuplicateAccessories);
+            }
+            if (shieldTargetBoundData
+                && mode == VRCoordinateReplaceMode.SelectedAccessories
+                && (selectedAccessorySlots == null || selectedAccessorySlots.Length == 0))
+            {
+                // All preserved additions already exist on the new character. Keep
+                // the CLO clothing/material path instead of falling back to a base-
+                // data-only compatibility assignment.
+                mode = VRCoordinateReplaceMode.ClothesOnly;
+            }
+
             int accessoryCount = pluginAssembly != null
                 ? GetAccessoryCount(pluginAssembly, coordinate)
                 : Math.Max(20, coordinate.accessory?.parts?.Length ?? 0);
@@ -357,6 +707,7 @@ internal static class VRCoordinateCardService
                         coordinate,
                         coordinateName,
                         "Coordinate Load Option 未安装",
+                        skippedDuplicateAccessories,
                         out session,
                         out status);
                 }
@@ -371,7 +722,8 @@ internal static class VRCoordinateCardService
                     new int[0],
                     true,
                     false,
-                    mode);
+                    mode,
+                    skippedDuplicateAccessories);
                 if (!clothesOnlyCandidate.Begin(out status))
                 {
                     bool canFallback = !clothesOnlyCandidate.TargetMayHaveChanged;
@@ -395,6 +747,7 @@ internal static class VRCoordinateCardService
                         coordinate,
                         coordinateName,
                         "Coordinate Load Option 接口不可用",
+                        skippedDuplicateAccessories,
                         out session,
                         out status);
                 }
@@ -403,7 +756,11 @@ internal static class VRCoordinateCardService
                 RegisterSession(session);
                 if (string.IsNullOrEmpty(status))
                     status = mode == VRCoordinateReplaceMode.Full
-                        ? "正在完整替换衣服；源卡没有饰品，现有饰品保持不变"
+                        ? skippedDuplicateAccessories > 0
+                            ? "正在完整替换衣服；已跳过重复饰品 "
+                                + skippedDuplicateAccessories
+                                + " 件"
+                            : "正在完整替换衣服；源卡没有饰品，现有饰品保持不变"
                         : "正在通过 Coordinate Load Option 只替换衣服";
                 return true;
             }
@@ -429,6 +786,7 @@ internal static class VRCoordinateCardService
                     coordinate,
                     coordinateName,
                     null,
+                    skippedDuplicateAccessories,
                     out session,
                     out status);
             }
@@ -452,27 +810,31 @@ internal static class VRCoordinateCardService
                 return false;
             }
 
+            string[] sourceBoundPlugins;
+            string[] targetBoundPlugins;
             string boundDataReason;
-            if (!CanUseHairProtectionBridge(
+            if (!TryInspectBoundAccessoryData(
                 pluginAssembly,
                 coordinate,
                 character.charInfo.nowCoordinate,
+                out sourceBoundPlugins,
+                out targetBoundPlugins,
                 out boundDataReason))
             {
                 VRLog.Warn(boundDataReason);
-                if (selectedAccessorySlots == null)
-                {
-                    return TryBeginCompatibilityReplace(
-                        character,
-                        coordinate,
-                        coordinateName,
-                        boundDataReason,
-                        out session,
-                        out status);
-                }
-
+                status = "无法检查饰品绑定数据：" + boundDataReason;
+                return false;
+            }
+            if (sourceBoundPlugins.Length > 0
+                || (targetBoundPlugins.Length > 0 && !shieldTargetBoundData))
+            {
+                boundDataReason = BuildBoundDataReason(
+                    sourceBoundPlugins,
+                    targetBoundPlugins);
+                VRLog.Warn(boundDataReason);
                 status = mode == VRCoordinateReplaceMode.Full
                     ? "整套换装未执行：" + boundDataReason
+                        + "；可在确认后使用原槽兼容换装"
                     : "自选饰品未执行：" + boundDataReason;
                 return false;
             }
@@ -487,7 +849,12 @@ internal static class VRCoordinateCardService
                 normalizedSlots,
                 false,
                 GetMoreAccessoriesMode(pluginAssembly) != 1,
-                mode);
+                mode,
+                skippedDuplicateAccessories,
+                false,
+                shieldTargetBoundData ? targetBoundPlugins : null,
+                null,
+                null);
             if (!candidate.Begin(out status))
             {
                 bool canFallback = !candidate.TargetMayHaveChanged;
@@ -517,6 +884,7 @@ internal static class VRCoordinateCardService
                     coordinate,
                     coordinateName,
                     "Coordinate Load Option 接口不可用",
+                    skippedDuplicateAccessories,
                     out session,
                     out status);
             }
@@ -527,6 +895,12 @@ internal static class VRCoordinateCardService
                 status = mode == VRCoordinateReplaceMode.Full
                     ? "正在完整替换衣服，并把全部源饰品追加到空槽"
                     : "正在换衣服并把所选饰品追加到空槽";
+            if (skippedDuplicateAccessories > 0)
+            {
+                status += "；已跳过重复饰品 "
+                    + skippedDuplicateAccessories
+                    + " 件";
+            }
             return true;
         }
         catch (Exception ex)
@@ -545,6 +919,25 @@ internal static class VRCoordinateCardService
         out VRCoordinateLoadSession session,
         out string status)
     {
+        return TryBeginCompatibilityReplace(
+            character,
+            coordinate,
+            coordinateName,
+            fallbackReason,
+            0,
+            out session,
+            out status);
+    }
+
+    private static bool TryBeginCompatibilityReplace(
+        OCIChar character,
+        ChaFileCoordinate coordinate,
+        string coordinateName,
+        string fallbackReason,
+        int skippedDuplicateAccessories,
+        out VRCoordinateLoadSession session,
+        out string status)
+    {
         try
         {
             // Fail-safe mode deliberately keeps the target coordinate's complete
@@ -553,6 +946,12 @@ internal static class VRCoordinateCardService
             status = string.IsNullOrEmpty(fallbackReason)
                 ? "已用兼容模式只替换衣服，并保留全部现有饰品：" + coordinateName
                 : "为保护发饰，已只替换衣服并保留全部现有饰品：" + coordinateName;
+            if (skippedDuplicateAccessories > 0)
+            {
+                status += "；已跳过重复饰品 "
+                    + skippedDuplicateAccessories
+                    + " 件";
+            }
             Exception loadError;
             if (!VRCoordinateLoadSession.TryCreateNativeAndRun(
                 character,
@@ -716,16 +1115,56 @@ internal static class VRCoordinateCardService
         }
     }
 
-    private static bool CanUseHairProtectionBridge(
+    internal static bool TryGetBoundAccessoryPluginGuids(
+        out string[] pluginGuids,
+        out string status)
+    {
+        pluginGuids = new string[0];
+        try
+        {
+            Assembly pluginAssembly = FindLoadedAssembly(CoordinatePluginAssemblyName);
+            Type pluginType = pluginAssembly?.GetType(
+                "KK_CoordinateLoadOption.KK_CoordinateLoadOption",
+                throwOnError: false);
+            FieldInfo boundPluginsField = pluginType?.GetField(
+                "pluginBoundAccessories",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            string[] values = boundPluginsField?.GetValue(null) as string[];
+            if (values == null)
+            {
+                status = "无法验证 Coordinate Load Option 的饰品绑定数据";
+                return false;
+            }
+
+            pluginGuids = values
+                .Where(guid => !string.IsNullOrEmpty(guid))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(guid => guid, StringComparer.Ordinal)
+                .ToArray();
+            status = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            status = "读取饰品绑定插件列表失败：" + Unwrap(ex).Message;
+            return false;
+        }
+    }
+
+    private static bool TryInspectBoundAccessoryData(
         Assembly pluginAssembly,
         ChaFileCoordinate source,
         ChaFileCoordinate target,
+        out string[] sourcePluginGuids,
+        out string[] targetPluginGuids,
         out string reason)
     {
+        sourcePluginGuids = new string[0];
+        targetPluginGuids = new string[0];
         reason = null;
         try
         {
-            Type pluginType = pluginAssembly.GetType(
+            Type pluginType = pluginAssembly?.GetType(
                 "KK_CoordinateLoadOption.KK_CoordinateLoadOption",
                 throwOnError: false);
             FieldInfo boundPluginsField = pluginType?.GetField(
@@ -746,23 +1185,26 @@ internal static class VRCoordinateCardService
                 return false;
             }
 
-            foreach (string pluginGuid in pluginGuids)
+            List<string> sourceMatches = new List<string>();
+            List<string> targetMatches = new List<string>();
+            foreach (string pluginGuid in pluginGuids
+                .Where(guid => !string.IsNullOrEmpty(guid))
+                .Distinct(StringComparer.Ordinal))
             {
-                if (string.IsNullOrEmpty(pluginGuid))
-                    continue;
-
-                if (getExtendedData.Invoke(null, new object[] { source, pluginGuid }) != null)
+                if (source != null
+                    && getExtendedData.Invoke(null, new object[] { source, pluginGuid }) != null)
                 {
-                    reason = "服装卡含饰品绑定数据（" + pluginGuid + "）";
-                    return false;
+                    sourceMatches.Add(pluginGuid);
                 }
                 if (target != null
                     && getExtendedData.Invoke(null, new object[] { target, pluginGuid }) != null)
                 {
-                    reason = "目标角色含饰品绑定数据（" + pluginGuid + "）";
-                    return false;
+                    targetMatches.Add(pluginGuid);
                 }
             }
+
+            sourcePluginGuids = sourceMatches.OrderBy(guid => guid, StringComparer.Ordinal).ToArray();
+            targetPluginGuids = targetMatches.OrderBy(guid => guid, StringComparer.Ordinal).ToArray();
             return true;
         }
         catch (Exception ex)
@@ -770,6 +1212,84 @@ internal static class VRCoordinateCardService
             reason = "检查饰品绑定数据失败：" + Unwrap(ex).Message;
             return false;
         }
+    }
+
+    private static string BuildBoundDataReason(
+        string[] sourcePluginGuids,
+        string[] targetPluginGuids)
+    {
+        if (sourcePluginGuids != null && sourcePluginGuids.Length > 0)
+            return "服装卡含饰品绑定数据（" + string.Join("、", sourcePluginGuids) + "）";
+        if (targetPluginGuids != null && targetPluginGuids.Length > 0)
+            return "目标角色含饰品绑定数据（" + string.Join("、", targetPluginGuids) + "）";
+        return "未检测到饰品绑定数据";
+    }
+
+    private static string BuildBoundCompatibleWarning(
+        string[] sourcePluginGuids,
+        string[] targetPluginGuids)
+    {
+        string details = BuildBoundDataReason(sourcePluginGuids, targetPluginGuids);
+        return details
+            + "。再次确认后将按原槽完整覆盖目标饰品（包括头饰），并同步绑定数据；可使用一次换装撤销恢复。";
+    }
+
+    private static bool SamePluginSet(string[] left, string[] right)
+    {
+        return new HashSet<string>(left ?? new string[0], StringComparer.Ordinal)
+            .SetEquals(right ?? new string[0]);
+    }
+
+    private static bool TryEnsureNoActiveSession(string operation, out string status)
+    {
+        if (_activeSession != null)
+        {
+            bool ignoredSuccess;
+            string ignoredStatus;
+            try
+            {
+                _activeSession.TryGetCompletion(out ignoredSuccess, out ignoredStatus);
+            }
+            catch (Exception ex)
+            {
+                VRLog.Warn("Could not poll the previous outfit operation before "
+                    + operation
+                    + ": "
+                    + Unwrap(ex).Message);
+                if (_activeSession != null && _activeSession.CanAbortSafely)
+                    _activeSession.Abort();
+            }
+        }
+        if (_activeSession != null)
+        {
+            status = "已有服装卡操作正在进行，请稍后再" + operation;
+            return false;
+        }
+
+        status = null;
+        return true;
+    }
+
+    private static bool TryResolveReadyCharacter(
+        int objectKey,
+        OCIChar expectedCharacter,
+        string operation,
+        out OCIChar character,
+        out string status)
+    {
+        if (!VRCharacterCardService.TryGetCharacter(objectKey, out character, out status))
+            return false;
+        if (expectedCharacter != null && !ReferenceEquals(character, expectedCharacter))
+        {
+            status = "场景角色已变化，请重新" + operation;
+            return false;
+        }
+        if (character.charInfo == null || !character.charInfo.loadEnd)
+        {
+            status = "所选角色仍在读取，请稍后再" + operation;
+            return false;
+        }
+        return true;
     }
 
     private static Type FindLoadedType(string fullName)
@@ -790,7 +1310,7 @@ internal static class VRCoordinateCardService
         return null;
     }
 
-    private static MethodInfo FindExtendedDataReader(Type extendedSaveType)
+    internal static MethodInfo FindExtendedDataReader(Type extendedSaveType)
     {
         if (extendedSaveType == null)
             return null;
@@ -902,6 +1422,129 @@ internal static class VRCoordinateCardService
             exception = invocation.InnerException;
         }
         return exception;
+    }
+
+    public static bool TryBeginRemoveTrackedAccessories(
+        int objectKey,
+        OCIChar expectedCharacter,
+        int[] requestedSlots,
+        out VRCoordinateLoadSession session,
+        out string status)
+    {
+        session = null;
+        try
+        {
+            if (_activeSession != null)
+            {
+                bool ignoredSuccess;
+                string ignoredStatus;
+                try
+                {
+                    _activeSession.TryGetCompletion(out ignoredSuccess, out ignoredStatus);
+                }
+                catch (Exception ex)
+                {
+                    VRLog.Warn("Could not poll the previous outfit operation before removing tracked accessories: "
+                        + Unwrap(ex).Message);
+                }
+                if (_activeSession != null)
+                {
+                    status = "已有服装卡操作正在进行，请稍后再管理追加饰品";
+                    return false;
+                }
+            }
+
+            OCIChar character;
+            if (!VRCharacterCardService.TryGetCharacter(objectKey, out character, out status))
+                return false;
+            if (expectedCharacter != null && !ReferenceEquals(character, expectedCharacter))
+            {
+                status = "场景角色已变化，请重新选择饰品管理目标";
+                return false;
+            }
+            if (character.charInfo == null || !character.charInfo.loadEnd)
+            {
+                status = "所选角色仍在读取，请稍后再管理追加饰品";
+                return false;
+            }
+
+            int[] validSlots = VRCoordinateAccessoryTracker.ResolveValidRemovalSlots(
+                character,
+                requestedSlots);
+            if (validSlots.Length == 0)
+            {
+                status = "所选饰品已被修改或不再由本插件管理；未删除任何饰品";
+                return false;
+            }
+
+            Exception loadError;
+            string completedStatus = "已移除本次追加饰品 " + validSlots.Length + " 件";
+            if (!VRCoordinateLoadSession.TryCreateNativeAndRun(
+                character,
+                completedStatus,
+                "移除追加饰品失败：",
+                () =>
+                {
+                    int removed = VRCoordinateAccessoryTracker.ApplyRemoval(
+                        character,
+                        validSlots);
+                    if (removed != validSlots.Length)
+                    {
+                        throw new InvalidOperationException(
+                            "饰品槽在删除前已变化，为避免误删已取消操作");
+                    }
+
+                    ChaFileDefine.CoordinateType type =
+                        (ChaFileDefine.CoordinateType)character.charInfo.fileStatus.coordinateType;
+                    if (!character.charInfo.AssignCoordinate(type))
+                        throw new InvalidOperationException("工作室没有接受饰品删除请求");
+                    TrySynchronizeMoreAccessoriesArrays(character.charInfo);
+                    character.SetCoordinateInfo(type, true);
+                },
+                false,
+                () => VRCoordinateAccessoryTracker.CommitRemoval(character, validSlots),
+                out session,
+                out loadError))
+            {
+                status = "移除追加饰品失败：" + Unwrap(loadError).Message;
+                return false;
+            }
+
+            RegisterSession(session);
+            status = "正在移除本次追加饰品 " + validSlots.Length + " 件";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            session = null;
+            status = "移除追加饰品失败：" + Unwrap(ex).Message;
+            return false;
+        }
+    }
+
+    internal static void TrySynchronizeMoreAccessoriesArrays(ChaControl character)
+    {
+        if (character == null)
+            return;
+
+        try
+        {
+            Type moreAccessories = FindLoadedType("MoreAccessoriesKOI.MoreAccessories");
+            MethodInfo arraySync = moreAccessories?.GetMethod(
+                "ArraySync",
+                BindingFlags.Static | BindingFlags.Public,
+                null,
+                new[] { typeof(ChaControl) },
+                null);
+            arraySync?.Invoke(null, new object[] { character });
+        }
+        catch (Exception ex)
+        {
+            // SetCoordinateInfo remains the fallback. Do not fail a safe base-slot
+            // deletion merely because an optional MoreAccessories bridge changed.
+            VRLog.Warn("Could not synchronize MoreAccessories arrays after accessory removal: "
+                + Unwrap(ex).Message);
+        }
     }
 
     public static bool TryBeginUndoLastReplace(
@@ -1033,6 +1676,10 @@ internal sealed class VRCoordinateUndoState
     public Type ExtendedCoordinateDictionaryType;
     public byte[] ExtendedCoordinateBytes;
     public bool HasExtendedCoordinateData;
+    public VRTrackedAccessorySnapshot TrackedAccessories;
+    public byte[] ClothesState;
+    public bool[] ShowAccessory;
+    public byte ShoesType;
 }
 
 internal sealed class VRCoordinateLoadSession
@@ -1088,8 +1735,24 @@ internal sealed class VRCoordinateLoadSession
     private int _accessoryOccupiedCountBackup;
     private readonly bool _isUndoOperation;
     private readonly VRCoordinateReplaceMode _replaceMode;
+    private readonly int _skippedDuplicateAccessories;
     private bool _coordinateControllerReloadPending;
     private int _completionObservedFrame = -1;
+    private byte[][] _accessorySlotFingerprintsBackup;
+    private VRTrackedAccessorySnapshot _trackedAccessoryBackup;
+    private VRTrackedAccessorySnapshot _trackingSnapshotToRestore;
+    private byte[] _runtimeClothesStateBackup;
+    private bool[] _runtimeShowAccessoryBackup;
+    private byte _runtimeShoesTypeBackup;
+    private VRCoordinateUndoState _runtimeStateToRestore;
+    private Action _nativeSuccessAction;
+    private bool _nativeSuccessActionInvoked;
+    private readonly bool _boundCompatibleAccessoryReplace;
+    private readonly string[] _targetBoundPluginGuidsToShield;
+    private readonly ChaFileCoordinate _expectedBoundSourceCoordinate;
+    private readonly string[] _boundVerificationPluginGuids;
+    private bool _targetBoundDataShielded;
+    private bool _targetBoundDataRestored;
 
     public VRCoordinateLoadSession(
         Assembly assembly,
@@ -1101,7 +1764,12 @@ internal sealed class VRCoordinateLoadSession
         IEnumerable<int> selectedAccessorySlots,
         bool strictPreserveAccessories,
         bool verifySelectedAccessories,
-        VRCoordinateReplaceMode replaceMode)
+        VRCoordinateReplaceMode replaceMode,
+        int skippedDuplicateAccessories = 0,
+        bool boundCompatibleAccessoryReplace = false,
+        IEnumerable<string> targetBoundPluginGuidsToShield = null,
+        ChaFileCoordinate expectedBoundSourceCoordinate = null,
+        IEnumerable<string> boundVerificationPluginGuids = null)
     {
         _assembly = assembly;
         _character = character;
@@ -1113,6 +1781,19 @@ internal sealed class VRCoordinateLoadSession
         _strictPreserveAccessories = strictPreserveAccessories;
         _verifySelectedAccessories = verifySelectedAccessories;
         _replaceMode = replaceMode;
+        _skippedDuplicateAccessories = skippedDuplicateAccessories;
+        _boundCompatibleAccessoryReplace = boundCompatibleAccessoryReplace;
+        _targetBoundPluginGuidsToShield = (targetBoundPluginGuidsToShield
+            ?? Enumerable.Empty<string>())
+            .Where(guid => !string.IsNullOrEmpty(guid))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        _expectedBoundSourceCoordinate = expectedBoundSourceCoordinate;
+        _boundVerificationPluginGuids = (boundVerificationPluginGuids
+            ?? Enumerable.Empty<string>())
+            .Where(guid => !string.IsNullOrEmpty(guid))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     private VRCoordinateLoadSession(
@@ -1138,6 +1819,27 @@ internal sealed class VRCoordinateLoadSession
         out VRCoordinateLoadSession session,
         out Exception error)
     {
+        return TryCreateNativeAndRun(
+            character,
+            status,
+            recoveryFailurePrefix,
+            loadAction,
+            strictPreserveAccessories,
+            null,
+            out session,
+            out error);
+    }
+
+    public static bool TryCreateNativeAndRun(
+        OCIChar character,
+        string status,
+        string recoveryFailurePrefix,
+        Action loadAction,
+        bool strictPreserveAccessories,
+        Action successAction,
+        out VRCoordinateLoadSession session,
+        out Exception error)
+    {
         session = null;
         error = null;
         VRCoordinateLoadSession candidate = null;
@@ -1148,7 +1850,9 @@ internal sealed class VRCoordinateLoadSession
                 status,
                 strictPreserveAccessories,
                 false);
+            candidate._nativeSuccessAction = successAction;
             loadAction();
+            candidate._coordinateControllerReloadPending = true;
             candidate._targetMayHaveChanged = true;
             candidate._nativeCharacter = character;
             candidate._nativeStartFrame = Time.frameCount;
@@ -1196,6 +1900,8 @@ internal sealed class VRCoordinateLoadSession
                 completedStatus,
                 false,
                 true);
+            candidate._trackingSnapshotToRestore = undoState.TrackedAccessories;
+            candidate._runtimeStateToRestore = undoState;
             string applyError;
             if (!candidate.TryApplyCoordinateSnapshot(undoState, out applyError))
                 throw new InvalidOperationException(applyError);
@@ -1250,7 +1956,15 @@ internal sealed class VRCoordinateLoadSession
             DeserializeExtendedData = _deserializeExtendedData,
             ExtendedCoordinateDictionaryType = _extendedCoordinateDictionaryType,
             ExtendedCoordinateBytes = _extendedCoordinateBackupBytes,
-            HasExtendedCoordinateData = _extendedCoordinateSnapshotCaptured
+            HasExtendedCoordinateData = _extendedCoordinateSnapshotCaptured,
+            TrackedAccessories = _trackedAccessoryBackup,
+            ClothesState = _runtimeClothesStateBackup != null
+                ? (byte[])_runtimeClothesStateBackup.Clone()
+                : null,
+            ShowAccessory = _runtimeShowAccessoryBackup != null
+                ? (bool[])_runtimeShowAccessoryBackup.Clone()
+                : null,
+            ShoesType = _runtimeShoesTypeBackup
         };
     }
 
@@ -1286,6 +2000,172 @@ internal sealed class VRCoordinateLoadSession
             >= _accessoryOccupiedCountBackup + _selectedAccessorySlots.Count;
     }
 
+    private void ShieldTargetBoundPluginData()
+    {
+        if (_targetBoundPluginGuidsToShield.Length == 0)
+            return;
+        if (!_extendedCoordinateSnapshotCaptured
+            || _setExtendedCoordinateData == null)
+        {
+            throw new InvalidOperationException(
+                "无法安全暂存目标角色的饰品绑定数据");
+        }
+
+        ChaFileCoordinate target = _character?.charInfo?.nowCoordinate;
+        if (target == null)
+            throw new InvalidOperationException("目标角色服装数据已经失效");
+
+        foreach (string pluginGuid in _targetBoundPluginGuidsToShield)
+        {
+            _setExtendedCoordinateData.Invoke(
+                null,
+                new object[] { target, pluginGuid, null });
+        }
+        _targetBoundDataShielded = true;
+        _targetBoundDataRestored = false;
+    }
+
+    private void RestoreShieldedTargetBoundPluginData()
+    {
+        if (!_targetBoundDataShielded || _targetBoundDataRestored)
+            return;
+        if (!_extendedCoordinateSnapshotCaptured
+            || _deserializeExtendedData == null
+            || _extendedCoordinateDictionaryType == null
+            || _extendedCoordinateBackupBytes == null
+            || _setExtendedCoordinateData == null)
+        {
+            throw new InvalidOperationException(
+                "无法恢复目标角色的饰品绑定数据快照");
+        }
+
+        IDictionary restoredExtendedData = _deserializeExtendedData
+            .MakeGenericMethod(_extendedCoordinateDictionaryType)
+            .Invoke(null, new object[] { _extendedCoordinateBackupBytes }) as IDictionary;
+        if (restoredExtendedData == null)
+            throw new InvalidOperationException("目标角色饰品绑定数据快照为空");
+
+        ChaFileCoordinate target = _character?.charInfo?.nowCoordinate;
+        if (target == null)
+            throw new InvalidOperationException("目标角色服装数据已经失效");
+        foreach (string pluginGuid in _targetBoundPluginGuidsToShield)
+        {
+            object value = restoredExtendedData.Contains(pluginGuid)
+                ? restoredExtendedData[pluginGuid]
+                : null;
+            _setExtendedCoordinateData.Invoke(
+                null,
+                new[] { (object)target, pluginGuid, value });
+        }
+
+        _targetBoundDataRestored = true;
+        _targetBoundDataShielded = false;
+        _coordinateControllerReloadPending = true;
+    }
+
+    private bool BoundCompatibleResultMatchesSource(out string error)
+    {
+        error = null;
+        if (!_boundCompatibleAccessoryReplace)
+            return true;
+        if (_expectedBoundSourceCoordinate == null
+            || _character == null
+            || _character.charInfo == null)
+        {
+            error = "原槽换装校验数据不可用";
+            return false;
+        }
+
+        ChaFileAccessory.PartsInfo[] sourceParts =
+            _expectedBoundSourceCoordinate.accessory?.parts ?? new ChaFileAccessory.PartsInfo[0];
+        ChaFileAccessory.PartsInfo[] targetParts =
+            _character.charInfo.nowCoordinate?.accessory?.parts ?? new ChaFileAccessory.PartsInfo[0];
+        int count = Math.Max(sourceParts.Length, targetParts.Length);
+        for (int slot = 0; slot < count; slot++)
+        {
+            ChaFileAccessory.PartsInfo source = slot < sourceParts.Length
+                ? sourceParts[slot]
+                : null;
+            ChaFileAccessory.PartsInfo target = slot < targetParts.Length
+                ? targetParts[slot]
+                : null;
+            bool sourceOccupied = VRCoordinateAccessoryTracker.IsOccupied(source);
+            bool targetOccupied = VRCoordinateAccessoryTracker.IsOccupied(target);
+            if (sourceOccupied != targetOccupied)
+            {
+                error = "饰品槽 " + (slot + 1) + " 的占用状态与源卡不一致";
+                return false;
+            }
+            if (sourceOccupied
+                && !VRCoordinateAccessoryTracker.FingerprintsEqual(
+                    VRCoordinateAccessoryTracker.CreateFingerprint(source),
+                    VRCoordinateAccessoryTracker.CreateFingerprint(target)))
+            {
+                error = "饰品槽 " + (slot + 1) + " 未按原槽完整复制";
+                return false;
+            }
+        }
+
+        if (_boundVerificationPluginGuids.Length == 0)
+            return true;
+        Type extendedSaveType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(assembly =>
+            {
+                try
+                {
+                    return assembly.GetType(
+                        "ExtensibleSaveFormat.ExtendedSave",
+                        throwOnError: false);
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            })
+            .FirstOrDefault(type => type != null);
+        MethodInfo getExtendedData =
+            VRCoordinateCardService.FindExtendedDataReader(extendedSaveType);
+        if (getExtendedData == null || _serializeExtendedData == null)
+        {
+            error = "无法校验原槽换装的绑定数据";
+            return false;
+        }
+
+        foreach (string pluginGuid in _boundVerificationPluginGuids)
+        {
+            object source = getExtendedData.Invoke(
+                null,
+                new object[] { _expectedBoundSourceCoordinate, pluginGuid });
+            object target = getExtendedData.Invoke(
+                null,
+                new object[] { _character.charInfo.nowCoordinate, pluginGuid });
+            if (source == null || target == null)
+            {
+                if (!ReferenceEquals(source, target))
+                {
+                    error = "绑定数据未按源卡同步（" + pluginGuid + "）";
+                    return false;
+                }
+                continue;
+            }
+
+            byte[] sourceBytes = (byte[])_serializeExtendedData
+                .MakeGenericMethod(source.GetType())
+                .Invoke(null, new[] { source });
+            byte[] targetBytes = (byte[])_serializeExtendedData
+                .MakeGenericMethod(target.GetType())
+                .Invoke(null, new[] { target });
+            if (sourceBytes == null
+                || targetBytes == null
+                || !sourceBytes.SequenceEqual(targetBytes))
+            {
+                error = "绑定数据校验失败（" + pluginGuid + "）";
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static int CountOccupiedAccessories(ChaFileAccessory accessory)
     {
         ChaFileAccessory.PartsInfo[] parts = accessory?.parts;
@@ -1317,6 +2197,43 @@ internal sealed class VRCoordinateLoadSession
 
         _coordinateControllerReloadPending = false;
         return true;
+    }
+
+    private bool TryApplyPendingRuntimeState(out string error)
+    {
+        error = null;
+        VRCoordinateUndoState snapshot = _runtimeStateToRestore;
+        if (snapshot == null)
+            return true;
+        if (_character == null || _character.charInfo == null)
+        {
+            error = "目标角色已经失效";
+            return false;
+        }
+
+        try
+        {
+            byte[] clothesState = snapshot.ClothesState ?? new byte[0];
+            for (int part = 0; part < clothesState.Length; part++)
+                _character.SetClothesState(part, clothesState[part]);
+            _character.SetShoesType(snapshot.ShoesType);
+
+            bool[] showAccessory = snapshot.ShowAccessory ?? new bool[0];
+            bool[] currentVisibility = _character.charFileStatus?.showAccessory;
+            int count = currentVisibility == null
+                ? 0
+                : Math.Min(showAccessory.Length, currentVisibility.Length);
+            for (int slot = 0; slot < count; slot++)
+                _character.ShowAccessory(slot, showAccessory[slot]);
+
+            _runtimeStateToRestore = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = VRCoordinateCardService.Unwrap(ex).Message;
+            return false;
+        }
     }
 
     private static byte[] SerializeAccessory(ChaFileAccessory accessory)
@@ -1376,6 +2293,9 @@ internal sealed class VRCoordinateLoadSession
                 return false;
             }
 
+            if (_targetBoundPluginGuidsToShield.Length > 0)
+                ShieldTargetBoundPluginData();
+
             Toggle[] clothesToggles = CreateToggles(_clothesToggleNames);
             clothesToggles[clothesToggles.Length - 1].isOn = _selectedAccessorySlots.Count > 0;
             string[] accessoryNames = new string[_accessoryCount];
@@ -1388,12 +2308,18 @@ internal sealed class VRCoordinateLoadSession
             SetSaved(RequireField(patchesType, "coordinatePath"), _path);
             SetSaved(RequireField(patchesType, "tgls"), clothesToggles);
             SetSaved(RequireField(patchesType, "tgls2"), accessoryToggles);
-            SetSaved(RequireField(patchesType, "lockHairAcc"), true);
-            // Selected source slots are appended into empty target slots. This is the
-            // only CLO mode that never overwrites an existing accessory (including
-            // accessory-based hair that a card did not mark as a hair accessory).
-            SetSaved(RequireField(patchesType, "addAccModeFlag"), true);
-            SetSaved(RequireField(patchesType, "boundAcc"), false);
+            SetSaved(
+                RequireField(patchesType, "lockHairAcc"),
+                !_boundCompatibleAccessoryReplace);
+            // Normal loads append selected source slots into empty target slots. The
+            // separately confirmed bound-compatible mode deliberately uses CLO's
+            // original-slot replacement so slot-indexed plugin payloads stay valid.
+            SetSaved(
+                RequireField(patchesType, "addAccModeFlag"),
+                !_boundCompatibleAccessoryReplace);
+            SetSaved(
+                RequireField(patchesType, "boundAcc"),
+                _boundCompatibleAccessoryReplace);
             SetSaved(
                 RequireField(patchesType, "charaOverlay"),
                 new[] { false, false, false });
@@ -1464,7 +2390,34 @@ internal sealed class VRCoordinateLoadSession
                 if (!TryCompleteCoordinateControllerReload(out controllerError))
                 {
                     _nativeCharacter = null;
-                    string failureStatus = "撤销换装失败：插件扩展状态恢复失败：" + controllerError;
+                    string failureStatus = (_isUndoOperation
+                        ? "撤销换装失败："
+                        : "饰品操作失败：")
+                        + "插件扩展状态恢复失败："
+                        + controllerError;
+                    if (BeginRecovery(failureStatus))
+                    {
+                        status = null;
+                        success = false;
+                        return false;
+                    }
+
+                    success = false;
+                    status = _terminalRecoveryStatus ?? failureStatus;
+                    return true;
+                }
+            }
+            if (success)
+            {
+                string runtimeError;
+                if (!TryApplyPendingRuntimeState(out runtimeError))
+                {
+                    _nativeCharacter = null;
+                    string failureStatus = (_isUndoOperation
+                        ? "撤销换装失败："
+                        : "服装操作失败：")
+                        + "穿着状态恢复失败："
+                        + runtimeError;
                     if (BeginRecovery(failureStatus))
                     {
                         status = null;
@@ -1499,9 +2452,29 @@ internal sealed class VRCoordinateLoadSession
             if (success)
             {
                 if (_isUndoOperation)
+                {
+                    VRCoordinateAccessoryTracker.Restore(
+                        _character,
+                        _trackingSnapshotToRestore);
                     VRCoordinateCardService.ConsumeUndoSnapshot(_character);
+                }
                 else
+                {
                     VRCoordinateCardService.StoreUndoSnapshot(this);
+                    if (!_nativeSuccessActionInvoked && _nativeSuccessAction != null)
+                    {
+                        _nativeSuccessActionInvoked = true;
+                        try
+                        {
+                            _nativeSuccessAction();
+                        }
+                        catch (Exception ex)
+                        {
+                            VRLog.Error("Accessory-operation success bookkeeping failed: "
+                                + VRCoordinateCardService.Unwrap(ex).Message);
+                        }
+                    }
+                }
             }
             _nativeCharacter = null;
             Restore();
@@ -1570,6 +2543,64 @@ internal sealed class VRCoordinateLoadSession
                     return false;
                 }
 
+                if (_targetBoundDataShielded)
+                {
+                    try
+                    {
+                        RestoreShieldedTargetBoundPluginData();
+                    }
+                    catch (Exception ex)
+                    {
+                        string shieldFailureStatus =
+                            "服装恢复失败：无法还原新角色的饰品绑定数据："
+                            + VRCoordinateCardService.Unwrap(ex).Message;
+                        if (BeginRecovery(shieldFailureStatus))
+                        {
+                            status = null;
+                            success = false;
+                            return false;
+                        }
+                        success = false;
+                        status = _terminalRecoveryStatus ?? shieldFailureStatus;
+                        return true;
+                    }
+                }
+                if (_coordinateControllerReloadPending)
+                {
+                    string controllerError;
+                    if (!TryCompleteCoordinateControllerReload(out controllerError))
+                    {
+                        string controllerFailureStatus =
+                            "服装恢复失败：插件扩展状态重新载入失败："
+                            + controllerError;
+                        if (BeginRecovery(controllerFailureStatus))
+                        {
+                            status = null;
+                            success = false;
+                            return false;
+                        }
+                        success = false;
+                        status = _terminalRecoveryStatus ?? controllerFailureStatus;
+                        return true;
+                    }
+                }
+
+                string boundVerificationError;
+                if (!BoundCompatibleResultMatchesSource(out boundVerificationError))
+                {
+                    string boundFailureStatus =
+                        "原槽兼容换装未完成：" + boundVerificationError;
+                    if (BeginRecovery(boundFailureStatus))
+                    {
+                        status = null;
+                        success = false;
+                        return false;
+                    }
+                    success = false;
+                    status = _terminalRecoveryStatus ?? boundFailureStatus;
+                    return true;
+                }
+
                 if (_strictPreserveAccessories && !AccessoriesMatchBackup())
                 {
                     string accessoryFailureStatus = _replaceMode == VRCoordinateReplaceMode.Full
@@ -1604,15 +2635,35 @@ internal sealed class VRCoordinateLoadSession
                     return true;
                 }
 
-                status = _replaceMode == VRCoordinateReplaceMode.Full
+                if (!_boundCompatibleAccessoryReplace
+                    && _selectedAccessorySlots.Count > 0)
+                {
+                    VRCoordinateAccessoryTracker.RegisterNewlyAppendedSlots(
+                        _character,
+                        _accessorySlotFingerprintsBackup);
+                }
+
+                status = _replaceMode == VRCoordinateReplaceMode.BoundCompatibleFull
+                    ? "已按原槽完整替换衣服、饰品和绑定数据：" + _coordinateName
+                    : _replaceMode == VRCoordinateReplaceMode.Full
                     ? _selectedAccessorySlots.Count == 0
-                        ? "已完整替换衣服；源卡没有饰品，现有饰品保持不变：" + _coordinateName
+                        ? _skippedDuplicateAccessories > 0
+                            ? "已完整替换衣服；现有饰品保持不变：" + _coordinateName
+                            : "已完整替换衣服；源卡没有饰品，现有饰品保持不变：" + _coordinateName
                         : "已完整替换衣服，并把全部源饰品追加到空槽；现有饰品保持不变："
                             + _coordinateName
                     : _selectedAccessorySlots.Count == 0
                         ? "已只替换衣服，现有饰品保持不变：" + _coordinateName
                         : "已换衣服并把所选饰品追加到空槽：" + _coordinateName;
+                if (_skippedDuplicateAccessories > 0)
+                {
+                    status += "；已跳过重复饰品 "
+                        + _skippedDuplicateAccessories
+                        + " 件";
+                }
                 VRCoordinateCardService.StoreUndoSnapshot(this);
+                if (_boundCompatibleAccessoryReplace)
+                    VRCoordinateAccessoryTracker.Clear(_character);
                 Restore();
                 return true;
             }
@@ -1684,6 +2735,18 @@ internal sealed class VRCoordinateLoadSession
                 Restore();
                 return true;
             }
+            string runtimeError;
+            if (!TryApplyPendingRuntimeState(out runtimeError))
+            {
+                status = _recoveryFailureStatus
+                    + "；已恢复服装和插件扩展状态，但穿着状态恢复失败："
+                    + runtimeError;
+                Restore();
+                return true;
+            }
+            VRCoordinateAccessoryTracker.Restore(
+                _character,
+                _trackedAccessoryBackup);
             if (!_repairAttempted)
             {
                 _repairAttempted = true;
@@ -1800,6 +2863,16 @@ internal sealed class VRCoordinateLoadSession
         _coordinateBackupName = coordinate.coordinateName;
         _accessoryBackupBytes = SerializeAccessory(coordinate.accessory);
         _accessoryOccupiedCountBackup = CountOccupiedAccessories(coordinate.accessory);
+        _accessorySlotFingerprintsBackup =
+            VRCoordinateAccessoryTracker.CaptureSlotFingerprints(coordinate.accessory);
+        _trackedAccessoryBackup = VRCoordinateAccessoryTracker.Capture(_character);
+        _runtimeClothesStateBackup = _character.charFileStatus?.clothesState != null
+            ? (byte[])_character.charFileStatus.clothesState.Clone()
+            : null;
+        _runtimeShowAccessoryBackup = _character.charFileStatus?.showAccessory != null
+            ? (bool[])_character.charFileStatus.showAccessory.Clone()
+            : null;
+        _runtimeShoesTypeBackup = _character.charFileStatus?.shoesType ?? (byte)0;
 
         Type extendedSaveType = null;
         foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -1890,7 +2963,9 @@ internal sealed class VRCoordinateLoadSession
 
     private bool TryRestoreTargetCoordinateSnapshot(out string error)
     {
-        return TryApplyCoordinateSnapshot(CreateUndoSnapshot(), out error);
+        VRCoordinateUndoState snapshot = CreateUndoSnapshot();
+        _runtimeStateToRestore = snapshot;
+        return TryApplyCoordinateSnapshot(snapshot, out error);
     }
 
     private bool TryApplyCoordinateSnapshot(
@@ -1950,13 +3025,15 @@ internal sealed class VRCoordinateLoadSession
                             new[] { (object)target, key, saved.Value });
                     }
                 }
-
+                _targetBoundDataRestored = true;
+                _targetBoundDataShielded = false;
             }
 
             ChaFileDefine.CoordinateType type =
                 (ChaFileDefine.CoordinateType)_character.charInfo.fileStatus.coordinateType;
             if (!_character.charInfo.AssignCoordinate(type))
                 throw new InvalidOperationException("工作室没有接受服装快照恢复请求");
+            VRCoordinateCardService.TrySynchronizeMoreAccessoriesArrays(_character.charInfo);
             _character.SetCoordinateInfo(type, true);
             _coordinateControllerReloadPending = true;
             return true;
@@ -2139,6 +3216,19 @@ internal sealed class VRCoordinateLoadSession
             return;
         _restored = true;
 
+        if (_targetBoundDataShielded)
+        {
+            try
+            {
+                RestoreShieldedTargetBoundPluginData();
+            }
+            catch (Exception ex)
+            {
+                VRLog.Error(
+                    "Could not restore temporarily shielded accessory binding data: "
+                    + VRCoordinateCardService.Unwrap(ex).Message);
+            }
+        }
         RestoreCoordinateLoadOptionState();
         _coordinateBackupBytes = null;
         _coordinateBackupVersion = null;
@@ -2151,6 +3241,9 @@ internal sealed class VRCoordinateLoadSession
         _extendedCoordinateBackupBytes = null;
         _extendedCoordinateSnapshotCaptured = false;
         _accessoryBackupBytes = null;
+        _runtimeClothesStateBackup = null;
+        _runtimeShowAccessoryBackup = null;
+        _runtimeStateToRestore = null;
         _coordinateControllerReloadPending = false;
         _recoveryPending = false;
         VRCoordinateCardService.ReleaseSession(this);

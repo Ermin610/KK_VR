@@ -34,6 +34,12 @@ namespace KKCharaStudioVR
             get { return _settings == null || _settings.TwoHandScaleEnabled; }
         }
 
+        internal static void CancelTimelineInteraction()
+        {
+            if (Instance != null)
+                Instance.ResetScaling();
+        }
+
         void Start()
         {
             Instance = this;
@@ -43,7 +49,9 @@ namespace KKCharaStudioVR
 
         void Update()
         {
-            if (!IsFeatureEnabled || VRWristMenuController.IsOpen)
+            if (!IsFeatureEnabled || VRWristMenuController.IsOpen
+                || VRMmdPlaybackController.BlocksNormalInput
+                || VRTimelineCameraFollowController.IsManualMovementLocked)
             {
                 ResetScaling();
                 return;

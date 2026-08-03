@@ -29,18 +29,30 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         Root,
         Clothing,
+        ClothingParts,
+        ClothingOpacity,
+        ClothingOpacityQuick,
         Coordinate,
         Browser,
         SceneSave,
         CharacterCards,
         CharacterPreview,
+        CharacterRemoveConfirm,
+        Timeline,
         MmdSettings,
+        MmdPlayback,
+        MmdCamera,
+        MmdCues,
+        MmdCuePresets,
+        MmdClearConfirm,
         HighHeels,
         Settings
     }
 
     public static VRWristMenuController Instance { get; private set; }
-    public static bool IsOpen => Instance != null && Instance._isOpen;
+    public static bool IsOpen => Instance != null && Instance._isOpen && !Instance._presentationSuppressed;
+    internal static bool IsTimelinePageOpen =>
+        IsOpen && Instance._page == WristMenuPage.Timeline;
 
     private KKCharaStudioVRSettings _settings;
     private GameObject _menuRoot;
@@ -54,6 +66,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private Text _statusText;
     private Image _statusIndicator;
     private VRWristMenuButtonTarget _clothingTargetButton;
+    private VRWristMenuButtonTarget _rootLoadVmdButton;
     private VRWristMenuButtonTarget _loadVmdButton;
     private Texture2D _roundedTexture;
     private Sprite _roundedSprite;
@@ -78,6 +91,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private int _colliderLayer;
     private int _pointerMask;
     private bool _isOpen;
+    private bool _presentationSuppressed;
     private bool _menuPressActive;
     private bool _menuPressChorded;
     private bool _poseInitialized;
@@ -86,6 +100,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private float _nextClothingRefresh;
     private float _trackingUnavailableSince = -1f;
     private WristMenuPage _page;
+    private WristMenuPage _lastStablePage = WristMenuPage.Root;
 
     private void Awake()
     {
@@ -96,6 +111,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     private void Update()
     {
         ResolveSettings();
+        if (_presentationSuppressed)
+        {
+            if (_menuRoot != null && _menuRoot.activeSelf)
+                _menuRoot.SetActive(false);
+            SetPointerVisible(false);
+            return;
+        }
         HandleMenuButton();
 
         if (_settings != null && !_settings.WristMenuEnabled)
@@ -177,29 +199,33 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void HandleMenuButton()
     {
-        // While open, accept X even if positional tracking is temporarily invalid so
+        // While open, accept the configured primary face button even if positional tracking is temporarily invalid so
         // the menu can always release its input lock.
-        SteamVR_Controller.Device leftDevice = GetDevice(VR.Mode?.Left, !_isOpen);
-        if (leftDevice == null)
+        bool useRightHand = _settings != null
+            && _settings.ControllerFaceButtonLayout == KKCharaStudioVRSettings.ControllerLayoutRightHand;
+        SteamVR_Controller.Device menuDevice = GetDevice(
+            useRightHand ? VR.Mode?.Right : VR.Mode?.Left,
+            !_isOpen);
+        if (menuDevice == null)
         {
             _menuPressActive = false;
             return;
         }
 
-        if (leftDevice.GetPressDown(EVRButtonId.k_EButton_A))
+        if (menuDevice.GetPressDown(EVRButtonId.k_EButton_A))
         {
             _menuPressActive = true;
             _menuPressChorded = false;
             _menuPressStarted = Time.unscaledTime;
         }
 
-        if (_menuPressActive && leftDevice.GetPress(EVRButtonId.k_EButton_A))
+        if (_menuPressActive && menuDevice.GetPress(EVRButtonId.k_EButton_A))
         {
-            _menuPressChorded |= leftDevice.GetPress(EVRButtonId.k_EButton_Grip)
-                || leftDevice.GetPress(EVRButtonId.k_EButton_Axis1);
+            _menuPressChorded |= menuDevice.GetPress(EVRButtonId.k_EButton_Grip)
+                || menuDevice.GetPress(EVRButtonId.k_EButton_Axis1);
         }
 
-        if (!_menuPressActive || !leftDevice.GetPressUp(EVRButtonId.k_EButton_A))
+        if (!_menuPressActive || !menuDevice.GetPressUp(EVRButtonId.k_EButton_A))
             return;
 
         float duration = Time.unscaledTime - _menuPressStarted;
@@ -208,8 +234,20 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             && (_settings == null || _settings.WristMenuEnabled))
         {
             ToggleMenu();
-            leftDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
+            menuDevice.TriggerHapticPulse(500, EVRButtonId.k_EButton_Axis0);
         }
+    }
+
+    internal void SetPresentationSuppressed(bool suppressed)
+    {
+        if (_presentationSuppressed == suppressed)
+            return;
+        _presentationSuppressed = suppressed;
+        _menuPressActive = false;
+        SetHoveredButton(null);
+        SetPointerVisible(false);
+        if (_menuRoot != null)
+            _menuRoot.SetActive(!suppressed && _isOpen);
     }
 
     private void SetOpen(bool open)
@@ -246,7 +284,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             }
             else
             {
-                ShowPage(WristMenuPage.Root);
+                ShowPage(_lastStablePage);
                 SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
             }
         }
@@ -316,12 +354,22 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         _rootPage = CreateRectObject("RootPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _clothingPage = CreateRectObject("ClothingPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _clothingPartsPage = CreateRectObject("ClothingPartsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _clothingOpacityPage = CreateRectObject("ClothingOpacityPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _clothingOpacityQuickPage = CreateRectObject("ClothingOpacityQuickPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _coordinatePage = CreateRectObject("CoordinatePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _browserPage = CreateRectObject("BrowserPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _sceneSavePage = CreateRectObject("SceneSavePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterCardsPage = CreateRectObject("CharacterCardsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _characterPreviewPage = CreateRectObject("CharacterPreviewPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _characterRemoveConfirmPage = CreateRectObject("CharacterRemoveConfirmPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _timelinePage = CreateRectObject("TimelinePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _mmdPage = CreateRectObject("MmdPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _mmdPlaybackPage = CreateRectObject("MmdPlaybackPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _mmdCameraPage = CreateRectObject("MmdCameraPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _mmdCuePage = CreateRectObject("MmdCuePage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _mmdPresetPage = CreateRectObject("MmdPresetPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
+        _mmdClearConfirmPage = CreateRectObject("MmdClearConfirmPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _highHeelsPage = CreateRectObject("HighHeelsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
         _settingsPage = CreateRectObject("SettingsPage", _menuRect, 0f, 0f, MenuWidth, MenuHeight, _visibleLayer);
 
@@ -372,18 +420,42 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
         CreateText("MmdSection", _rootPage.transform, "MMD", 24f, 178f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(1f, 0.72f, 0.25f, 1f));
+        _rootLoadVmdButton = CreateButton(
+            "QuickLoadVmd",
+            L("载入动作  ›\n选择 VMD 文件", "動作を読込  ›\nVMDを選択", "Load motion  ›\nChoose VMD"),
+            24f,
+            208f,
+            VmdRootMissingColor,
+            VmdRootMissingHoverColor,
+            HandleLoadVmd,
+            _rootPage.transform,
+            160f,
+            68f,
+            16);
         CreateButton(
             "OpenMmdSettings",
-            L("MMD 工具  ›\n动作、镜头和高跟鞋", "MMD ツール  ›\nモーション・カメラ・ハイヒール", "MMD tools  ›\nMotion, camera, and high heels"),
-            24f,
+            L("MMD 工具  ›\n播放与镜头设置", "MMD ツール  ›\n再生・カメラ設定", "MMD tools  ›\nPlayback and camera"),
+            200f,
             208f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             HandleOpenMmdSettings,
             _rootPage.transform,
-            512f,
+            160f,
             68f,
-            18);
+            16);
+        CreateButton(
+            "OpenTimeline",
+            L("Timeline  ›\n播放与镜头", "Timeline  ›\n再生・カメラ", "Timeline  ›\nPlayback and camera"),
+            376f,
+            208f,
+            new Color(0.12f, 0.17f, 0.3f, 0.5f),
+            new Color(0.18f, 0.36f, 0.62f, 0.8f),
+            HandleOpenTimeline,
+            _rootPage.transform,
+            160f,
+            68f,
+            16);
 
         CreateText("CharacterSection", _rootPage.transform, L("角色", "キャラクター", "Character"), 24f, 290f, 512f, 24f, 20,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
@@ -425,12 +497,22 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             17);
 
         BuildClothingPage();
+        BuildClothingPartsPage();
+        BuildClothingOpacityPage();
+        BuildClothingOpacityQuickPage();
         BuildCoordinatePage();
         BuildBrowserPage();
         BuildSceneSavePage();
         BuildCharacterCardsPage();
         BuildCharacterPreviewPage();
+        BuildCharacterRemoveConfirmPage();
+        BuildTimelinePage();
         BuildMmdSettingsPage();
+        BuildMmdPlaybackPage();
+        BuildMmdCameraPage();
+        BuildMmdCuePage();
+        BuildMmdPresetPage();
+        BuildMmdClearConfirmPage();
         BuildHighHeelsPage();
         BuildSettingsPage();
 
@@ -453,12 +535,22 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             TextAnchor.MiddleRight, SecondaryTextColor);
 
         _clothingPage.SetActive(false);
+        _clothingPartsPage.SetActive(false);
+        _clothingOpacityPage.SetActive(false);
+        _clothingOpacityQuickPage.SetActive(false);
         _coordinatePage.SetActive(false);
         _browserPage.SetActive(false);
         _sceneSavePage.SetActive(false);
         _characterCardsPage.SetActive(false);
         _characterPreviewPage.SetActive(false);
+        _characterRemoveConfirmPage.SetActive(false);
+        _timelinePage.SetActive(false);
         _mmdPage.SetActive(false);
+        _mmdPlaybackPage.SetActive(false);
+        _mmdCameraPage.SetActive(false);
+        _mmdCuePage.SetActive(false);
+        _mmdPresetPage.SetActive(false);
+        _mmdClearConfirmPage.SetActive(false);
         _highHeelsPage.SetActive(false);
         _settingsPage.SetActive(false);
         _menuRoot.SetActive(false);
@@ -520,21 +612,38 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             HandleOpenCoordinatePresets,
             _clothingPage.transform,
-            512f,
+            344f,
             48f,
             16);
+        CreateButton(
+            "OpenClothingOpacity",
+            L(
+                "服装透明度  ›\n按部位调整",
+                "衣装の透明度  ›\n部位ごとに調整",
+                "Clothing transparency  ›\nAdjust by part"),
+            376f,
+            106f,
+            new Color(0.12f, 0.17f, 0.3f, 0.5f),
+            new Color(0.18f, 0.36f, 0.62f, 0.8f),
+            HandleOpenClothingOpacity,
+            _clothingPage.transform,
+            160f,
+            48f,
+            14);
 
-        CreateText("ClothingPresetSection", _clothingPage.transform, L("穿脱状态", "着脱状態", "Dress states"), 24f, 162f, 512f, 20f, 17,
+        BuildClothingScrollViewport();
+
+        CreateText("ClothingPresetSection", _clothingScrollContent, L("穿脱状态", "着脱状態", "Dress states"), 24f, 0f, 512f, 20f, 17,
             TextAnchor.MiddleLeft, new Color(0.47f, 0.9f, 0.55f, 1f));
         CreateButton(
             "ClothingDressed",
             L("全部穿好", "すべて着る", "Fully dressed"),
             24f,
-            186f,
+            24f,
             new Color(0.075f, 0.24f, 0.14f, 0.48f),
             new Color(0.11f, 0.46f, 0.24f, 0.76f),
             () => HandleClothingPreset(0),
-            _clothingPage.transform,
+            _clothingScrollContent,
             165f,
             40f,
             16);
@@ -542,11 +651,11 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             "ClothingHalf",
             L("半脱状态", "半脱ぎ", "Half dressed"),
             198f,
-            186f,
+            24f,
             new Color(0.28f, 0.2f, 0.07f, 0.46f),
             new Color(0.55f, 0.36f, 0.1f, 0.74f),
             () => HandleClothingPreset(1),
-            _clothingPage.transform,
+            _clothingScrollContent,
             164f,
             40f,
             16);
@@ -554,35 +663,17 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             "ClothingUndressed",
             L("全部脱下", "すべて脱ぐ", "Undressed"),
             371f,
-            186f,
+            24f,
             new Color(0.3f, 0.09f, 0.12f, 0.46f),
             new Color(0.58f, 0.15f, 0.2f, 0.74f),
             () => HandleClothingPreset(3),
-            _clothingPage.transform,
+            _clothingScrollContent,
             165f,
             40f,
             16);
 
-        CreateText("ClothingPartsSection", _clothingPage.transform, L("单独部位", "部位ごと", "Individual parts"), 24f, 234f, 512f, 20f, 17,
+        CreateText("ClothingPartsSection", _clothingScrollContent, L("精细调整", "詳細調整", "Fine controls"), 24f, 78f, 512f, 20f, 17,
             TextAnchor.MiddleLeft, new Color(0.25f, 0.86f, 0.94f, 1f));
-        for (int i = 0; i < _clothingPartButtons.Length; i++)
-        {
-            int partId = i;
-            float x = i % 2 == 0 ? 24f : 288f;
-            float y = 258f + i / 2 * 37f;
-            _clothingPartButtons[i] = CreateButton(
-                "ClothingPart" + i,
-                GetClothingPartLabel(i) + "  -",
-                x,
-                y,
-                new Color(0.08f, 0.15f, 0.18f, 0.5f),
-                new Color(0.12f, 0.32f, 0.39f, 0.76f),
-                () => HandleCycleClothingPart(partId),
-                _clothingPage.transform,
-                248f,
-                33f,
-                15);
-        }
     }
 
     private void EnsureGlassAssets()
@@ -876,7 +967,6 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         }
 
         UpdateBrowserStickScroll(rightDevice);
-
         Vector3 origin = _laser.transform.position;
         Vector3 direction = _laser.transform.forward;
         Ray pointerRay = new Ray(origin, direction);
@@ -892,6 +982,9 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             out menuSurfaceDistance);
         if (hasMenuSurfaceHit)
             end = menuSurfacePoint;
+        UpdateClothingScroll(
+            rightDevice,
+            hasMenuSurfaceHit && IsPointInsideClothingScrollViewport(menuSurfacePoint));
 
         RaycastHit[] hits = Physics.RaycastAll(
             pointerRay,
@@ -902,7 +995,9 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         {
             VRWristMenuButtonTarget candidate = hit.collider.GetComponent<VRWristMenuButtonTarget>();
             if (candidate != null
+                && candidate.IsInteractable
                 && hit.distance < nearest
+                && IsMenuButtonHitVisible(candidate, hit.point)
                 && (!hasMenuSurfaceHit || hit.distance <= menuSurfaceDistance + 0.01f))
             {
                 nearest = hit.distance;
@@ -1097,13 +1192,32 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void ShowPage(WristMenuPage page)
     {
+        if (_page == WristMenuPage.MmdClearConfirm
+            && page != WristMenuPage.MmdClearConfirm)
+        {
+            ClearPendingMmdClearConfirmation();
+        }
+        if (_page == WristMenuPage.CharacterRemoveConfirm
+            && page != WristMenuPage.CharacterRemoveConfirm)
+        {
+            ClearPendingCharacterRemovalConfirmation();
+        }
+
         _page = page;
+        if (IsStablePage(page))
+            _lastStablePage = page;
         SetHoveredButton(null);
 
         if (_rootPage != null)
             _rootPage.SetActive(page == WristMenuPage.Root);
         if (_clothingPage != null)
             _clothingPage.SetActive(page == WristMenuPage.Clothing);
+        if (_clothingPartsPage != null)
+            _clothingPartsPage.SetActive(page == WristMenuPage.ClothingParts);
+        if (_clothingOpacityPage != null)
+            _clothingOpacityPage.SetActive(page == WristMenuPage.ClothingOpacity);
+        if (_clothingOpacityQuickPage != null)
+            _clothingOpacityQuickPage.SetActive(page == WristMenuPage.ClothingOpacityQuick);
         if (_coordinatePage != null)
             _coordinatePage.SetActive(page == WristMenuPage.Coordinate);
         if (_browserPage != null)
@@ -1114,16 +1228,49 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             _characterCardsPage.SetActive(page == WristMenuPage.CharacterCards);
         if (_characterPreviewPage != null)
             _characterPreviewPage.SetActive(page == WristMenuPage.CharacterPreview);
+        if (_characterRemoveConfirmPage != null)
+            _characterRemoveConfirmPage.SetActive(page == WristMenuPage.CharacterRemoveConfirm);
+        if (_timelinePage != null)
+            _timelinePage.SetActive(page == WristMenuPage.Timeline);
         if (_mmdPage != null)
             _mmdPage.SetActive(page == WristMenuPage.MmdSettings);
+        if (_mmdPlaybackPage != null)
+            _mmdPlaybackPage.SetActive(page == WristMenuPage.MmdPlayback);
+        if (_mmdCameraPage != null)
+            _mmdCameraPage.SetActive(page == WristMenuPage.MmdCamera);
+        if (_mmdCuePage != null)
+            _mmdCuePage.SetActive(page == WristMenuPage.MmdCues);
+        if (_mmdPresetPage != null)
+            _mmdPresetPage.SetActive(page == WristMenuPage.MmdCuePresets);
+        if (_mmdClearConfirmPage != null)
+            _mmdClearConfirmPage.SetActive(page == WristMenuPage.MmdClearConfirm);
         if (_highHeelsPage != null)
             _highHeelsPage.SetActive(page == WristMenuPage.HighHeels);
         if (_settingsPage != null)
             _settingsPage.SetActive(page == WristMenuPage.Settings);
 
-        if (page == WristMenuPage.Clothing)
+        if (page == WristMenuPage.Root)
+        {
+            RefreshVmdRootVisuals();
+        }
+        else if (page == WristMenuPage.Clothing)
         {
             RefreshClothingPage();
+            _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.ClothingParts)
+        {
+            RefreshClothingPartsPage();
+            _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.ClothingOpacity)
+        {
+            RefreshClothingOpacityPage();
+            _nextClothingRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.ClothingOpacityQuick)
+        {
+            RefreshClothingOpacityPage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
         else if (page == WristMenuPage.Coordinate)
@@ -1131,20 +1278,65 @@ public sealed partial class VRWristMenuController : MonoBehaviour
             RefreshCoordinatePage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
+        else if (page == WristMenuPage.Timeline)
+        {
+            RefreshTimelinePage();
+            _nextTimelineRefresh = Time.unscaledTime + 0.25f;
+        }
         else if (page == WristMenuPage.MmdSettings)
         {
-            RefreshTimelineButton();
             RefreshMmdSettingsPage();
-            _nextTimelineRefresh = Time.unscaledTime + 0.25f;
+        }
+        else if (page == WristMenuPage.MmdPlayback)
+        {
+            RefreshMmdPlaybackPage();
+        }
+        else if (page == WristMenuPage.MmdCamera)
+        {
+            RefreshMmdCameraPage();
         }
         else if (page == WristMenuPage.HighHeels)
         {
             RefreshHighHeelsPage();
         }
+        else if (page == WristMenuPage.MmdCues)
+        {
+            RefreshMmdCuePage();
+        }
+        else if (page == WristMenuPage.MmdCuePresets)
+        {
+            RefreshMmdPresetPage();
+        }
+        else if (page == WristMenuPage.MmdClearConfirm)
+        {
+            RefreshMmdClearConfirmPage();
+        }
+        else if (page == WristMenuPage.CharacterRemoveConfirm)
+        {
+            RefreshCharacterRemoveConfirmPage();
+        }
         else if (page == WristMenuPage.Settings)
         {
             RefreshSettingsPage();
         }
+    }
+
+    private static bool IsStablePage(WristMenuPage page)
+    {
+        return page == WristMenuPage.Root
+            || page == WristMenuPage.Clothing
+            || page == WristMenuPage.ClothingOpacity
+            || page == WristMenuPage.ClothingOpacityQuick
+            || page == WristMenuPage.Coordinate
+            || page == WristMenuPage.CharacterCards
+            || page == WristMenuPage.Timeline
+            || page == WristMenuPage.MmdSettings
+            || page == WristMenuPage.MmdPlayback
+            || page == WristMenuPage.MmdCamera
+            || page == WristMenuPage.MmdCues
+            || page == WristMenuPage.MmdCuePresets
+            || page == WristMenuPage.HighHeels
+            || page == WristMenuPage.Settings;
     }
 
     private bool TryGetMenuSurfaceHit(
@@ -1199,16 +1391,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                         "Character outfit presets  ›\nSchool, casual, swimwear, and more"));
         }
 
-        for (int i = 0; i < _clothingPartButtons.Length; i++)
-        {
-            if (_clothingPartButtons[i] == null)
-                continue;
-            string state = hasCharacter
-                ? LocalizeClothingStateLabel(VRCharacterClothingService.GetPartStateLabel(character, i))
-                : "-";
-            _clothingPartButtons[i].SetLabel(
-                GetClothingPartLabel(i) + "  " + state);
-        }
+        RefreshClothingPartsPage();
     }
 
     private void HandleOpenClothing()
@@ -1315,6 +1498,8 @@ public sealed partial class VRWristMenuController : MonoBehaviour
         bool hasTarget = TryGetClothingTarget(out character, out status);
         bool success = hasTarget
             && VRCharacterClothingService.TrySetAll(_clothingTargetObjectKey, state, out status);
+        if (success && VRMmdPlaybackController.Instance != null)
+            VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(_clothingTargetObjectKey);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
@@ -1332,11 +1517,13 @@ public sealed partial class VRWristMenuController : MonoBehaviour
                 _clothingTargetObjectKey,
                 partId,
                 out status);
+        if (success && VRMmdPlaybackController.Instance != null)
+            VRMmdPlaybackController.Instance.RequestHighHeelsRefresh(_clothingTargetObjectKey);
         SetStatus(
             status,
             success ? new Color(0.35f, 1f, 0.62f, 1f) : new Color(1f, 0.38f, 0.34f, 1f),
             4f);
-        RefreshClothingPage();
+        RefreshClothingPartsPage();
     }
 
     private void HandleLoadScene()
@@ -1363,6 +1550,7 @@ public sealed partial class VRWristMenuController : MonoBehaviour
 
     private void HandleToggleMmd()
     {
+        VRMmdPlaybackController.CancelLeftStickTransportResume();
         string status;
         bool success = VRMmddService.TogglePlayPause(out status);
         SetStatus(
@@ -1387,6 +1575,10 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         string status;
         bool success = VRTimelineService.TogglePlayPause(out status);
+        if (success)
+        {
+            VRTimelineCameraFollowController.ApplyNow();
+        }
         RefreshTimelineButton();
         SetStatus(
             status,
@@ -1407,18 +1599,27 @@ public sealed partial class VRWristMenuController : MonoBehaviour
     {
         if (_statusUntil > 0f && Time.unscaledTime > _statusUntil)
             SetStatus(L("就绪", "準備完了", "Ready"), new Color(0.78f, 0.86f, 0.9f, 1f), 0f);
-        if ((_page == WristMenuPage.Clothing || _page == WristMenuPage.Coordinate)
+        if ((_page == WristMenuPage.Clothing
+                || _page == WristMenuPage.ClothingParts
+                || _page == WristMenuPage.ClothingOpacity
+                || _page == WristMenuPage.ClothingOpacityQuick
+                || _page == WristMenuPage.Coordinate)
             && Time.unscaledTime >= _nextClothingRefresh)
         {
             if (_page == WristMenuPage.Clothing)
                 RefreshClothingPage();
+            else if (_page == WristMenuPage.ClothingParts)
+                RefreshClothingPartsPage();
+            else if (_page == WristMenuPage.ClothingOpacity
+                || _page == WristMenuPage.ClothingOpacityQuick)
+                RefreshClothingOpacityPage();
             else
                 RefreshCoordinatePage();
             _nextClothingRefresh = Time.unscaledTime + 0.25f;
         }
-        if (_page == WristMenuPage.MmdSettings && Time.unscaledTime >= _nextTimelineRefresh)
+        if (_page == WristMenuPage.Timeline && Time.unscaledTime >= _nextTimelineRefresh)
         {
-            RefreshTimelineButton();
+            RefreshTimelinePage();
             _nextTimelineRefresh = Time.unscaledTime + 0.25f;
         }
     }
@@ -1558,6 +1759,7 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
     private Color _hoverColor;
     private Action _onClick;
     private bool _hovered;
+    private bool _interactable = true;
 
     public void Configure(Image background, Text label, Color normalColor, Color hoverColor, Action onClick)
     {
@@ -1572,6 +1774,17 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
 
     public void SetHovered(bool hovered)
     {
+        if (!_interactable)
+        {
+            _hovered = false;
+            if (_background != null)
+                _background.color = new Color(0.075f, 0.08f, 0.095f, 0.62f);
+            if (_label != null)
+                _label.color = new Color(0.48f, 0.5f, 0.54f, 0.72f);
+            if (_outline != null)
+                _outline.effectColor = new Color(0.3f, 0.32f, 0.36f, 0.08f);
+            return;
+        }
         _hovered = hovered;
         if (_background != null)
             _background.color = hovered ? _hoverColor : _normalColor;
@@ -1604,9 +1817,20 @@ internal sealed class VRWristMenuButtonTarget : MonoBehaviour
             _background.gameObject.SetActive(visible);
     }
 
+    public void SetInteractable(bool interactable)
+    {
+        if (_interactable == interactable)
+            return;
+        _interactable = interactable;
+        SetHovered(false);
+    }
+
+    public bool IsInteractable => _interactable;
+
     public void Activate()
     {
-        _onClick?.Invoke();
+        if (_interactable)
+            _onClick?.Invoke();
     }
 
     private static Color RefineColor(Color accent, bool hovered)

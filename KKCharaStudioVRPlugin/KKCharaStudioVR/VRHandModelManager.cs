@@ -40,16 +40,32 @@ namespace KKCharaStudioVR
             public bool wasTracked;
             public bool nativeAccessoriesStateInitialized;
             public bool nativeAccessoriesVisible;
+            public bool trackedIndexInitialized;
+            public SteamVR_TrackedObject.EIndex lastTrackedIndex;
         }
 
         private HandContext leftHand;
         private HandContext rightHand;
         private KKCharaStudioVRSettings settings;
         private bool initialized;
+        private bool initializationRunning;
+        private Coroutine initHandsCoroutine;
+        private int handBindingGeneration;
+        private int reconnectCheckGeneration;
+        private float nextBindingCheckTime;
+        private bool leftRequestedVisible = true;
+        private bool rightRequestedVisible = true;
+        private static bool presentationSuppressed;
+        private static bool scenePresentationSuppressed;
         private bool _lastPhysicsHandsEnabled;
         private static PhysicMaterial _sharedFrictionless;
 
         public static VRHandModelManager Instance { get; private set; }
+
+        private static bool IsPresentationSuppressed
+        {
+            get { return presentationSuppressed || scenePresentationSuppressed; }
+        }
 
         void Start()
         {
@@ -58,40 +74,88 @@ namespace KKCharaStudioVR
             {
                 settings = VR.Manager.Context.Settings as KKCharaStudioVRSettings;
             }
-            StartCoroutine(InitHandsCo());
+            bool configuredVisible = settings != null ? settings.HandModelEnabled : true;
+            leftRequestedVisible = configuredVisible;
+            rightRequestedVisible = configuredVisible;
+            BeginHandInitialization("startup");
+            if (IsPresentationSuppressed)
+                ApplyPresentationSuppressionState(true);
         }
 
-        private IEnumerator InitHandsCo()
+        private void OnEnable()
         {
-            // Wait until controllers are available — same pattern as DynamicBoneColliderManager
-            while (VR.Mode == null || !(VR.Mode is StandingMode)
-                || VR.Mode.Left == null || VR.Mode.Right == null)
+            SteamVR_Events.DeviceConnected.Listen(OnDeviceConnected);
+        }
+
+        private void OnDisable()
+        {
+            SteamVR_Events.DeviceConnected.Remove(OnDeviceConnected);
+            reconnectCheckGeneration++;
+        }
+
+        private void BeginHandInitialization(string reason)
+        {
+            if (initializationRunning)
+                return;
+
+            int generation = ++handBindingGeneration;
+            initializationRunning = true;
+            VRLog.Info("Initializing VR hand bindings: " + reason);
+            initHandsCoroutine = StartCoroutine(InitHandsCo(generation));
+        }
+
+        private IEnumerator InitHandsCo(int generation)
+        {
+            try
             {
-                yield return new WaitForSeconds(0.5f);
+                // Bind each side independently. A disconnected or rebuilding
+                // controller must never tear down the healthy hand.
+                while (generation == handBindingGeneration)
+                {
+                    StandingMode mode = VR.Mode as StandingMode;
+                    bool leftReady = mode != null
+                        && EnsureSingleHandBinding(mode.Left, true, "initialization");
+                    bool rightReady = mode != null
+                        && EnsureSingleHandBinding(mode.Right, false, "initialization");
+                    initialized = leftHand != null || rightHand != null;
+                    if (leftReady && rightReady)
+                        break;
+                    yield return new WaitForSeconds(0.5f);
+                }
+                if (generation != handBindingGeneration)
+                    yield break;
+                _lastPhysicsHandsEnabled = IsPhysicsHandsEnabled();
+
+                // Wait two frames for VRGIN tool system OnEnable/OnDisable cycle to settle,
+                // then force-reapply correct hand visibility.
+                yield return null;
+                yield return null;
+                if (generation != handBindingGeneration)
+                    yield break;
+
+                float alpha = settings != null ? settings.HandModelAlpha : 0.3f;
+                float scale = settings != null ? settings.HandModelScale : 1.0f;
+                UpdateSingleHand(leftHand, alpha, scale);
+                UpdateSingleHand(rightHand, alpha, scale);
             }
-
-            var leftTracked = ((Component)VR.Mode.Left).GetComponent<SteamVR_TrackedObject>();
-            var rightTracked = ((Component)VR.Mode.Right).GetComponent<SteamVR_TrackedObject>();
-
-            if (leftTracked != null) leftHand = CreateHand(leftTracked, true);
-            if (rightTracked != null) rightHand = CreateHand(rightTracked, false);
-            _lastPhysicsHandsEnabled = IsPhysicsHandsEnabled();
-            initialized = true;
-
-            // Wait two frames for VRGIN tool system OnEnable/OnDisable cycle to settle,
-            // then force-reapply correct hand visibility from settings
-            yield return null;
-            yield return null;
-
-            bool handEnabled = settings != null ? settings.HandModelEnabled : true;
-            if (leftHand != null && leftHand.root != null)
-                leftHand.root.SetActive(handEnabled);
-            if (rightHand != null && rightHand.root != null)
-                rightHand.root.SetActive(handEnabled);
+            finally
+            {
+                if (generation == handBindingGeneration)
+                {
+                    initializationRunning = false;
+                    initHandsCoroutine = null;
+                }
+            }
         }
 
         void Update()
         {
+            if (Time.realtimeSinceStartup >= nextBindingCheckTime)
+            {
+                nextBindingCheckTime = Time.realtimeSinceStartup + 0.5f;
+                EnsureControllerBinding("periodic controller identity check");
+            }
+
             if (!initialized) return;
 
             bool physicsEnabled = IsPhysicsHandsEnabled();
@@ -111,6 +175,11 @@ namespace KKCharaStudioVR
 
         public void SetHandVisible(bool isLeft, bool visible)
         {
+            if (isLeft)
+                leftRequestedVisible = visible;
+            else
+                rightRequestedVisible = visible;
+
             HandContext h = isLeft ? leftHand : rightHand;
             if (h == null)
                 return;
@@ -124,6 +193,216 @@ namespace KKCharaStudioVR
         {
             SetHandVisible(true, visible);
             SetHandVisible(false, visible);
+        }
+
+        /// <summary>
+        /// Temporarily hides both custom hands and native controller renderers
+        /// without changing the saved hand-model setting or either hand's
+        /// requested visibility. Clearing suppression restores the exact current
+        /// presentation policy, including after scene loads and reconnects.
+        /// </summary>
+        public void SetPresentationSuppressed(bool suppressed)
+        {
+            presentationSuppressed = suppressed;
+            ApplyPresentationSuppressionState(IsPresentationSuppressed);
+        }
+
+        internal static void SetPresentationSuppressionRequested(bool suppressed)
+        {
+            scenePresentationSuppressed = suppressed;
+            if (Instance != null)
+                Instance.ApplyPresentationSuppressionState(IsPresentationSuppressed);
+        }
+
+        private void ApplyPresentationSuppressionState(bool suppressed)
+        {
+            if (suppressed)
+            {
+                SuppressHandPresentation(leftHand);
+                SuppressHandPresentation(rightHand);
+                SuppressUnboundNativeController(GetStandingController(true));
+                SuppressUnboundNativeController(GetStandingController(false));
+                return;
+            }
+
+            RestoreUnboundNativeController(GetStandingController(true), leftHand);
+            RestoreUnboundNativeController(GetStandingController(false), rightHand);
+            EnsureControllerBinding("presentation suppression cleared");
+            float alpha = settings != null ? settings.HandModelAlpha : 0.3f;
+            float scale = settings != null ? settings.HandModelScale : 1.0f;
+            UpdateSingleHand(leftHand, alpha, scale);
+            UpdateSingleHand(rightHand, alpha, scale);
+        }
+
+        /// <summary>
+        /// Drops bindings that point at controllers being destroyed. The requested
+        /// per-hand visibility is intentionally retained for the replacement mode.
+        /// </summary>
+        public void PrepareForControllerRebuild(string reason)
+        {
+            ResetHandBindings("controller rebuild requested: " + reason, false);
+        }
+
+        /// <summary>
+        /// Rebinds custom hands whenever VRGIN replaces either Controller or its
+        /// SteamVR_TrackedObject. A device-index change on the same tracked object
+        /// is handled live and does not rebuild expensive hand meshes.
+        /// </summary>
+        public void EnsureControllerBinding(string reason)
+        {
+            StandingMode mode = VR.Mode as StandingMode;
+            if (mode == null)
+                return;
+
+            bool leftBound = EnsureSingleHandBinding(mode.Left, true, reason);
+            bool rightBound = EnsureSingleHandBinding(mode.Right, false, reason);
+            initialized = leftHand != null || rightHand != null;
+            if ((!leftBound || !rightBound) && !initializationRunning)
+                BeginHandInitialization(reason);
+        }
+
+        private bool EnsureSingleHandBinding(
+            VRGIN.Controls.Controller controller,
+            bool isLeft,
+            string reason)
+        {
+            HandContext current = isLeft ? leftHand : rightHand;
+            SteamVR_TrackedObject tracked = controller == null
+                ? null
+                : ((Component)controller).GetComponent<SteamVR_TrackedObject>();
+            bool bound = current != null
+                && current.root != null
+                && current.trackedObj == tracked
+                && current.cachedController == controller;
+            if (bound)
+                return true;
+
+            if (current != null)
+            {
+                DestroyHand(current);
+                if (isLeft)
+                    leftHand = null;
+                else
+                    rightHand = null;
+                VRLog.Warn((isLeft ? "Left" : "Right")
+                    + " VR hand binding replaced after " + reason + ".");
+            }
+
+            if (controller == null || tracked == null)
+                return false;
+
+            try
+            {
+                HandContext replacement = CreateHand(tracked, isLeft);
+                replacement.requestedVisible = isLeft
+                    ? leftRequestedVisible
+                    : rightRequestedVisible;
+                if (isLeft)
+                    leftHand = replacement;
+                else
+                    rightHand = replacement;
+
+                if (IsPresentationSuppressed)
+                    SuppressHandPresentation(replacement);
+                VRLog.Info((isLeft ? "Left" : "Right")
+                    + " VR hand bound independently after " + reason + ".");
+                return true;
+            }
+            catch (Exception exception)
+            {
+                VRLog.Warn("Unable to create " + (isLeft ? "left" : "right")
+                    + " VR hand after " + reason + ": " + exception.Message);
+                return false;
+            }
+        }
+
+        private void ResetHandBindings(string reason, bool restart)
+        {
+            handBindingGeneration++;
+            if (initHandsCoroutine != null)
+            {
+                StopCoroutine(initHandsCoroutine);
+                initHandsCoroutine = null;
+            }
+            initializationRunning = false;
+            initialized = false;
+            DestroyHand(leftHand);
+            DestroyHand(rightHand);
+            leftHand = null;
+            rightHand = null;
+            VRLog.Warn("VR hand bindings reset: " + reason);
+            if (restart)
+                BeginHandInitialization(reason);
+        }
+
+        private static VRGIN.Controls.Controller GetStandingController(bool isLeft)
+        {
+            StandingMode mode = VR.Mode as StandingMode;
+            if (mode == null)
+                return null;
+            return isLeft ? mode.Left : mode.Right;
+        }
+
+        private static void SuppressUnboundNativeController(
+            VRGIN.Controls.Controller controller)
+        {
+            if (controller != null)
+                controller.SetRenderModelVisible(false);
+        }
+
+        private static void RestoreUnboundNativeController(
+            VRGIN.Controls.Controller controller,
+            HandContext hand)
+        {
+            if (controller != null
+                && (hand == null || hand.cachedController != controller))
+            {
+                controller.SetRenderModelVisible(true);
+            }
+        }
+
+        private static void SuppressHandPresentation(HandContext hand)
+        {
+            if (hand == null)
+                return;
+            if (hand.root != null)
+                hand.root.SetActive(false);
+            ForceHideNativeController(hand);
+            SetNativeAccessoriesVisible(hand, false, true);
+        }
+
+        private void OnDeviceConnected(int index, bool connected)
+        {
+            int generation = ++reconnectCheckGeneration;
+            if (!connected)
+                return;
+
+            CVRSystem system = OpenVR.System;
+            if (system == null || index < 0
+                || system.GetTrackedDeviceClass((uint)index)
+                    != ETrackedDeviceClass.Controller)
+                return;
+
+            StartCoroutine(RecoverAfterControllerReconnectCo(index, generation));
+        }
+
+        private IEnumerator RecoverAfterControllerReconnectCo(int index, int generation)
+        {
+            float readyAt = Time.realtimeSinceStartup + 0.75f;
+            while (Time.realtimeSinceStartup < readyAt)
+                yield return null;
+            if (generation != reconnectCheckGeneration)
+                yield break;
+
+            CVRSystem system = OpenVR.System;
+            if (system == null || !system.IsTrackedDeviceConnected((uint)index))
+                yield break;
+
+            EnsureControllerBinding("SteamVR controller reconnected on index " + index);
+            KKCharaStudioInterpreter interpreter =
+                VR.Manager?.Interpreter as KKCharaStudioInterpreter;
+            interpreter?.ForceResetVRMode(
+                "SteamVR controller reconnected on index " + index);
         }
 
         public Transform GetFingerTipTransform(bool isLeft, int fingerIndex)
@@ -147,10 +426,30 @@ namespace KKCharaStudioVR
 
         private void UpdateSingleHand(HandContext h, float alpha, float scale)
         {
-            if (h == null || h.root == null) return;
+            if (h == null || h.root == null || h.trackedObj == null) return;
+
+            if (!h.trackedIndexInitialized || h.lastTrackedIndex != h.trackedObj.index)
+            {
+                if (h.trackedIndexInitialized)
+                {
+                    VRLog.Info("Controller index changed from {0} to {1}; "
+                        + "hand model and tools keep the live TrackedObject binding.",
+                        h.lastTrackedIndex, h.trackedObj.index);
+                }
+                h.trackedIndexInitialized = true;
+                h.lastTrackedIndex = h.trackedObj.index;
+                h.trackingStateInitialized = false;
+                h.nativeAccessoriesStateInitialized = false;
+            }
 
             bool isTracked = HasUsableTracking(h);
             ReportTrackingTransition(h, isTracked);
+
+            if (IsPresentationSuppressed)
+            {
+                SuppressHandPresentation(h);
+                return;
+            }
 
             bool handModelEnabled = settings != null ? settings.HandModelEnabled : true;
             bool shouldShowCustomHand = isTracked && handModelEnabled && h.requestedVisible;
@@ -524,7 +823,7 @@ namespace KKCharaStudioVR
 
             ConfigurePhysicsMode(ctx, isLeft, IsPhysicsHandsEnabled());
             bool handEnabled = settings != null ? settings.HandModelEnabled : true;
-            ctx.root.SetActive(handEnabled);
+            ctx.root.SetActive(handEnabled && !IsPresentationSuppressed);
             return ctx;
         }
         
@@ -885,6 +1184,8 @@ namespace KKCharaStudioVR
 
         private void OnDestroy()
         {
+            reconnectCheckGeneration++;
+            handBindingGeneration++;
             DestroyHand(leftHand);
             DestroyHand(rightHand);
             if (Instance == this) Instance = null;
@@ -893,8 +1194,20 @@ namespace KKCharaStudioVR
         private void DestroyHand(HandContext hand)
         {
             if (hand == null) return;
-            if (hand.cachedController != null && hand.lastRenderModelHidden)
-                hand.cachedController.SetRenderModelVisible(true);
+            if (hand.cachedController != null)
+            {
+                if (IsPresentationSuppressed)
+                {
+                    hand.cachedController.SetRenderModelVisible(false);
+                    SetNativeAccessoriesVisible(hand, false, true);
+                }
+                else
+                {
+                    if (hand.lastRenderModelHidden)
+                        hand.cachedController.SetRenderModelVisible(true);
+                    SetNativeAccessoriesVisible(hand, true, true);
+                }
+            }
             if (hand.root != null) Destroy(hand.root);
             if (hand.material != null) Destroy(hand.material);
         }

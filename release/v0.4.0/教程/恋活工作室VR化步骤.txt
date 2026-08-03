@@ -1,0 +1,239 @@
+========================================================================
+             恋活工作室 VR 化步骤教程 / Setup Tutorial / セットアップ
+                    Ermin Edition v0.4.0
+========================================================================
+
+------------------------------------------------------------------------
+[简体中文 / Simplified Chinese]
+------------------------------------------------------------------------
+前置要求：请先备份游戏目录中的同名文件，并彻底关闭 CharaStudio。进入 VR
+模式前还需安装并启动 SteamVR；普通工作室模式不需要启动 SteamVR。
+
+请严格按照“文件1”到“文件5”的顺序安装：
+
+1. 安装“文件1 BepInEx_win_x64_5.4.23.2 .zip”
+   - 解压后，将其中全部内容复制到游戏根目录并允许覆盖。
+   - 双击启动一次游戏本体（Koikatu.exe），让程序自动生成
+     “游戏根目录/BepInEx/patchers/”文件夹，生成后即可关闭游戏。
+
+2. 安装“文件2 BepInEx.BepIn4Patcher.zip”
+   - 解压后，将其中全部内容复制到
+     “游戏根目录/BepInEx/patchers/”文件夹。
+
+3. 安装“文件3 KK_MainGameVR-1.2.0.zip”
+   - 解压后，将其中全部内容复制到游戏根目录并允许覆盖。
+   - Steam 版用户请一并复制 Koikatsu Party_Data 文件夹。
+
+4. 安装“文件4 globalgamemanagers(已修补VR支持).zip”
+   - 将解压出的 globalgamemanagers 复制到
+     “游戏根目录/CharaStudio_Data/”并覆盖原文件。
+
+5. 安装“文件5 KKCharaStudioVRPlugin_Ermin_Quest3_Fix.zip”
+   - 解压后，将包内根目录中的全部内容复制到游戏根目录并允许覆盖。
+   - 本文件提供 Ermin 0.4.0、VRGIN_KKCS、启动脚本与基础运行文件。
+   - 复制完成后，请确认以下文件位于准确位置：
+       游戏根目录/BepInEx/KKCharaStudioVRPlugin.dll
+       游戏根目录/StartCharaStudioVR.bat
+       游戏根目录/StartCharaStudioNoVR.bat
+       游戏根目录/KKVRReShadeBridge.addon64
+   - 不要在 BepInEx/plugins 中再保留第二份 KKCharaStudioVRPlugin.dll，
+     否则可能重复载入。
+
+启动方式：
+
+- VR 工作室：先启动 SteamVR，再双击游戏根目录中的
+  StartCharaStudioVR.bat。该脚本会使用“--studiovr -vrmode OpenVR”。
+- 普通工作室：双击 StartCharaStudioNoVR.bat。该脚本会使用
+  “--novr -vrmode None”，即使 SteamVR 正在后台运行也不会进入 VR。
+- 请优先使用这两个启动脚本，不要继续使用带旧参数的快捷方式。
+
+ReShade 说明：
+
+- ReShade 完全可选；不使用 ReShade 时，KK VR 的其他功能仍可正常使用。
+- KKVRReShadeBridge.addon64 只负责插件内的 ReShade 开关与预设切换，
+  必须放在 CharaStudio.exe 所在的游戏根目录，不能放进 BepInEx。
+- ReShade 只会在 CharaStudio 启动时发现该 add-on。安装、替换或移动
+  KKVRReShadeBridge.addon64 后，必须彻底退出 CharaStudio，再重新启动；
+  运行中无法热载入。若任务管理器中仍有 CharaStudio.exe，请先结束进程。
+
+腕表与外部依赖：
+
+- 进入 VR 后，短按左手柄 X 键打开或关闭腕表菜单；使用右手射线指向
+  按钮并按扳机确认，文件列表可用右摇杆上下滚动。
+- MMDD、VNGE、Timeline、MaterialEditor、Coordinate Load Option 和
+  KK VR CameraSync 均为独立的外部插件，不包含在本发布包内。
+- MMD/VMD 功能需要用户另行安装相互兼容的 VNGE 与 MMDD；Timeline 页面
+  需要另行安装 Timeline；相应材质、换装兼容和镜头跟随功能则分别需要
+  MaterialEditor、Coordinate Load Option 与 KK VR CameraSync。
+- 未安装某项外部依赖时，与其无关的 KK VR 功能仍可使用；对应页面会提示
+  该插件不可用。请从各项目原作者处获取适用于 KK 的版本。
+
+提示：如果游戏缺少基础插件、依赖模组或衣服卡片包，推荐安装官方 HF Patch
+整合补丁包进行完整性修复与补充。
+HF Patch GitHub 官方发布地址：https://github.com/ManlyMarco/KK-HF_Patch
+
+
+------------------------------------------------------------------------
+[English / 英文]
+------------------------------------------------------------------------
+Prerequisites: Back up files with the same names and fully close CharaStudio
+before installation. SteamVR must be installed and running for VR mode; it is
+not required for normal Studio mode.
+
+Install the five archives strictly in order from File 1 to File 5:
+
+1. Install "文件1 BepInEx_win_x64_5.4.23.2 .zip"
+   - Extract it, then copy everything to the game root and allow overwrite.
+   - Launch the main game (Koikatu.exe) once so it creates
+     "Game Root/BepInEx/patchers/", then close the game.
+
+2. Install "文件2 BepInEx.BepIn4Patcher.zip"
+   - Extract it, then copy everything into
+     "Game Root/BepInEx/patchers/".
+
+3. Install "文件3 KK_MainGameVR-1.2.0.zip"
+   - Extract it, then copy everything to the game root and allow overwrite.
+   - Steam users should also copy the Koikatsu Party_Data folder.
+
+4. Install "文件4 globalgamemanagers(已修补VR支持).zip"
+   - Copy the extracted globalgamemanagers file into
+     "Game Root/CharaStudio_Data/" and overwrite the existing file.
+
+5. Install "文件5 KKCharaStudioVRPlugin_Ermin_Quest3_Fix.zip"
+   - Extract it, then copy everything inside its package root to the game root
+     and allow overwrite.
+   - This archive provides Ermin 0.4.0, VRGIN_KKCS, launchers, and the base
+     runtime files.
+   - Confirm that these files are in the exact locations below:
+       Game Root/BepInEx/KKCharaStudioVRPlugin.dll
+       Game Root/StartCharaStudioVR.bat
+       Game Root/StartCharaStudioNoVR.bat
+       Game Root/KKVRReShadeBridge.addon64
+   - Do not keep a second KKCharaStudioVRPlugin.dll under BepInEx/plugins,
+     because duplicate copies may be loaded.
+
+Launching Studio:
+
+- VR Studio: Start SteamVR first, then run StartCharaStudioVR.bat from the
+  game root. It launches with "--studiovr -vrmode OpenVR".
+- Normal Studio: Run StartCharaStudioNoVR.bat. It launches with
+  "--novr -vrmode None", so Studio will remain non-VR even when SteamVR is
+  running in the background.
+- Use these two launchers instead of old shortcuts containing legacy arguments.
+
+ReShade notes:
+
+- ReShade is entirely optional. All unrelated KK VR features continue to work
+  when ReShade is not installed or used.
+- KKVRReShadeBridge.addon64 only enables the built-in ReShade toggle and preset
+  selector. It must be placed in the game root beside CharaStudio.exe, not in
+  BepInEx.
+- ReShade discovers this add-on only while CharaStudio is starting. After
+  installing, replacing, or moving KKVRReShadeBridge.addon64, fully exit
+  CharaStudio and start it again; the add-on cannot be hot-loaded. If
+  CharaStudio.exe is still visible in Task Manager, end that process first.
+
+Wrist menu and external dependencies:
+
+- In VR, short-press X on the left controller to open or close the wrist menu.
+  Aim with the right-hand ray and press Trigger to select; use the right stick
+  up or down to scroll file lists.
+- MMDD, VNGE, Timeline, MaterialEditor, Coordinate Load Option, and KK VR
+  CameraSync are independent external plug-ins and are not included in this
+  release package.
+- MMD/VMD features require mutually compatible KK versions of VNGE and MMDD.
+  The Timeline page requires Timeline. Related material, outfit compatibility,
+  and camera-follow features require MaterialEditor, Coordinate Load Option,
+  and KK VR CameraSync respectively.
+- KK VR features unrelated to a missing dependency remain available; the
+  relevant page will report that the external plug-in is unavailable. Obtain
+  compatible KK releases from each project's original author.
+
+Tip: If essential base plug-ins, dependencies, clothing, or card mods are
+missing, install the official HF Patch to complete or repair the game setup.
+Official HF Patch GitHub repository: https://github.com/ManlyMarco/KK-HF_Patch
+
+
+------------------------------------------------------------------------
+[日本語 / Japanese]
+------------------------------------------------------------------------
+前提条件：導入前にゲームフォルダー内の同名ファイルをバックアップし、
+CharaStudio を完全に終了してください。VR モードでは SteamVR の導入と起動が
+必要ですが、通常のスタジオモードでは SteamVR は不要です。
+
+「文件1」から「文件5」まで、必ず次の順番で導入してください：
+
+1. 「文件1 BepInEx_win_x64_5.4.23.2 .zip」を導入
+   - 解凍後、すべての内容をゲームのルートディレクトリへコピーし、
+     上書きを許可します。
+   - ゲーム本体（Koikatu.exe）を一度起動して
+     「ゲームルート/BepInEx/patchers/」を自動生成し、その後終了します。
+
+2. 「文件2 BepInEx.BepIn4Patcher.zip」を導入
+   - 解凍後、すべての内容を
+     「ゲームルート/BepInEx/patchers/」へコピーします。
+
+3. 「文件3 KK_MainGameVR-1.2.0.zip」を導入
+   - 解凍後、すべての内容をゲームのルートディレクトリへコピーし、
+     上書きを許可します。
+   - Steam 版では Koikatsu Party_Data フォルダーもコピーしてください。
+
+4. 「文件4 globalgamemanagers(已修补VR支持).zip」を導入
+   - 解凍した globalgamemanagers を
+     「ゲームルート/CharaStudio_Data/」へコピーして上書きします。
+
+5. 「文件5 KKCharaStudioVRPlugin_Ermin_Quest3_Fix.zip」を導入
+   - 解凍後、パッケージのルート内にあるすべての内容をゲームのルートへ
+     コピーし、上書きを許可します。
+   - このファイルには Ermin 0.4.0、VRGIN_KKCS、起動スクリプト、基本的な
+     ランタイムファイルが含まれています。
+   - コピー後、次のファイルが正しい場所にあることを確認してください：
+       ゲームルート/BepInEx/KKCharaStudioVRPlugin.dll
+       ゲームルート/StartCharaStudioVR.bat
+       ゲームルート/StartCharaStudioNoVR.bat
+       ゲームルート/KKVRReShadeBridge.addon64
+   - BepInEx/plugins に KKCharaStudioVRPlugin.dll の別コピーを残さないで
+     ください。重複して読み込まれる可能性があります。
+
+起動方法：
+
+- VR スタジオ：先に SteamVR を起動し、ゲームルートの
+  StartCharaStudioVR.bat を実行します。このスクリプトは
+  「--studiovr -vrmode OpenVR」で起動します。
+- 通常スタジオ：StartCharaStudioNoVR.bat を実行します。このスクリプトは
+  「--novr -vrmode None」で起動するため、SteamVR がバックグラウンドで
+  動作していても VR モードには入りません。
+- 古い引数を含むショートカットではなく、この2つの起動スクリプトを使用して
+  ください。
+
+ReShade について：
+
+- ReShade は完全に任意です。ReShade を導入・使用しなくても、関係のない
+  KK VR 機能はそのまま利用できます。
+- KKVRReShadeBridge.addon64 は、プラグイン内の ReShade オン／オフと
+  プリセット切り替えだけを提供します。BepInEx 内ではなく、
+  CharaStudio.exe と同じゲームルートへ配置してください。
+- ReShade は CharaStudio の起動時にのみ add-on を検出します。
+  KKVRReShadeBridge.addon64 を導入・交換・移動した後は、CharaStudio を
+  完全に終了してから再起動してください。実行中のホットロードはできません。
+  タスクマネージャーに CharaStudio.exe が残っている場合は、先に終了します。
+
+リストメニューと外部依存プラグイン：
+
+- VR 内では左コントローラーの X ボタンを短く押してリストメニューを開閉
+  します。右手のレイでボタンを指し、トリガーで決定します。ファイル一覧は
+  右スティックの上下でスクロールできます。
+- MMDD、VNGE、Timeline、MaterialEditor、Coordinate Load Option、
+  KK VR CameraSync はすべて独立した外部プラグインであり、この配布パックには
+  含まれていません。
+- MMD/VMD 機能には相互互換性のある KK 版 VNGE と MMDD、Timeline ページには
+  Timeline が必要です。材質・衣装互換・カメラ追従に関する機能には、それぞれ
+  MaterialEditor、Coordinate Load Option、KK VR CameraSync が必要です。
+- 外部依存が未導入でも、それと無関係な KK VR 機能は利用できます。該当ページ
+  には外部プラグインが利用できない旨が表示されます。各プロジェクトの原作者
+  から KK 対応版を入手してください。
+
+ヒント：基本プラグイン、依存 Mod、衣装やカードが不足している場合は、公式
+HF Patch 統合パックでゲーム環境を補完してください。
+HF Patch GitHub 公式リポジトリ：https://github.com/ManlyMarco/KK-HF_Patch
+========================================================================

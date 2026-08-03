@@ -6,6 +6,10 @@ namespace KKCharaStudioVR;
 [XmlRoot("Settings")]
 public class KKCharaStudioVRSettings : VRSettings
 {
+	public const string ControllerLayoutSplitHands = "split-hands";
+	public const string ControllerLayoutLeftHand = "left-hand";
+	public const string ControllerLayoutRightHand = "right-hand";
+
 	private bool _LockRotXZ = true;
 	private float _LocomotionSpeed = 2.0f;
 	private float _SnapTurnAngle = 45f;
@@ -146,12 +150,40 @@ public class KKCharaStudioVRSettings : VRSettings
 	}
 
 	private float _UISpawnDistance = 2.0f;
+	private float _UISpawnScale = 1.0f;
+	private string _ControllerFaceButtonLayout = ControllerLayoutSplitHands;
+	private bool _TimelineFollowCamera = true;
 
 	[XmlComment("Distance in front of head when UI respawns (meters)")]
 	public float UISpawnDistance
 	{
 		get { return _UISpawnDistance; }
 		set { _UISpawnDistance = value; TriggerPropertyChanged("UISpawnDistance"); }
+	}
+
+	[XmlComment("Main Studio GUI scale multiplier when it respawns")]
+	public float UISpawnScale
+	{
+		get { return _UISpawnScale; }
+		set { _UISpawnScale = value; TriggerPropertyChanged("UISpawnScale"); }
+	}
+
+	[XmlComment("Face button layout: split-hands, left-hand, or right-hand")]
+	public string ControllerFaceButtonLayout
+	{
+		get { return _ControllerFaceButtonLayout; }
+		set
+		{
+			_ControllerFaceButtonLayout = NormalizeControllerFaceButtonLayout(value);
+			TriggerPropertyChanged("ControllerFaceButtonLayout");
+		}
+	}
+
+	[XmlComment("Follow Timeline camera animation in VR; false plays animation without moving the VR view")]
+	public bool TimelineFollowCamera
+	{
+		get { return _TimelineFollowCamera; }
+		set { _TimelineFollowCamera = value; TriggerPropertyChanged("TimelineFollowCamera"); }
 	}
 
 	private bool _ComfortVignetteEnabled = true;
@@ -161,6 +193,21 @@ public class KKCharaStudioVRSettings : VRSettings
 	private float _WristMenuScale = 1.0f;
 	private string _WristMenuLanguage = "zh-CN";
 	private string _VmdRootPath = string.Empty;
+	private bool _TimelineFovOverrideEnabled;
+	private float _TimelineFovOverrideValue = 53.13f;
+	private float _TimelineVerticalOffset;
+	private float _TimelineYawOffset;
+	private bool _TimelineSavedControlPresetAvailable;
+	private bool _TimelineSavedFovOverrideEnabled = true;
+	private float _TimelineSavedFovOverrideValue = 53.13f;
+	private float _TimelineSavedVerticalOffset;
+	private float _TimelineSavedYawOffset;
+	private bool _PreserveOutfitOnCharacterReplace;
+	private bool _AutoApplyHighHeelsPreset = true;
+	private bool _HideHandsAndUiDuringMmd;
+	private float _MmdFovAdjustSpeed = 20f;
+	private bool _MmdClothingCueEnabled;
+	private string _MmdClothingCuePresetId = VRMmdCueSheetStore.DefaultPresetId;
 
 	[XmlComment("Enable comfort vignette during movement")]
 	public bool ComfortVignetteEnabled
@@ -216,6 +263,151 @@ public class KKCharaStudioVRSettings : VRSettings
 		{
 			_VmdRootPath = value ?? string.Empty;
 			TriggerPropertyChanged("VmdRootPath");
+		}
+	}
+
+	[XmlComment("Match Timeline desktop framing in VR by converting the animated source FOV to a bounded camera distance")]
+	public bool TimelineFovOverrideEnabled
+	{
+		get { return _TimelineFovOverrideEnabled; }
+		set { _TimelineFovOverrideEnabled = value; TriggerPropertyChanged("TimelineFovOverrideEnabled"); }
+	}
+
+	[XmlComment("Reference FOV used by Timeline VR composition-distance matching, in degrees")]
+	public float TimelineFovOverrideValue
+	{
+		get { return _TimelineFovOverrideValue; }
+		set
+		{
+			_TimelineFovOverrideValue = System.Math.Max(20f, System.Math.Min(120f, value));
+			TriggerPropertyChanged("TimelineFovOverrideValue");
+		}
+	}
+
+	[XmlComment("Vertical world-space offset applied to the Timeline VR camera, in meters")]
+	public float TimelineVerticalOffset
+	{
+		get { return _TimelineVerticalOffset; }
+		set
+		{
+			_TimelineVerticalOffset = System.Math.Max(-10f, System.Math.Min(10f, value));
+			TriggerPropertyChanged("TimelineVerticalOffset");
+		}
+	}
+
+	[XmlComment("Linear yaw offset applied to the Timeline VR camera, in degrees")]
+	public float TimelineYawOffset
+	{
+		get { return _TimelineYawOffset; }
+		set
+		{
+			_TimelineYawOffset = NormalizeTimelineYaw(value);
+			TriggerPropertyChanged("TimelineYawOffset");
+		}
+	}
+
+	[XmlComment("Whether an explicit Timeline control preset has been saved")]
+	public bool TimelineSavedControlPresetAvailable
+	{
+		get { return _TimelineSavedControlPresetAvailable; }
+		set
+		{
+			_TimelineSavedControlPresetAvailable = value;
+			TriggerPropertyChanged("TimelineSavedControlPresetAvailable");
+		}
+	}
+
+	[XmlComment("Saved Timeline composition-match state")]
+	public bool TimelineSavedFovOverrideEnabled
+	{
+		get { return _TimelineSavedFovOverrideEnabled; }
+		set
+		{
+			_TimelineSavedFovOverrideEnabled = value;
+			TriggerPropertyChanged("TimelineSavedFovOverrideEnabled");
+		}
+	}
+
+	[XmlComment("Saved Timeline reference FOV, in degrees")]
+	public float TimelineSavedFovOverrideValue
+	{
+		get { return _TimelineSavedFovOverrideValue; }
+		set
+		{
+			_TimelineSavedFovOverrideValue = System.Math.Max(20f, System.Math.Min(120f, value));
+			TriggerPropertyChanged("TimelineSavedFovOverrideValue");
+		}
+	}
+
+	[XmlComment("Saved Timeline vertical world-space offset, in meters")]
+	public float TimelineSavedVerticalOffset
+	{
+		get { return _TimelineSavedVerticalOffset; }
+		set
+		{
+			_TimelineSavedVerticalOffset = System.Math.Max(-10f, System.Math.Min(10f, value));
+			TriggerPropertyChanged("TimelineSavedVerticalOffset");
+		}
+	}
+
+	[XmlComment("Saved Timeline linear yaw offset, in degrees")]
+	public float TimelineSavedYawOffset
+	{
+		get { return _TimelineSavedYawOffset; }
+		set
+		{
+			_TimelineSavedYawOffset = NormalizeTimelineYaw(value);
+			TriggerPropertyChanged("TimelineSavedYawOffset");
+		}
+	}
+
+	[XmlComment("Keep the current outfit when replacing a Studio character card")]
+	public bool PreserveOutfitOnCharacterReplace
+	{
+		get { return _PreserveOutfitOnCharacterReplace; }
+		set { _PreserveOutfitOnCharacterReplace = value; TriggerPropertyChanged("PreserveOutfitOnCharacterReplace"); }
+	}
+
+	[XmlComment("Automatically apply the matching per-character high-heels preset when available")]
+	public bool AutoApplyHighHeelsPreset
+	{
+		get { return _AutoApplyHighHeelsPreset; }
+		set { _AutoApplyHighHeelsPreset = value; TriggerPropertyChanged("AutoApplyHighHeelsPreset"); }
+	}
+
+	[XmlComment("Hide VR hands and interaction UI while MMD playback is running")]
+	public bool HideHandsAndUiDuringMmd
+	{
+		get { return _HideHandsAndUiDuringMmd; }
+		set { _HideHandsAndUiDuringMmd = value; TriggerPropertyChanged("HideHandsAndUiDuringMmd"); }
+	}
+
+	[XmlComment("Fixed-FOV adjustment speed during MMD presentation mode, in degrees per second")]
+	public float MmdFovAdjustSpeed
+	{
+		get { return _MmdFovAdjustSpeed; }
+		set
+		{
+			_MmdFovAdjustSpeed = System.Math.Max(5f, System.Math.Min(60f, value));
+			TriggerPropertyChanged("MmdFovAdjustSpeed");
+		}
+	}
+
+	[XmlComment("Enable percentage-based clothing cues during MMD playback")]
+	public bool MmdClothingCueEnabled
+	{
+		get { return _MmdClothingCueEnabled; }
+		set { _MmdClothingCueEnabled = value; TriggerPropertyChanged("MmdClothingCueEnabled"); }
+	}
+
+	[XmlComment("Stable ID of the selected global MMD clothing fade preset")]
+	public string MmdClothingCuePresetId
+	{
+		get { return _MmdClothingCuePresetId; }
+		set
+		{
+			_MmdClothingCuePresetId = NormalizeMmdClothingCuePresetId(value);
+			TriggerPropertyChanged("MmdClothingCuePresetId");
 		}
 	}
 
@@ -282,4 +474,30 @@ public class KKCharaStudioVRSettings : VRSettings
 			return "en-US";
 		return "zh-CN";
 	}
+
+	private static string NormalizeControllerFaceButtonLayout(string value)
+	{
+		if (string.Equals(value, ControllerLayoutLeftHand, System.StringComparison.OrdinalIgnoreCase))
+			return ControllerLayoutLeftHand;
+		if (string.Equals(value, ControllerLayoutRightHand, System.StringComparison.OrdinalIgnoreCase))
+			return ControllerLayoutRightHand;
+		return ControllerLayoutSplitHands;
+	}
+
+	private static float NormalizeTimelineYaw(float value)
+	{
+		if (float.IsNaN(value) || float.IsInfinity(value))
+			return 0f;
+		while (value > 180f)
+			value -= 360f;
+		while (value < -180f)
+			value += 360f;
+		return value;
+	}
+
+	private static string NormalizeMmdClothingCuePresetId(string value)
+	{
+		return VRMmdCueSheetStore.NormalizePresetId(value);
+	}
+
 }

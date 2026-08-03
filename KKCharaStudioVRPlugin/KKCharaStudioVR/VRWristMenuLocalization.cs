@@ -57,6 +57,7 @@ public sealed partial class VRWristMenuController
         { "卡面预览失败：", "カード画像のプレビューに失敗：" },
         { "已有服装卡正在替换，请稍后", "別の衣装カードを適用中です。しばらくお待ちください" },
         { "所选角色仍在读取，请稍后再换装", "選択したキャラを読込中です。しばらくしてから着替えてください" },
+        { "目标角色尚未初始化完成或已经失效", "対象キャラは初期化中か無効です" },
         { "Coordinate Load Option 正在处理其他换装，请稍后", "Coordinate Load Optionが別の着替えを処理中です" },
         { "Coordinate Load Option 正在处理其他换装", "Coordinate Load Optionが別の着替えを処理中です" },
         { "Coordinate Load Option 接口不可用", "Coordinate Load Optionのインターフェースを利用できません" },
@@ -80,6 +81,20 @@ public sealed partial class VRWristMenuController
         { "检查饰品绑定数据失败：", "アクセ連携データの確認に失敗：" },
         { "已只替换衣服，现有饰品保持不变：", "服だけを変更し、現在のアクセを維持：" },
         { "已换衣服并把所选饰品追加到空槽：", "服を変更し、選択アクセを空き枠へ追加：" },
+        { "已完整替换衣服；现有饰品保持不变：", "衣服を一式変更し、現在のアクセを維持：" },
+        { "这个角色没有由本插件追加且仍可安全管理的饰品", "このキャラには、このプラグインが追加した安全に管理できるアクセがありません" },
+        { "已有服装卡操作正在进行，请稍后再管理追加饰品", "衣装カード操作中です。完了後に追加アクセを管理してください" },
+        { "场景角色已变化，请重新选择饰品管理目标", "シーンのキャラが変わりました。アクセ管理対象を選び直してください" },
+        { "所选角色仍在读取，请稍后再管理追加饰品", "選択したキャラを読込中です。完了後に追加アクセを管理してください" },
+        { "所选饰品已被修改或不再由本插件管理；未删除任何饰品", "選択アクセは変更済みか管理対象外です。何も削除していません" },
+        { "饰品槽在删除前已变化，为避免误删已取消操作", "削除前にアクセ枠が変わったため、誤削除防止のため中止しました" },
+        { "工作室没有接受饰品删除请求", "スタジオがアクセ削除要求を受け付けませんでした" },
+        { "已移除本次追加饰品 ", "追加アクセを削除：" },
+        { "正在移除本次追加饰品 ", "追加アクセを削除中：" },
+        { "移除追加饰品没有启动", "追加アクセの削除を開始できませんでした" },
+        { "移除追加饰品失败：", "追加アクセの削除に失敗：" },
+        { "饰品操作失败：", "アクセ操作に失敗：" },
+        { "已跳过重复饰品 ", "重複アクセをスキップ：" },
         { "只换衣服被中止：检测到饰品数据发生变化", "アクセデータの変更を検出したため、服だけの変更を中止しました" },
         { "已有服装卡操作正在进行，请稍后再撤销", "衣装カード操作中です。完了後に元に戻してください" },
         { "场景角色已变化，请重新选择撤销目标", "シーンのキャラが変わりました。元に戻す対象を選び直してください" },
@@ -151,6 +166,20 @@ public sealed partial class VRWristMenuController
         { "高跟鞋控制失败：", "ハイヒール操作に失敗：" },
         { "高跟鞋控制失败", "ハイヒール操作に失敗しました" },
         { "VMD 载入失败：", "VMDの読込に失敗：" },
+        { "角色替换前无法清理旧 VMD：", "キャラ置換前に古いVMDを解除できません：" },
+        { "角色替换前无法确认旧 VMD 状态", "キャラ置換前に古いVMDの状態を確認できません" },
+        { "VMD 重新绑定失败，旧绑定已清理：", "VMDの再接続に失敗しました。古い接続は解除済みです：" },
+        { "VMD 重新绑定失败：", "VMDの再接続に失敗：" },
+        { "VMD 已重新绑定：", "VMDを再接続：" },
+        { "原 VMD 已恢复", "元のVMDを復元しました" },
+        { "原 VMD 恢复失败：", "元のVMDを復元できません：" },
+        { "新角色读取超时，旧 VMD 已安全清理但未重新绑定", "新しいキャラの読込がタイムアウトしました。古いVMDは安全に解除され、再接続されていません" },
+        { "当前选中角色已经变化，请重新确认后再清空", "選択中のキャラが変わりました。もう一度確認してから消去してください" },
+        { "清空 MMD 数据失败：", "MMDデータの消去に失敗：" },
+        { "MMDD 没有返回可信的清空结果，未确认数据状态", "MMDDから信頼できる消去結果が返らず、データ状態を確認できません" },
+        { "清空失败且回滚不完整，请勿保存场景并先重载备份：", "消去に失敗し、復元も不完全です。シーンを保存せず、先にバックアップを再読込してください：" },
+        { "清空失败，原 MMDD 数据已恢复：", "消去に失敗しましたが、元のMMDDデータは復元されました：" },
+        { "未执行清空：", "消去は実行されませんでした：" },
         { "已载入", "読込完了" },
         { " 动作：", " モーション：" },
         { " 镜头：", " カメラ：" },
@@ -234,6 +263,7 @@ public sealed partial class VRWristMenuController
         { "卡面预览失败：", "Could not preview the card: " },
         { "已有服装卡正在替换，请稍后", "Another outfit card is being applied. Please wait" },
         { "所选角色仍在读取，请稍后再换装", "The selected character is still loading. Please wait before changing outfits" },
+        { "目标角色尚未初始化完成或已经失效", "The target character is still initializing or is no longer valid" },
         { "Coordinate Load Option 正在处理其他换装，请稍后", "Coordinate Load Option is processing another outfit change" },
         { "Coordinate Load Option 正在处理其他换装", "Coordinate Load Option is processing another outfit change" },
         { "Coordinate Load Option 接口不可用", "The Coordinate Load Option interface is unavailable" },
@@ -257,6 +287,21 @@ public sealed partial class VRWristMenuController
         { "检查饰品绑定数据失败：", "Could not inspect accessory binding data: " },
         { "已只替换衣服，现有饰品保持不变：", "Changed clothing only and kept all current accessories: " },
         { "已换衣服并把所选饰品追加到空槽：", "Changed clothing and added picked accessories to empty slots: " },
+        { "已完整替换衣服；现有饰品保持不变：", "Replaced all clothes and kept the current accessories: " },
+        { "这个角色没有由本插件追加且仍可安全管理的饰品", "This character has no safely manageable accessories appended by this plugin" },
+        { "已有服装卡操作正在进行，请稍后再管理追加饰品", "An outfit-card operation is still running; wait before managing appended accessories" },
+        { "场景角色已变化，请重新选择饰品管理目标", "The scene character changed; select the accessory-management target again" },
+        { "所选角色仍在读取，请稍后再管理追加饰品", "The selected character is still loading; wait before managing appended accessories" },
+        { "所选饰品已被修改或不再由本插件管理；未删除任何饰品", "The selected accessories were modified or are no longer managed; nothing was removed" },
+        { "饰品槽在删除前已变化，为避免误删已取消操作", "An accessory slot changed before deletion, so the operation was cancelled to prevent accidental removal" },
+        { "工作室没有接受饰品删除请求", "Studio did not accept the accessory-removal request" },
+        { "已移除本次追加饰品 ", "Removed appended accessories: " },
+        { "正在移除本次追加饰品 ", "Removing appended accessories: " },
+        { "移除追加饰品没有启动", "The appended-accessory removal did not start" },
+        { "移除追加饰品失败：", "Could not remove appended accessories: " },
+        { "饰品操作失败：", "Accessory operation failed: " },
+        { "已跳过重复饰品 ", "Skipped duplicate accessories: " },
+        { " 件", " items" },
         { "只换衣服被中止：检测到饰品数据发生变化", "Clothing-only replacement was stopped because accessory data changed" },
         { "已有服装卡操作正在进行，请稍后再撤销", "An outfit-card operation is still running; wait before undoing" },
         { "场景角色已变化，请重新选择撤销目标", "The scene character changed; select the undo target again" },
@@ -328,6 +373,20 @@ public sealed partial class VRWristMenuController
         { "高跟鞋控制失败：", "High-heel control failed: " },
         { "高跟鞋控制失败", "High-heel control failed" },
         { "VMD 载入失败：", "Could not load VMD: " },
+        { "角色替换前无法清理旧 VMD：", "Could not detach the old VMD before replacing the character: " },
+        { "角色替换前无法确认旧 VMD 状态", "Could not confirm the old VMD state before replacing the character" },
+        { "VMD 重新绑定失败，旧绑定已清理：", "Could not rebind VMD; the stale binding was removed: " },
+        { "VMD 重新绑定失败：", "Could not rebind VMD: " },
+        { "VMD 已重新绑定：", "Rebound VMD: " },
+        { "原 VMD 已恢复", "Restored the original VMD" },
+        { "原 VMD 恢复失败：", "Could not restore the original VMD: " },
+        { "新角色读取超时，旧 VMD 已安全清理但未重新绑定", "The new character timed out while loading; the old VMD was safely detached and was not rebound" },
+        { "当前选中角色已经变化，请重新确认后再清空", "The selected character changed; confirm again before clearing" },
+        { "清空 MMD 数据失败：", "Could not clear MMD data: " },
+        { "MMDD 没有返回可信的清空结果，未确认数据状态", "MMDD did not return a trustworthy clear result; the data state is unconfirmed" },
+        { "清空失败且回滚不完整，请勿保存场景并先重载备份：", "Clearing failed and rollback was incomplete; do not save the scene, and reload a backup first: " },
+        { "清空失败，原 MMDD 数据已恢复：", "Clearing failed; the original MMDD data was restored: " },
+        { "未执行清空：", "Nothing was cleared: " },
         { "已载入", "Loaded" },
         { " 动作：", " Motion: " },
         { " 镜头：", " Camera: " },
@@ -527,24 +586,33 @@ public sealed partial class VRWristMenuController
         _menuRect = null;
         _rootPage = null;
         _clothingPage = null;
+        ClearClothingSubmenuReferences();
         ClearCoordinateMenuReferences();
         _browserPage = null;
         _sceneSavePage = null;
         _characterCardsPage = null;
         _characterPreviewPage = null;
+        _timelinePage = null;
         _mmdPage = null;
+        ClearMmdExtendedMenuReferences();
         _highHeelsPage = null;
         _settingsPage = null;
         _settingsGeneralPanel = null;
+        _settingsInteractionPanel = null;
         _settingsVisualPanel = null;
+        _settingsReShadePanel = null;
         _settingsCharacterLightPanel = null;
         _settingsAudioPanel = null;
         _statusText = null;
         _statusIndicator = null;
         _hoveredButton = null;
         _clothingTargetButton = null;
+        _rootLoadVmdButton = null;
         _loadVmdButton = null;
         _timelineButton = null;
+        _timelineFovModeButton = null;
+        _timelineFovValueText = null;
+        _timelineFovStateText = null;
         _vmdRootButton = null;
         _fixedFovToggleButton = null;
         _fixedFovValueText = null;
@@ -556,11 +624,29 @@ public sealed partial class VRWristMenuController
         _highHeelsLoadPresetButton = null;
         _settingsGeneralTab = null;
         _settingsVisualTab = null;
+        _settingsReShadeTab = null;
         _settingsCharacterLightTab = null;
         _settingsAudioTab = null;
         _languageChineseButton = null;
         _languageJapaneseButton = null;
         _languageEnglishButton = null;
+        for (int i = 0; i < _controllerLayoutButtons.Length; i++)
+            _controllerLayoutButtons[i] = null;
+        _mainGuiDistanceText = null;
+        _mainGuiScaleText = null;
+        _timelineCameraFollowButton = null;
+        _reshadeToggleButton = null;
+        _reshadePresetDropdownButton = null;
+        _reshadePresetDropdownPanel = null;
+        for (int i = 0; i < _reshadePresetOptionButtons.Length; i++)
+            _reshadePresetOptionButtons[i] = null;
+        _reshadePresetPreviousButton = null;
+        _reshadePresetNextButton = null;
+        _reshadePresetPageText = null;
+        _reshadePresetOptions.Clear();
+        _reshadePresetDropdownOpen = false;
+        _reshadePresetPage = 0;
+        _reshadeAvailabilityText = null;
         _backgroundValueText = null;
         _characterLightToggle = null;
         _characterLightShadowToggle = null;
