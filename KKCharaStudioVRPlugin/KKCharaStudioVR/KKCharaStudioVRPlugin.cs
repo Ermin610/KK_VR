@@ -87,6 +87,7 @@ public class KKCharaStudioVRPlugin : BaseUnityPlugin
             SaveLoadSceneHook.InstallHook();
             LoadFixHook.InstallHook();
             DropdownFixHook.InstallHook();
+            MirrorFixHook.InstallHook();
             _managedVrEnabled = true;
         }
         else
