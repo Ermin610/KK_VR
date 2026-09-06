@@ -1,4 +1,5 @@
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
+using UnityEngine;
 using VRGIN.Core;
 
 namespace KKCharaStudioVR;
@@ -153,6 +154,7 @@ public class KKCharaStudioVRSettings : VRSettings
 	private float _UISpawnScale = 1.0f;
 	private string _ControllerFaceButtonLayout = ControllerLayoutSplitHands;
 	private bool _TimelineFollowCamera = true;
+	private float _MirrorResolutionScale = KKCharaStudioVR.Mirror.VRReflection.DefaultResolutionScale;
 
 	[XmlComment("Distance in front of head when UI respawns (meters)")]
 	public float UISpawnDistance
@@ -177,6 +179,13 @@ public class KKCharaStudioVRSettings : VRSettings
 			_ControllerFaceButtonLayout = NormalizeControllerFaceButtonLayout(value);
 			TriggerPropertyChanged("ControllerFaceButtonLayout");
 		}
+	}
+
+	[XmlComment("Mirror reflection resolution as a fraction of the eye resolution, 0.1 to 1. Lower costs less fill")]
+	public float MirrorResolutionScale
+	{
+		get { return _MirrorResolutionScale; }
+		set { _MirrorResolutionScale = Mathf.Clamp(value, 0.1f, 1f); TriggerPropertyChanged("MirrorResolutionScale"); }
 	}
 
 	[XmlComment("Follow Timeline camera animation in VR; false plays animation without moving the VR view")]
