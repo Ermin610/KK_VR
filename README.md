@@ -165,7 +165,7 @@ Access the settings menu inside VR or on the desktop window to customize:
 
 ## 👨‍💻 Development Notes
 
-This repository contains the heavily decompiled and modernized source code of the Chara Studio VR plugin. Built and compiled with Microsoft MSBuild targeting .NET 3.5 framework for Unity 5.x / 2017.x compatibility.
+Early revisions of this project adapted older Chara Studio VR code. The current KK_VR plugin has since been extensively rewritten and modernized; upstream credits and license notices are preserved below. It is built with Microsoft MSBuild targeting .NET 3.5 for Unity 5.x / 2017.x compatibility.
 
 ### Building from Source
 Release builds require Visual Studio 2022 with the **Desktop development with C++** workload and a Windows SDK. The main project builds the managed plug-in and native ReShade bridge together; it intentionally fails when the C++ toolchain is missing so an incomplete package is not mistaken for a release.
