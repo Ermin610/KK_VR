@@ -181,3 +181,11 @@ For an explicitly managed-only development build, pass `/p:BuildNativeReShadeBri
 ---
 
 *Note: This plugin is a continuous community iteration aimed at modernizing the legendary Koikatu VR experience. Contributions, pull requests, and bug reports are welcome!*
+
+## License
+
+Code and documentation authored for this repository by YUchao HU are available under the [MIT License](LICENSE).
+
+Portions originating from [KoikatuVR](https://github.com/vrhth/KoikatuVR) and [VRGIN](https://github.com/Eusth/VRGIN) retain their original MIT licenses and copyright notices, collected in [`release/v0.4.0/ThirdPartyNotices`](release/v0.4.0/ThirdPartyNotices). The vendored ReShade API headers retain their own BSD-3-Clause or MIT terms; see [`native/KKVRReShadeBridge/LICENSE-RESHade.md`](native/KKVRReShadeBridge/LICENSE-RESHade.md).
+
+The repository license does not grant rights to Koikatu/Chara Studio, separately installed plugins, or other third-party components included in release packages. Their respective licenses and terms continue to apply.
