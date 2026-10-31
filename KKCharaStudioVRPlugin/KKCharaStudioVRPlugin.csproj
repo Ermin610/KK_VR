@@ -55,6 +55,7 @@
   <ItemGroup>
     <EmbeddedResource Remove="**/*.resx" />
     <EmbeddedResource Include="KKCharaStudioVR.Resource.resources" />
+    <EmbeddedResource Include="KKCharaStudioVR\Mirror\mirror-shader" LogicalName="KKCharaStudioVR.Mirror.mirror-shader" />
   </ItemGroup>
   <Target Name="BuildAndStageNativeReShadeBridge"
           BeforeTargets="CoreCompile"
