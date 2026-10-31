@@ -45,6 +45,21 @@ namespace KKCharaStudioVR.Mirror
         private RenderTexture m_SharedReflectionTextureLeft = null;
         private RenderTexture m_SharedReflectionTextureRight = null;
 
+        private Material[] m_OwnedMaterials;
+
+        internal void SetOwnedMaterials(Material[] materials)
+        {
+            m_OwnedMaterials = materials;
+        }
+
+        private void OnDestroy()
+        {
+            if (m_OwnedMaterials == null) return;
+            foreach (var material in m_OwnedMaterials)
+                if (material) Destroy(material);
+            m_OwnedMaterials = null;
+        }
+
         private static bool s_InsideRendering = false;
 
         private static int s_LeftTexturePropertyID;
@@ -60,7 +75,8 @@ namespace KKCharaStudioVR.Mirror
         public void OnWillRenderObject()
         {
             var rend = GetComponent<Renderer>();
-            if (!enabled || !rend || !rend.enabled || !rend.sharedMaterial)
+            // Slot zero can be a frame or empty; the mirror may be in a later slot.
+            if (!enabled || !rend || !rend.enabled)
                 return;
 
             var cam = UnityEngine.Camera.current;
@@ -70,64 +86,64 @@ namespace KKCharaStudioVR.Mirror
             // Safeguard from recursive reflections.
             if (s_InsideRendering)
                 return;
-            s_InsideRendering = true;
+            if (!VR.Active) return;
+            // Never initialize SteamVR from a render callback. Wait until the
+            // runtime and both eye transforms are available.
+            var steamVR = cam.stereoEnabled && SteamVR.active ? SteamVR.instance : null;
+            if (cam.stereoEnabled && (steamVR == null || steamVR.hmd == null ||
+                steamVR.eyes == null || steamVR.eyes.Length < 2)) return;
 
-            ReflectionData reflectionData;
-            CreateMirrorObjects(cam, out reflectionData);
-
-            // Optionally disable pixel lights for reflection
             var oldPixelLightCount = QualitySettings.pixelLightCount;
-            if (m_DisablePixelLights)
-                QualitySettings.pixelLightCount = 0;
-
-            // Invert culling as the reflection of the mirrors will reverse the winding order for everything rendered
             var oldInvertCulling = GL.invertCulling;
-            GL.invertCulling = !oldInvertCulling;
-
-            UpdateCameraModes(cam, reflectionData.camera);
-
-            if (cam.stereoEnabled)
+            s_InsideRendering = true;
+            try
             {
-                if (cam.stereoTargetEye == StereoTargetEyeMask.Both || cam.stereoTargetEye == StereoTargetEyeMask.Left)
+                ReflectionData reflectionData;
+                CreateMirrorObjects(cam, out reflectionData);
+                // Preserve unrelated per-renderer overrides.
+                rend.GetPropertyBlock(reflectionData.propertyBlock);
+                if (m_DisablePixelLights) QualitySettings.pixelLightCount = 0;
+                GL.invertCulling = !oldInvertCulling;
+                UpdateCameraModes(cam, reflectionData.camera);
+
+                if (cam.stereoEnabled)
                 {
-                    var eyePos = cam.transform.TransformPoint(SteamVR.instance.eyes[0].pos);
-                    var eyeRot = cam.transform.rotation * SteamVR.instance.eyes[0].rot;
-                    var projectionMatrix = GetSteamVRProjectionMatrix(cam, EVREye.Eye_Left);
+                    if (cam.stereoTargetEye == StereoTargetEyeMask.Both || cam.stereoTargetEye == StereoTargetEyeMask.Left)
+                    {
+                        var eyePos = cam.transform.TransformPoint(steamVR.eyes[0].pos);
+                        var eyeRot = cam.transform.rotation * steamVR.eyes[0].rot;
+                        var projectionMatrix = GetSteamVRProjectionMatrix(cam, EVREye.Eye_Left, steamVR);
+                        var target = m_UseSharedRenderTexture ? m_SharedReflectionTextureLeft : reflectionData.left;
+                        reflectionData.propertyBlock.SetTexture(s_LeftTexturePropertyID, target);
+                        RenderMirror(cam, reflectionData.camera, target, eyePos, eyeRot, projectionMatrix);
+                    }
+                    if (cam.stereoTargetEye == StereoTargetEyeMask.Both || cam.stereoTargetEye == StereoTargetEyeMask.Right)
+                    {
+                        var eyePos = cam.transform.TransformPoint(steamVR.eyes[1].pos);
+                        var eyeRot = cam.transform.rotation * steamVR.eyes[1].rot;
+                        var projectionMatrix = GetSteamVRProjectionMatrix(cam, EVREye.Eye_Right, steamVR);
+                        var target = m_UseSharedRenderTexture ? m_SharedReflectionTextureRight : reflectionData.right;
+                        reflectionData.propertyBlock.SetTexture(s_RightTexturePropertyID, target);
+                        RenderMirror(cam, reflectionData.camera, target, eyePos, eyeRot, projectionMatrix);
+                    }
+                }
+                else
+                {
                     var target = m_UseSharedRenderTexture ? m_SharedReflectionTextureLeft : reflectionData.left;
                     reflectionData.propertyBlock.SetTexture(s_LeftTexturePropertyID, target);
-
-                    RenderMirror(cam, reflectionData.camera, target, eyePos, eyeRot, projectionMatrix);
+                    RenderMirror(cam, reflectionData.camera, target, cam.transform.position, cam.transform.rotation, cam.projectionMatrix);
                 }
-
-                if (cam.stereoTargetEye == StereoTargetEyeMask.Both || cam.stereoTargetEye == StereoTargetEyeMask.Right)
-                {
-                    var eyePos = cam.transform.TransformPoint(SteamVR.instance.eyes[1].pos);
-                    var eyeRot = cam.transform.rotation * SteamVR.instance.eyes[1].rot;
-                    var projectionMatrix = GetSteamVRProjectionMatrix(cam, EVREye.Eye_Right);
-                    var target = m_UseSharedRenderTexture ? m_SharedReflectionTextureRight : reflectionData.right;
-                    reflectionData.propertyBlock.SetTexture(s_RightTexturePropertyID, target);
-
-                    RenderMirror(cam, reflectionData.camera, target, eyePos, eyeRot, projectionMatrix);
-                }
+                rend.SetPropertyBlock(reflectionData.propertyBlock);
             }
-            else
+            finally
             {
-                var target = m_UseSharedRenderTexture ? m_SharedReflectionTextureLeft : reflectionData.left;
-                reflectionData.propertyBlock.SetTexture(s_LeftTexturePropertyID, target);
-                RenderMirror(cam, reflectionData.camera, target, cam.transform.position, cam.transform.rotation, cam.projectionMatrix);
+                try { GL.invertCulling = oldInvertCulling; }
+                finally
+                {
+                    try { QualitySettings.pixelLightCount = oldPixelLightCount; }
+                    finally { s_InsideRendering = false; }
+                }
             }
-
-            // Apply the property block containing the texture references to the renderer
-            rend.SetPropertyBlock(reflectionData.propertyBlock);
-
-            // Restore the original culling
-            GL.invertCulling = oldInvertCulling;
-
-            // Restore pixel light count
-            if (m_DisablePixelLights)
-                QualitySettings.pixelLightCount = oldPixelLightCount;
-
-            s_InsideRendering = false;
         }
 
         private void RenderMirror(UnityEngine.Camera sourceCamera, UnityEngine.Camera reflectionCamera, RenderTexture targetTexture, Vector3 camPosition, Quaternion camRotation, Matrix4x4 camProjectionMatrix)
@@ -182,8 +198,9 @@ namespace KKCharaStudioVR.Mirror
 
             foreach (var reflectionData in m_ReflectionCameras.Values)
             {
-                DestroyImmediate(reflectionData.camera.gameObject);
-                DestroyImmediate(reflectionData.left);
+                // Allocation can fail before all three objects exist.
+                if (reflectionData.camera) DestroyImmediate(reflectionData.camera.gameObject);
+                if (reflectionData.left) DestroyImmediate(reflectionData.left);
                 if (reflectionData.right) DestroyImmediate(reflectionData.right);
             }
 
@@ -377,7 +394,12 @@ namespace KKCharaStudioVR.Mirror
 
         public static Matrix4x4 GetSteamVRProjectionMatrix(UnityEngine.Camera cam, EVREye eye)
         {
-            var proj = SteamVR.instance.hmd.GetProjectionMatrix(eye, cam.nearClipPlane, cam.farClipPlane);
+            return GetSteamVRProjectionMatrix(cam, eye, SteamVR.instance);
+        }
+
+        private static Matrix4x4 GetSteamVRProjectionMatrix(UnityEngine.Camera cam, EVREye eye, SteamVR steamVR)
+        {
+            var proj = steamVR.hmd.GetProjectionMatrix(eye, cam.nearClipPlane, cam.farClipPlane);
             var m = new Matrix4x4();
             m.m00 = proj.m0;
             m.m01 = proj.m1;
