@@ -634,9 +634,8 @@ namespace KKCharaStudioVR
             ctx.root = new GameObject(isLeft ? "VRHandModel_L" : "VRHandModel_R");
             ctx.root.transform.SetParent(tracked.transform, false);
 
-            ctx.material = new Material(MaterialHelper.GetColorZOrderShader());
             float a = settings != null ? settings.HandModelAlpha : 0.3f;
-            ctx.material.color = new Color(0.97f, 0.88f, 0.85f, a);
+            ctx.material = CreateHandMaterial(new Color(0.97f, 0.88f, 0.85f, a));
 
             bool loadedOfficial = false;
             try
@@ -874,6 +873,39 @@ namespace KKCharaStudioVR
             return finger;
         }
         
+        // ColorZOrder is the marker shader, it does not write depth. That is fine for the IK
+        // handles and the grab line, but the hand is a closed mesh, so its back faces blend
+        // through the front and the triangles show. Standard keeps the translucency and still
+        // writes depth, which hides the inside.
+        // The game only ships Standard's transparent variant (_ALPHAPREMULTIPLY_ON), not the fade
+        // one (_ALPHABLEND_ON). Asking for fade falls back to opaque and the alpha is ignored.
+        static Material CreateHandMaterial(Color color)
+        {
+            var shader = Shader.Find("Standard");
+            if (shader == null)
+            {
+                VRLog.Error("Standard shader not found, falling back to the marker shader for the hands");
+                var marker = new Material(MaterialHelper.GetColorZOrderShader());
+                marker.color = color;
+                marker.renderQueue = 3000;
+                return marker;
+            }
+
+            var mat = new Material(shader);
+            mat.SetFloat("_Mode", 3f);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 1);
+            mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.DisableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.SetFloat("_Glossiness", 0f);
+            mat.SetFloat("_Metallic", 0f);
+            mat.color = color;
+            mat.renderQueue = 3000;
+            return mat;
+        }
+
         void SetupMesh(GameObject obj, Material mat, bool isFinger = false)
         {
             Collider col = obj.GetComponent<Collider>();
